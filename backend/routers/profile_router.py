@@ -3,6 +3,10 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select
 from sqlalchemy import text
 from models import Profile, Skill, Experience, ExperienceBullet, Project, Education, Certification, ContactLink
+from logger import get_logger
+from services.activity import log_activity
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
@@ -23,6 +27,7 @@ def list_profiles():
 
 @router.get("/{profile_id}")
 def get_profile(profile_id: int):
+    logger.info(f"GET profile {profile_id}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
         # Eagerly load relationships
@@ -72,6 +77,7 @@ def get_profile(profile_id: int):
 @router.patch("/{profile_id}")
 def patch_profile(profile_id: int, body: dict):
     ALLOWED = {"full_name", "email", "phone", "location", "summary", "availability", "compensation"}
+    logger.info(f"PATCH profile {profile_id}: {list(body.keys())}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
         for k, v in body.items():
@@ -80,11 +86,13 @@ def patch_profile(profile_id: int, body: dict):
         session.add(p)
         session.commit()
         session.refresh(p)
+        log_activity("patch", f"profile #{profile_id} fields={list(body.keys())}", profile_id)
         return {"id": p.id, "full_name": p.full_name}
 
 
 @router.delete("/{profile_id}", status_code=204)
 def delete_profile(profile_id: int):
+    logger.info(f"DELETE profile {profile_id}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
         # SQLite does not enforce FK cascades by default; delete children manually
@@ -105,3 +113,4 @@ def delete_profile(profile_id: int):
         session.flush()
         session.delete(p)
         session.commit()
+        log_activity("delete", f"profile #{profile_id}", profile_id)

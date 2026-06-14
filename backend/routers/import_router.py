@@ -5,6 +5,10 @@ from sqlmodel import Session
 from sqlalchemy.orm import make_transient
 from parsers import parser_for
 from models import Profile, Skill, Experience, ExperienceBullet, Project, Education, Certification, ContactLink
+from logger import get_logger
+from services.activity import log_activity
+
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["import"])
 
@@ -96,8 +100,10 @@ async def import_file(file: UploadFile):
         raise HTTPException(400, f"Unsupported file type: {ext}")
 
     data = await file.read()
+    logger.info(f"Importing file: {filename} ({len(data)} bytes)")
     result = parser.parse(data)
 
     with Session(db.engine) as session:
         profile = _persist(session, result.profile)
+        log_activity("import", f"{filename} → profile #{profile.id}", profile.id)
         return {"profile_id": profile.id, "warnings": result.warnings}

@@ -100,3 +100,63 @@ class Certification(SQLModel, table=True):
     issuer: str = ""
     date: str = ""
     profile: Optional[Profile] = Relationship(back_populates="certifications")
+
+
+class Settings(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ai_provider: str = Field(default="openai")   # openai | anthropic | openrouter
+    ai_model: str = Field(default="gpt-4o-mini")
+    api_key: str = Field(default="")
+    openrouter_api_key: str = Field(default="")
+    anthropic_api_key: str = Field(default="")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), onupdate=func.now())
+    )
+
+
+class ActivityLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    action: str                          # "import" | "export" | "patch" | "delete" | "analyze" | "cover_letter" | "roadmap"
+    detail: str = Field(default="")
+    profile_id: Optional[int] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CoverLetter(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    profile_id: int = Field(foreign_key="profile.id", ondelete="CASCADE")
+    job_title: str = Field(default="")
+    company: str = Field(default="")
+    content: str = Field(default="")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), onupdate=func.now())
+    )
+
+
+class CareerPlan(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    profile_id: int = Field(foreign_key="profile.id", ondelete="CASCADE")
+    content: str = Field(default="")
+    plan_type: str = Field(default="roadmap")   # roadmap | growth | portfolio
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), onupdate=func.now())
+    )
+
+
+class JobMatch(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    profile_id: int = Field(foreign_key="profile.id", ondelete="CASCADE")
+    title: str
+    company: str = Field(default="")
+    location: str = Field(default="")
+    url: str = Field(default="")
+    description: str = Field(default="")
+    source: str = Field(default="")      # adzuna | remotive | github | etc
+    match_score: float = Field(default=0.0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

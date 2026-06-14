@@ -4,10 +4,14 @@ from fastapi.responses import Response
 from sqlmodel import Session
 from exporters import exporter_for
 from models import Profile
+from logger import get_logger
+from services.activity import log_activity
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/profiles", tags=["export"])
 
-SUPPORTED = ["json", "csv", "xml", "docx", "pdf"]
+SUPPORTED = ["json", "csv", "xml", "docx", "pdf", "latex", "tex", "html", "portfolio"]
 
 
 @router.get("/{profile_id}/export/{fmt}")
@@ -27,6 +31,9 @@ def export_profile(profile_id: int, fmt: str):
         _ = list(p.education or [])
         _ = list(p.certifications or [])
         _ = list(p.links or [])
+
+        logger.info(f"Exporting profile {profile_id} as {fmt}")
+        log_activity("export", f"profile #{profile_id} → {fmt}", profile_id)
 
         exporter = exporter_for(fmt)
         data = exporter.export(p)

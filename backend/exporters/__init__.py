@@ -24,3 +24,5 @@ from exporters import csv_exporter as _csv_exporter  # noqa: E402, F401
 from exporters import xml_exporter as _xml_exporter  # noqa: E402, F401
 from exporters import docx_exporter as _docx_exporter  # noqa: E402, F401
 from exporters import pdf_exporter as _pdf_exporter  # noqa: E402, F401
+from exporters import latex_exporter as _latex_exporter  # noqa: E402, F401
+from exporters import portfolio_exporter as _portfolio_exporter  # noqa: E402, F401

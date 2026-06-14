@@ -9,6 +9,12 @@ import ProjectsTab from "./tabs/ProjectsTab";
 import EducationTab from "./tabs/EducationTab";
 import CertificationsTab from "./tabs/CertificationsTab";
 import ExportPanel from "./ExportPanel";
+import AnalysisTab from "./tabs/AnalysisTab";
+import CoverLetterTab from "./tabs/CoverLetterTab";
+import RoadmapTab from "./tabs/RoadmapTab";
+import JobsTab from "./tabs/JobsTab";
+import LogsTab from "./tabs/LogsTab";
+import SettingsTab from "./tabs/SettingsTab";
 
 const TABS = [
   "Contact",
@@ -19,6 +25,12 @@ const TABS = [
   "Education",
   "Certifications",
   "Export",
+  "Analysis",
+  "Cover Letter",
+  "Roadmap",
+  "Jobs",
+  "Logs",
+  "Settings",
 ] as const;
 
 type TabName = (typeof TABS)[number];
@@ -27,6 +39,13 @@ interface Props {
   profileId: number;
   onBack: () => void;
 }
+
+const TAB_GROUPS = [
+  { label: "Profile",   tabs: ["Contact", "Summary", "Skills", "Experience", "Projects", "Education", "Certifications"] },
+  { label: "AI",        tabs: ["Analysis", "Cover Letter", "Roadmap", "Jobs"] },
+  { label: "Export",    tabs: ["Export"] },
+  { label: "System",    tabs: ["Logs", "Settings"] },
+] as const;
 
 export default function ProfileEditor({ profileId, onBack }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -65,6 +84,12 @@ export default function ProfileEditor({ profileId, onBack }: Props) {
       case "Education":      return <EducationTab profile={profile} />;
       case "Certifications": return <CertificationsTab profile={profile} />;
       case "Export":         return <ExportPanel profileId={profile.id} fullName={profile.full_name} />;
+      case "Analysis":       return <AnalysisTab profileId={profile.id} />;
+      case "Cover Letter":   return <CoverLetterTab profileId={profile.id} />;
+      case "Roadmap":        return <RoadmapTab profileId={profile.id} />;
+      case "Jobs":           return <JobsTab profileId={profile.id} />;
+      case "Logs":           return <LogsTab />;
+      case "Settings":       return <SettingsTab />;
     }
   }
 
@@ -82,24 +107,32 @@ export default function ProfileEditor({ profileId, onBack }: Props) {
       </header>
 
       <div className="mx-auto max-w-5xl p-6">
-        <div className="mb-6 flex flex-wrap gap-1 rounded-xl bg-white p-1 shadow-sm">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`
-                rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                ${activeTab === tab
-                  ? "bg-blue-700 text-white"
-                  : "text-slate-600 hover:bg-slate-100"}
-              `}
-            >
-              {tab}
-            </button>
+        {/* Tab group navigation */}
+        <div className="mb-2 space-y-1">
+          {TAB_GROUPS.map((group) => (
+            <div key={group.label} className="flex items-center gap-1 flex-wrap">
+              <span className="w-16 shrink-0 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                {group.label}
+              </span>
+              {group.tabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab as TabName)}
+                  className={`
+                    rounded-lg px-3 py-1.5 text-xs font-medium transition-colors
+                    ${activeTab === tab
+                      ? "bg-blue-700 text-white"
+                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"}
+                  `}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow-sm">
+        <div className="mt-4 rounded-xl bg-white p-6 shadow-sm">
           {renderTab()}
         </div>
       </div>

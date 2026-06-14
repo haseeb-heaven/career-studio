@@ -6,11 +6,13 @@ interface Props {
 }
 
 const FORMATS = [
-  { fmt: "json", label: "JSON", icon: "{ }" },
-  { fmt: "csv",  label: "CSV",  icon: "⊞" },
-  { fmt: "xml",  label: "XML",  icon: "</>" },
-  { fmt: "docx", label: "DOCX", icon: "W" },
-  { fmt: "pdf",  label: "PDF",  icon: "⬇" },
+  { fmt: "json",      label: "JSON",      icon: "{ }" },
+  { fmt: "csv",       label: "CSV",       icon: "⊞" },
+  { fmt: "xml",       label: "XML",       icon: "</>" },
+  { fmt: "docx",      label: "DOCX",      icon: "W" },
+  { fmt: "pdf",       label: "PDF",       icon: "⬇" },
+  { fmt: "latex",     label: "LaTeX",     icon: "λ" },
+  { fmt: "portfolio", label: "Portfolio", icon: "🌐" },
 ] as const;
 
 export default function ExportPanel({ profileId, fullName }: Props) {

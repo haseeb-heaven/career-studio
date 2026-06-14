@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel
 from db import engine
 from routers import import_router, profile_router, export_router
-from routers import logs_router, settings_router
+from routers import logs_router, settings_router, analysis_router, jobs_router
 
 
 def create_tables():
@@ -24,6 +24,8 @@ def create_app() -> FastAPI:
     app.include_router(export_router.router, prefix="/api")
     app.include_router(logs_router.router, prefix="/api")
     app.include_router(settings_router.router, prefix="/api")
+    app.include_router(analysis_router.router, prefix="/api")
+    app.include_router(jobs_router.router, prefix="/api")
     return app
 
 

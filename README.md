@@ -34,13 +34,13 @@ Career Studio is a **full-stack desktop web app** that turns any resume file int
 ## 📸 Screenshots
 
 ### Upload Screen
-![Upload Screen](docs/screenshots/01-upload-screen.svg)
+![Upload Screen](docs/screenshots/01-upload-screen.png)
 
 ### Profile Editor
-![Profile Editor — Contact Tab](docs/screenshots/02-profile-editor.svg)
+![Profile Editor — Contact Tab](docs/screenshots/02-profile-editor.png)
 
 ### Export Panel
-![Export Panel](docs/screenshots/03-export-panel.svg)
+![Export Panel](docs/screenshots/03-export-panel.png)
 
 ---
 

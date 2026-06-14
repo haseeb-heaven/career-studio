@@ -1,0 +1,15 @@
+section,name,value1,value2,value3,value4,category
+contact,full_name,Jane Doe,,,,
+contact,email,jane@example.com,,,,
+contact,phone,+1 555 0100,,,,
+contact,location,"London, UK",,,,
+summary,summary,Senior backend engineer.,,,,
+link,LinkedIn,https://linkedin.com/in/janedoe,,,,
+skill,Python,6.0,,,,Language
+experience,Acme Corp,Backend Engineer,2020-01,2024-06,London,
+experience_bullet,Acme Corp,Built microservices handling 1M req/day.,,,,
+project,My App,Side project,,Python,,
+education,MIT,BSc,Computer Science,2014,2018,
+certification,AWS SAA,Amazon,2023-03,,,
+meta,availability,Immediate,,,,
+meta,compensation,£90k+,,,,

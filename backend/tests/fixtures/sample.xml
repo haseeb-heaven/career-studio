@@ -1,0 +1,60 @@
+<profile>
+  <full_name>Jane Doe</full_name>
+  <email>jane@example.com</email>
+  <phone>+1 555 0100</phone>
+  <location>London, UK</location>
+  <summary>Senior backend engineer.</summary>
+  <availability>Immediate</availability>
+  <compensation>£90k+</compensation>
+  <links>
+    <link>
+      <label>LinkedIn</label>
+      <url>https://linkedin.com/in/janedoe</url>
+    </link>
+  </links>
+  <skills>
+    <skill>
+      <name>Python</name>
+      <category>Language</category>
+      <years>6.0</years>
+    </skill>
+  </skills>
+  <experience>
+    <job>
+      <company>Acme Corp</company>
+      <role>Backend Engineer</role>
+      <start>2020-01</start>
+      <end>2024-06</end>
+      <location>London</location>
+      <bullets>
+        <bullet>Built microservices handling 1M req/day.</bullet>
+      </bullets>
+    </job>
+  </experience>
+  <projects>
+    <project>
+      <name>My App</name>
+      <description>Side project</description>
+      <link />
+      <tech>
+        <item>Python</item>
+      </tech>
+    </project>
+  </projects>
+  <education>
+    <degree>
+      <institution>MIT</institution>
+      <degree>BSc</degree>
+      <field>Computer Science</field>
+      <start>2014</start>
+      <end>2018</end>
+    </degree>
+  </education>
+  <certifications>
+    <certification>
+      <name>AWS SAA</name>
+      <issuer>Amazon</issuer>
+      <date>2023-03</date>
+    </certification>
+  </certifications>
+</profile>

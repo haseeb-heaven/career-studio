@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+career_studio.db
+.pytest_cache/
+*.egg-info/
+dist/
+build/

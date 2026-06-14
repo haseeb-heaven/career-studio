@@ -1,0 +1,26 @@
+{
+  "full_name": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "+1 555 0100",
+  "location": "London, UK",
+  "summary": "Senior backend engineer.",
+  "availability": "Immediate",
+  "compensation": "£90k+",
+  "links": [{"label": "LinkedIn", "url": "https://linkedin.com/in/janedoe"}],
+  "skills": [{"name": "Python", "category": "Language", "years": 6.0}],
+  "experience": [
+    {
+      "company": "Acme Corp",
+      "role": "Backend Engineer",
+      "start": "2020-01",
+      "end": "2024-06",
+      "location": "London",
+      "bullets": ["Built microservices handling 1M req/day."]
+    }
+  ],
+  "projects": [{"name": "My App", "description": "Side project", "link": "", "tech": ["Python"]}],
+  "education": [
+    {"institution": "MIT", "degree": "BSc", "field": "Computer Science", "start": "2014", "end": "2018"}
+  ],
+  "certifications": [{"name": "AWS SAA", "issuer": "Amazon", "date": "2023-03"}]
+}

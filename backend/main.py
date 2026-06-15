@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel
 from db import engine, migrate_db
 from routers import import_router, profile_router, export_router
-from routers import logs_router, settings_router, analysis_router, jobs_router, sections_router
+from routers import logs_router, settings_router, analysis_router, jobs_router, sections_router, auth_router
 
 
 def create_tables():
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(analysis_router.router, prefix="/api")
     app.include_router(jobs_router.router, prefix="/api")
     app.include_router(sections_router.router, prefix="/api")
+    app.include_router(auth_router.router, prefix="/api")
     return app
 
 

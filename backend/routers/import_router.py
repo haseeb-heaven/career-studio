@@ -1,19 +1,20 @@
 import os
 import db
-from fastapi import APIRouter, UploadFile, HTTPException
+from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from sqlmodel import Session
-from sqlalchemy.orm import make_transient
+from typing import Optional
 from parsers import parser_for
-from models import Profile, Skill, Experience, ExperienceBullet, Project, Education, Certification, ContactLink
+from models import Profile, Skill, Experience, ExperienceBullet, Project, Education, Certification, ContactLink, User
 from logger import get_logger
 from services.activity import log_activity
+from routers.auth_utils import get_current_user_optional
 
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["import"])
 
 
-def _persist(session: Session, profile: Profile) -> Profile:
+def _persist(session: Session, profile: Profile, user_id: Optional[int] = None) -> Profile:
     """Persist a parsed (transient) Profile with all its children manually."""
     # Snapshot children before clearing relationships
     skills_data = [
@@ -55,6 +56,7 @@ def _persist(session: Session, profile: Profile) -> Profile:
         summary=profile.summary,
         availability=profile.availability,
         compensation=profile.compensation,
+        user_id=user_id,
     )
     session.add(bare)
     session.flush()  # assigns bare.id
@@ -89,7 +91,10 @@ def _persist(session: Session, profile: Profile) -> Profile:
 
 
 @router.post("/import", status_code=201)
-async def import_file(file: UploadFile):
+async def import_file(
+    file: UploadFile,
+    user: Optional[User] = Depends(get_current_user_optional),
+):
     filename = file.filename or ""
     ext = os.path.splitext(filename)[-1].lstrip(".").lower()
     if not ext:
@@ -104,6 +109,6 @@ async def import_file(file: UploadFile):
     result = parser.parse(data)
 
     with Session(db.engine) as session:
-        profile = _persist(session, result.profile)
+        profile = _persist(session, result.profile, user_id=user.id if user else None)
         log_activity("import", f"{filename} → profile #{profile.id}", profile.id)
         return {"profile_id": profile.id, "warnings": result.warnings}

@@ -1,10 +1,12 @@
 import db
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
 from sqlalchemy import text
-from models import Profile, Skill, Experience, ExperienceBullet, Project, Education, Certification, ContactLink
+from typing import Optional
+from models import Profile, Skill, Experience, ExperienceBullet, Project, Education, Certification, ContactLink, User
 from logger import get_logger
 from services.activity import log_activity
+from routers.auth_utils import get_current_user_optional
 
 logger = get_logger(__name__)
 
@@ -19,9 +21,12 @@ def _get_or_404(session: Session, profile_id: int) -> Profile:
 
 
 @router.get("")
-def list_profiles():
+def list_profiles(user: Optional[User] = Depends(get_current_user_optional)):
     with Session(db.engine) as session:
-        profiles = session.exec(select(Profile)).all()
+        if user:
+            profiles = session.exec(select(Profile).where(Profile.user_id == user.id)).all()
+        else:
+            profiles = session.exec(select(Profile)).all()
         return [{"id": p.id, "full_name": p.full_name, "email": p.email} for p in profiles]
 
 

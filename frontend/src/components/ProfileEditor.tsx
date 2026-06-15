@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { Profile } from "../types";
+import type { Profile, AuthUser } from "../types";
 import { getProfile } from "../api";
 import ContactTab from "./tabs/ContactTab";
 import SummaryTab from "./tabs/SummaryTab";
@@ -74,9 +74,11 @@ interface Props {
   profileId: number;
   importWarnings?: string[];
   onBack: () => void;
+  authUser?: AuthUser | null;
+  onLogout?: () => void;
 }
 
-export default function ProfileEditor({ profileId, importWarnings = [], onBack }: Props) {
+export default function ProfileEditor({ profileId, importWarnings = [], onBack, authUser, onLogout }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState<TabName>("Contact");
   const [loading, setLoading] = useState(true);
@@ -245,8 +247,19 @@ export default function ProfileEditor({ profileId, importWarnings = [], onBack }
           </div>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-slate-500 text-sm hidden sm:block">{profile.full_name}</span>
+            {authUser && (
+              <span className="text-blue-400 text-xs hidden sm:block">{authUser.username}</span>
+            )}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="text-xs text-slate-500 hover:text-slate-300 border border-slate-700 rounded-lg px-2 py-1 transition-colors"
+              >
+                {authUser ? "Sign Out" : "Sign In"}
+              </button>
+            )}
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-              {profile.full_name.charAt(0).toUpperCase()}
+              {(authUser?.username ?? profile.full_name).charAt(0).toUpperCase()}
             </div>
           </div>
         </header>

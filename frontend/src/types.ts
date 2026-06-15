@@ -71,3 +71,9 @@ export interface ImportResult {
   profile_id: number;
   warnings: string[];
 }
+
+export interface AuthUser {
+  user_id: number;
+  username: string;
+  token: string;
+}

@@ -21,6 +21,9 @@ def migrate_db():
         ("adzuna_app_id",  "TEXT DEFAULT ''"),
         ("adzuna_app_key", "TEXT DEFAULT ''"),
     ]
+    new_profile_cols = [
+        ("user_id", "INTEGER"),
+    ]
     with engine.connect() as conn:
         try:
             existing = {row[1] for row in conn.execute(text("PRAGMA table_info(settings)")).fetchall()}
@@ -29,7 +32,15 @@ def migrate_db():
                     conn.execute(text(f"ALTER TABLE settings ADD COLUMN {col} {defn}"))
             conn.commit()
         except Exception:
-            pass  # Table may not exist yet; create_all handles it
+            pass
+        try:
+            existing = {row[1] for row in conn.execute(text("PRAGMA table_info(profile)")).fetchall()}
+            for col, defn in new_profile_cols:
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE profile ADD COLUMN {col} {defn}"))
+            conn.commit()
+        except Exception:
+            pass
 
 
 @contextmanager

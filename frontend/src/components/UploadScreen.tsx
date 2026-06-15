@@ -1,9 +1,12 @@
 import { useState, useRef } from "react";
 import type { DragEvent } from "react";
+import type { AuthUser } from "../types";
 import { importFile, listProfiles, deleteProfile } from "../api";
 
 interface Props {
   onImported: (profileId: number, warnings: string[]) => void;
+  authUser?: AuthUser | null;
+  onLogout?: () => void;
 }
 
 const ACCEPTED = [".json", ".csv", ".xml", ".docx", ".doc", ".pdf", ".tex"];
@@ -17,7 +20,7 @@ const FEATURES = [
   { icon: "🏠", title: "100% Local", desc: "No cloud, no subscription, data stays yours" },
 ];
 
-export default function UploadScreen({ onImported }: Props) {
+export default function UploadScreen({ onImported, authUser, onLogout }: Props) {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,13 +77,33 @@ export default function UploadScreen({ onImported }: Props) {
             <p className="text-blue-300 text-xs">AI-Powered Career Platform</p>
           </div>
         </div>
-        <button
-          onClick={profiles ? () => setProfiles(null) : loadProfiles}
-          disabled={loadingProfiles}
-          className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
-        >
-          {loadingProfiles ? "Loading…" : profiles ? "← Back" : "📂 Open Saved Profile"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={profiles ? () => setProfiles(null) : loadProfiles}
+            disabled={loadingProfiles}
+            className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+          >
+            {loadingProfiles ? "Loading…" : profiles ? "← Back" : "📂 Open Saved Profile"}
+          </button>
+          {authUser ? (
+            <div className="flex items-center gap-2">
+              <span className="text-blue-300 text-sm hidden sm:block">{authUser.username}</span>
+              <button
+                onClick={onLogout}
+                className="rounded-xl border border-slate-600 px-3 py-2 text-xs text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : onLogout && (
+            <button
+              onClick={onLogout}
+              className="rounded-xl border border-slate-600 px-3 py-2 text-xs text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 transition-colors"
+            >
+              Sign In
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-10">

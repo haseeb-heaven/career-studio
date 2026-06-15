@@ -1,7 +1,46 @@
 import axios from "axios";
-import type { Profile, ImportResult } from "./types";
+import type { Profile, ImportResult, AuthUser } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8000/api";
+
+// ---- Auth token management ----
+export function setAuthToken(token: string | null): void {
+  if (token) {
+    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete axios.defaults.headers.common["Authorization"];
+  }
+}
+
+export interface TokenOut {
+  access_token: string;
+  token_type: string;
+  user_id: number;
+  username: string;
+}
+
+export async function register(username: string, password: string, email = ""): Promise<TokenOut> {
+  const res = await axios.post<TokenOut>(`${BASE}/auth/register`, { username, password, email });
+  return res.data;
+}
+
+export async function login(username: string, password: string): Promise<TokenOut> {
+  const form = new FormData();
+  form.append("username", username);
+  form.append("password", password);
+  const res = await axios.post<TokenOut>(`${BASE}/auth/login`, form);
+  return res.data;
+}
+
+export async function verifyToken(): Promise<AuthUser | null> {
+  try {
+    const res = await axios.get<{ user_id: number; username: string; email: string }>(`${BASE}/auth/me`);
+    const token = (axios.defaults.headers.common["Authorization"] as string)?.replace("Bearer ", "") ?? "";
+    return { user_id: res.data.user_id, username: res.data.username, token };
+  } catch {
+    return null;
+  }
+}
 
 export async function importFile(file: File): Promise<ImportResult> {
   const form = new FormData();

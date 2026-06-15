@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { Profile, ImportResult } from "./types";
 
-const BASE = "http://localhost:8000/api";
+const BASE = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8000/api";
 
 export async function importFile(file: File): Promise<ImportResult> {
   const form = new FormData();
@@ -158,4 +158,85 @@ export interface JobMatch {
 export async function searchJobs(profileId: number, limit = 20): Promise<{ query: string; jobs: JobMatch[] }> {
   const res = await axios.get(`${BASE}/profiles/${profileId}/jobs?limit=${limit}`);
   return res.data;
+}
+
+// ---- Section CRUD ----
+import type { Skill, Experience, Project, Education, Certification } from "./types";
+
+// Skills
+export async function addSkill(profileId: number, data: Omit<Skill, "id">): Promise<Skill> {
+  const res = await axios.post(`${BASE}/profiles/${profileId}/skills`, data);
+  return res.data;
+}
+export async function updateSkill(profileId: number, skillId: number, data: Partial<Skill>): Promise<Skill> {
+  const res = await axios.patch(`${BASE}/profiles/${profileId}/skills/${skillId}`, data);
+  return res.data;
+}
+export async function deleteSkill(profileId: number, skillId: number): Promise<void> {
+  await axios.delete(`${BASE}/profiles/${profileId}/skills/${skillId}`);
+}
+
+// Experience
+export async function addExperience(profileId: number, data: Omit<Experience, "id">): Promise<Experience> {
+  const res = await axios.post(`${BASE}/profiles/${profileId}/experience`, data);
+  return res.data;
+}
+export async function updateExperience(profileId: number, expId: number, data: Partial<Experience>): Promise<Experience> {
+  const res = await axios.patch(`${BASE}/profiles/${profileId}/experience/${expId}`, data);
+  return res.data;
+}
+export async function deleteExperience(profileId: number, expId: number): Promise<void> {
+  await axios.delete(`${BASE}/profiles/${profileId}/experience/${expId}`);
+}
+
+// Bullets
+export async function addBullet(profileId: number, expId: number, text: string): Promise<{ id: number; text: string }> {
+  const res = await axios.post(`${BASE}/profiles/${profileId}/experience/${expId}/bullets`, { text });
+  return res.data;
+}
+export async function updateBullet(profileId: number, expId: number, bulletId: number, text: string): Promise<{ id: number; text: string }> {
+  const res = await axios.patch(`${BASE}/profiles/${profileId}/experience/${expId}/bullets/${bulletId}`, { text });
+  return res.data;
+}
+export async function deleteBullet(profileId: number, expId: number, bulletId: number): Promise<void> {
+  await axios.delete(`${BASE}/profiles/${profileId}/experience/${expId}/bullets/${bulletId}`);
+}
+
+// Projects
+export async function addProject(profileId: number, data: Omit<Project, "id">): Promise<Project> {
+  const res = await axios.post(`${BASE}/profiles/${profileId}/projects`, data);
+  return res.data;
+}
+export async function updateProject(profileId: number, projId: number, data: Partial<Project>): Promise<Project> {
+  const res = await axios.patch(`${BASE}/profiles/${profileId}/projects/${projId}`, data);
+  return res.data;
+}
+export async function deleteProject(profileId: number, projId: number): Promise<void> {
+  await axios.delete(`${BASE}/profiles/${profileId}/projects/${projId}`);
+}
+
+// Education
+export async function addEducation(profileId: number, data: Omit<Education, "id">): Promise<Education> {
+  const res = await axios.post(`${BASE}/profiles/${profileId}/education`, data);
+  return res.data;
+}
+export async function updateEducation(profileId: number, eduId: number, data: Partial<Education>): Promise<Education> {
+  const res = await axios.patch(`${BASE}/profiles/${profileId}/education/${eduId}`, data);
+  return res.data;
+}
+export async function deleteEducation(profileId: number, eduId: number): Promise<void> {
+  await axios.delete(`${BASE}/profiles/${profileId}/education/${eduId}`);
+}
+
+// Certifications
+export async function addCertification(profileId: number, data: Omit<Certification, "id">): Promise<Certification> {
+  const res = await axios.post(`${BASE}/profiles/${profileId}/certifications`, data);
+  return res.data;
+}
+export async function updateCertification(profileId: number, certId: number, data: Partial<Certification>): Promise<Certification> {
+  const res = await axios.patch(`${BASE}/profiles/${profileId}/certifications/${certId}`, data);
+  return res.data;
+}
+export async function deleteCertification(profileId: number, certId: number): Promise<void> {
+  await axios.delete(`${BASE}/profiles/${profileId}/certifications/${certId}`);
 }

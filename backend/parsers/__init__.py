@@ -24,3 +24,4 @@ from parsers import csv_parser as _csv_parser  # noqa: E402, F401
 from parsers import xml_parser as _xml_parser  # noqa: E402, F401
 from parsers import docx_parser as _docx_parser  # noqa: E402, F401
 from parsers import pdf_parser as _pdf_parser  # noqa: E402, F401
+from parsers import tex_parser as _tex_parser  # noqa: E402, F401

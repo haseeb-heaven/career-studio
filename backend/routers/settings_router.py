@@ -9,6 +9,7 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 ALLOWED = {
     "ai_provider", "ai_model", "api_key", "anthropic_api_key", "openrouter_api_key",
     "use_local_ai", "ollama_base_url", "ollama_model", "local_for_simple",
+    "adzuna_app_id", "adzuna_app_key",
 }
 
 
@@ -36,6 +37,8 @@ def get_settings():
             "ollama_base_url": cfg.ollama_base_url,
             "ollama_model": cfg.ollama_model,
             "local_for_simple": cfg.local_for_simple,
+            "adzuna_app_id": cfg.adzuna_app_id,
+            "adzuna_app_key": "***" if cfg.adzuna_app_key else "",
         }
 
 

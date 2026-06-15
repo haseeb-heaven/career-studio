@@ -18,6 +18,8 @@ def migrate_db():
         ("ollama_base_url", "TEXT DEFAULT 'http://localhost:11434'"),
         ("ollama_model",    "TEXT DEFAULT 'llama3.2'"),
         ("local_for_simple","INTEGER DEFAULT 1"),
+        ("adzuna_app_id",  "TEXT DEFAULT ''"),
+        ("adzuna_app_key", "TEXT DEFAULT ''"),
     ]
     with engine.connect() as conn:
         try:

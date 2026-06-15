@@ -109,16 +109,20 @@ export default function ProfileEditor({ profileId, importWarnings = [], onBack }
     );
   }
 
+  function handleSectionUpdate(patch: Partial<Profile>) {
+    setProfile((prev) => prev ? { ...prev, ...patch } : prev);
+  }
+
   function renderTab() {
     if (!profile) return null;
     switch (activeTab) {
       case "Contact":        return <ContactTab profile={profile} onChange={setProfile} />;
       case "Summary":        return <SummaryTab profile={profile} onChange={setProfile} />;
-      case "Skills":         return <SkillsTab profile={profile} />;
-      case "Experience":     return <ExperienceTab profile={profile} />;
-      case "Projects":       return <ProjectsTab profile={profile} />;
-      case "Education":      return <EducationTab profile={profile} />;
-      case "Certifications": return <CertificationsTab profile={profile} />;
+      case "Skills":         return <SkillsTab profile={profile} onUpdate={handleSectionUpdate} />;
+      case "Experience":     return <ExperienceTab profile={profile} onUpdate={handleSectionUpdate} />;
+      case "Projects":       return <ProjectsTab profile={profile} onUpdate={handleSectionUpdate} />;
+      case "Education":      return <EducationTab profile={profile} onUpdate={handleSectionUpdate} />;
+      case "Certifications": return <CertificationsTab profile={profile} onUpdate={handleSectionUpdate} />;
       case "Export":         return <ExportPanel profileId={profile.id} fullName={profile.full_name} />;
       case "Analysis":       return <AnalysisTab profileId={profile.id} />;
       case "Cover Letter":   return <CoverLetterTab profileId={profile.id} />;
@@ -145,7 +149,7 @@ export default function ProfileEditor({ profileId, importWarnings = [], onBack }
           <span className="text-2xl shrink-0">🎓</span>
           {sidebarOpen && (
             <div className="min-w-0">
-              <p className="text-white font-bold text-sm leading-tight truncate">Career Studio</p>
+              <p className="text-white font-bold text-sm leading-tight truncate">AI Career Studio</p>
               <p className="text-slate-400 text-xs truncate">{profile.full_name}</p>
             </div>
           )}

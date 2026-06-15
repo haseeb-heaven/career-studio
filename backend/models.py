@@ -110,6 +110,8 @@ class Settings(SQLModel, table=True):
     api_key: str = Field(default="")
     openrouter_api_key: str = Field(default="")
     anthropic_api_key: str = Field(default="")
+    adzuna_app_id: str = Field(default="")
+    adzuna_app_key: str = Field(default="")
     # Local AI (Ollama)
     use_local_ai: bool = Field(default=False)
     ollama_base_url: str = Field(default="http://localhost:11434")

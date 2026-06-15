@@ -6,7 +6,7 @@ interface Props {
   onImported: (profileId: number, warnings: string[]) => void;
 }
 
-const ACCEPTED = [".json", ".csv", ".xml", ".docx", ".doc", ".pdf"];
+const ACCEPTED = [".json", ".csv", ".xml", ".docx", ".doc", ".pdf", ".tex"];
 
 const FEATURES = [
   { icon: "🤖", title: "AI Analysis", desc: "ATS score, strengths, keyword gaps" },
@@ -70,7 +70,7 @@ export default function UploadScreen({ onImported }: Props) {
         <div className="flex items-center gap-3">
           <span className="text-3xl">🎓</span>
           <div>
-            <h1 className="text-white font-bold text-xl leading-tight">Career Studio</h1>
+            <h1 className="text-white font-bold text-xl leading-tight">AI Career Studio</h1>
             <p className="text-blue-300 text-xs">AI-Powered Career Platform</p>
           </div>
         </div>

@@ -211,7 +211,7 @@ _SECTION_MAP = {
 
 # Date patterns  e.g. "Jan 2020", "2020", "01/2020", "January 2020"
 _DATE_RE = re.compile(
-    r"(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
     r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
     r"\s*[,']?\s*\d{2,4}|\b\d{4}\b|Present|Current|Now|Ongoing|Till\s*Date",
     re.IGNORECASE,

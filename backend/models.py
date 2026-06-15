@@ -89,7 +89,10 @@ class Experience(SQLModel, table=True):
     start: str
     end: str = ""
     location: str = ""
-    bullets: List[ExperienceBullet] = Relationship(back_populates="experience")
+    bullets: List[ExperienceBullet] = Relationship(
+        back_populates="experience",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
     profile: Optional[Profile] = Relationship(back_populates="experience")
 
 

@@ -16,10 +16,13 @@ import json
 import os
 import sys
 import pytest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Ensure backend root is on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+_MODELS_JSON = Path(__file__).resolve().parents[1] / "free_openrouter_models.json"
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────
@@ -58,12 +61,24 @@ def client_fixture():
     SQLModel.metadata.drop_all(test_engine)
 
 
+def _smoke_auth_headers(client) -> dict:
+    resp = client.post("/api/auth/register", json={"username": "smoke_test_user", "password": "password123"})
+    if resp.status_code == 400:
+        resp = client.post("/api/auth/login", data={"username": "smoke_test_user", "password": "password123"})
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+
+@pytest.fixture(name="auth_headers")
+def auth_headers_fixture(client) -> dict:
+    return _smoke_auth_headers(client)
+
+
 @pytest.fixture(name="profile_id")
-def profile_id_fixture(client):
+def profile_id_fixture(client, auth_headers):
     import io
     from pathlib import Path
     data = (Path(__file__).parent / "fixtures" / "sample.json").read_bytes()
-    resp = client.post("/api/import", files={"file": ("sample.json", io.BytesIO(data), "application/json")})
+    resp = client.post("/api/import", files={"file": ("sample.json", io.BytesIO(data), "application/json")}, headers=auth_headers)
     assert resp.status_code == 201
     return resp.json()["profile_id"]
 
@@ -112,7 +127,7 @@ class TestValidModel:
     def test_all_json_openrouter_models_valid(self):
         from services.ai_service import _valid_model
         import json
-        with open("free_openrouter_models.json") as f:
+        with _MODELS_JSON.open(encoding="utf-8") as f:
             data = json.load(f)
         for item in data["free_openrouter_models"]:
             model = item["model"]
@@ -146,7 +161,7 @@ class TestCompleteRouting:
         import json
         import random
         # Load free models and randomly pick one
-        with open("free_openrouter_models.json") as f:
+        with _MODELS_JSON.open(encoding="utf-8") as f:
             data = json.load(f)
         models = [m["model"] for m in data["free_openrouter_models"]]
         chosen_model = random.choice(models)
@@ -222,7 +237,8 @@ class TestAIErrorHandling:
         with pytest.raises(ValueError, match="OpenAI API key"):
             _call_external(cfg, "sys", "user")
 
-    def test_missing_anthropic_key_raises(self):
+    @patch("services.ai_service.os.getenv", return_value="")
+    def test_missing_anthropic_key_raises(self, mock_getenv):
         from services.ai_service import _call_external
         cfg = _fake_settings(ai_provider="anthropic", anthropic_api_key="")
         with pytest.raises(ValueError, match="Anthropic API key"):
@@ -244,12 +260,12 @@ class TestAIErrorHandling:
 class TestAIContractShapes:
 
     @patch("routers.analysis_router.complete_simple")
-    def test_analyze_contract(self, mock_ai, client, profile_id):
+    def test_analyze_contract(self, mock_ai, client, profile_id, auth_headers):
         mock_ai.return_value = json.dumps({
             "score": 78, "strengths": ["Python"], "weaknesses": ["No certs"],
             "suggestions": ["Add certs"], "ats_keywords": ["Docker"],
         })
-        resp = client.post(f"/api/profiles/{profile_id}/analyze")
+        resp = client.post(f"/api/profiles/{profile_id}/analyze", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert isinstance(body.get("score"), (int, float))
@@ -259,11 +275,12 @@ class TestAIContractShapes:
         assert isinstance(body.get("ats_keywords"), list)
 
     @patch("routers.analysis_router.complete_complex")
-    def test_cover_letter_contract(self, mock_ai, client, profile_id):
+    def test_cover_letter_contract(self, mock_ai, client, profile_id, auth_headers):
         mock_ai.return_value = "Dear Hiring Manager, I am excited to apply..."
         resp = client.post(
             f"/api/profiles/{profile_id}/cover-letter",
             json={"job_title": "Python Dev", "company": "ACME"},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -271,11 +288,12 @@ class TestAIContractShapes:
             assert k in body
 
     @patch("routers.analysis_router.complete_complex")
-    def test_roadmap_contract(self, mock_ai, client, profile_id):
+    def test_roadmap_contract(self, mock_ai, client, profile_id, auth_headers):
         mock_ai.return_value = "## Year 1\n- Learn Go"
         resp = client.post(
             f"/api/profiles/{profile_id}/roadmap",
             json={"plan_type": "roadmap", "target_role": "CTO", "years_horizon": 3},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -283,41 +301,42 @@ class TestAIContractShapes:
             assert k in body
 
     @patch("routers.analysis_router.complete_complex")
-    def test_growth_plan_contract(self, mock_ai, client, profile_id):
+    def test_growth_plan_contract(self, mock_ai, client, profile_id, auth_headers):
         mock_ai.return_value = "## Growth Plan\n- Mentor others"
         resp = client.post(
             f"/api/profiles/{profile_id}/roadmap",
             json={"plan_type": "growth", "target_role": "Staff Engineer", "years_horizon": 2},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json()["plan_type"] == "growth"
 
     @patch("routers.analysis_router.complete_simple")
-    def test_analyze_bad_ai_json_returns_502(self, mock_ai, client, profile_id):
+    def test_analyze_bad_ai_json_returns_502(self, mock_ai, client, profile_id, auth_headers):
         mock_ai.return_value = "I cannot analyze this."
-        resp = client.post(f"/api/profiles/{profile_id}/analyze")
+        resp = client.post(f"/api/profiles/{profile_id}/analyze", headers=auth_headers)
         assert resp.status_code == 502
 
     @patch("routers.analysis_router.complete_complex")
-    def test_roadmap_missing_profile_returns_404(self, mock_ai, client):
+    def test_roadmap_missing_profile_returns_404(self, mock_ai, client, auth_headers):
         mock_ai.return_value = "content"
-        resp = client.post("/api/profiles/99999/roadmap", json={"plan_type": "roadmap"})
+        resp = client.post("/api/profiles/99999/roadmap", json={"plan_type": "roadmap"}, headers=auth_headers)
         assert resp.status_code == 404
 
     @patch("routers.analysis_router.complete_complex")
-    def test_cover_letter_list(self, mock_ai, client, profile_id):
+    def test_cover_letter_list(self, mock_ai, client, profile_id, auth_headers):
         mock_ai.return_value = "Cover letter content"
-        client.post(f"/api/profiles/{profile_id}/cover-letter", json={"job_title": "Dev", "company": "ACME"})
-        resp = client.get(f"/api/profiles/{profile_id}/cover-letters")
+        client.post(f"/api/profiles/{profile_id}/cover-letter", json={"job_title": "Dev", "company": "ACME"}, headers=auth_headers)
+        resp = client.get(f"/api/profiles/{profile_id}/cover-letters", headers=auth_headers)
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
         assert len(resp.json()) >= 1
 
     @patch("routers.analysis_router.complete_complex")
-    def test_roadmap_list(self, mock_ai, client, profile_id):
+    def test_roadmap_list(self, mock_ai, client, profile_id, auth_headers):
         mock_ai.return_value = "Roadmap content"
-        client.post(f"/api/profiles/{profile_id}/roadmap", json={"plan_type": "roadmap"})
-        resp = client.get(f"/api/profiles/{profile_id}/roadmaps")
+        client.post(f"/api/profiles/{profile_id}/roadmap", json={"plan_type": "roadmap"}, headers=auth_headers)
+        resp = client.get(f"/api/profiles/{profile_id}/roadmaps", headers=auth_headers)
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
         assert len(resp.json()) >= 1

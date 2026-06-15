@@ -47,6 +47,10 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
     );
   }
 
+  const timeline: any[] = Array.isArray(data.timeline) ? data.timeline : [];
+  const projects: any[] = Array.isArray(data.projects) ? data.projects : [];
+  const learningResources: any[] = Array.isArray(data.learning_resources) ? data.learning_resources : [];
+
   return (
     <div className="space-y-6">
       {/* Overview Card */}
@@ -61,13 +65,13 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
       </div>
 
       {/* Timeline Section */}
-      {data.timeline && data.timeline.length > 0 && (
+      {timeline.length > 0 && (
         <div className="space-y-4">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
             <span>📅</span> Timeline & Milestones
           </h4>
           <div className="relative border-l border-slate-750 ml-4 pl-6 space-y-6">
-            {data.timeline.map((item: any, idx: number) => (
+            {timeline.map((item: any, idx: number) => (
               <div key={idx} className="relative">
                 {/* Timeline Dot */}
                 <div className="absolute -left-[32px] top-1.5 w-4 h-4 rounded-full bg-blue-500 border-4 border-slate-900 shadow shadow-blue-500/40" />
@@ -75,7 +79,7 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
                   <h5 className="font-bold text-white text-sm">{item.period || `Period ${idx + 1}`}</h5>
                   
                   {/* Milestones list */}
-                  {item.milestones && item.milestones.length > 0 && (
+                  {Array.isArray(item.milestones) && item.milestones.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Key Milestones:</p>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -90,7 +94,7 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
                   )}
 
                   {/* Skills tags */}
-                  {item.skills && item.skills.length > 0 && (
+                  {Array.isArray(item.skills) && item.skills.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 items-center pt-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Skills:</span>
                       {item.skills.map((s: string, i: number) => (
@@ -102,7 +106,7 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
                   )}
 
                   {/* Certifications tags */}
-                  {item.certifications && item.certifications.length > 0 && (
+                  {Array.isArray(item.certifications) && item.certifications.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 items-center">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Certs:</span>
                       {item.certifications.map((c: string, i: number) => (
@@ -114,7 +118,7 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
                   )}
 
                   {/* Actions list */}
-                  {item.actions && item.actions.length > 0 && (
+                  {Array.isArray(item.actions) && item.actions.length > 0 && (
                     <div className="space-y-1.5 pt-1">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Recommended Actions:</p>
                       <ul className="space-y-1">
@@ -135,19 +139,19 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
       )}
 
       {/* Projects Section */}
-      {data.projects && data.projects.length > 0 && (
+      {projects.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
             <span>🚀</span> Showcase Projects to Build
           </h4>
           <div className="grid grid-cols-1 gap-3.5">
-            {data.projects.map((proj: any, idx: number) => (
+            {projects.map((proj: any, idx: number) => (
               <div key={idx} className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-5 space-y-3">
                 <div className="flex items-center gap-2 justify-between flex-wrap">
                   <h5 className="font-bold text-white text-sm flex items-center gap-1.5">
                     <span>🛠️</span> {proj.name}
                   </h5>
-                  {proj.tech_stack && (
+                  {Array.isArray(proj.tech_stack) && proj.tech_stack.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {proj.tech_stack.map((t: string, i: number) => (
                         <span key={i} className="rounded bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 text-[10px] font-semibold">
@@ -173,13 +177,13 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
       )}
 
       {/* Learning Resources Section */}
-      {data.learning_resources && data.learning_resources.length > 0 && (
+      {learningResources.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
             <span>📚</span> Learning Resources & Video Courses
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {data.learning_resources.map((res: any, idx: number) => {
+            {learningResources.map((res: any, idx: number) => {
               const isYouTube = res.platform?.toLowerCase().includes("youtube") || res.url?.includes("youtube.com");
               const cardBorder = isYouTube ? "border-red-500/20 bg-red-950/5" : "border-blue-500/20 bg-blue-950/5";
               const labelColor = isYouTube ? "text-red-400 bg-red-500/5 border-red-500/10" : "text-blue-400 bg-blue-500/5 border-blue-500/10";

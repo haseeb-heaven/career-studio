@@ -1,9 +1,12 @@
+import logging
+import os
+import sqlite3
+from contextlib import contextmanager
 from sqlmodel import create_engine, SQLModel, Session
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
-from contextlib import contextmanager
-import os
-import sqlite3
+
+_logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./career_studio.db")
 engine = create_engine(DATABASE_URL, echo=False)
@@ -44,16 +47,18 @@ def migrate_db():
                 if col not in existing:
                     conn.execute(text(f"ALTER TABLE settings ADD COLUMN {col} {defn}"))
             conn.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.error("Failed to migrate settings table: %s", exc)
+            raise
         try:
             existing = {row[1] for row in conn.execute(text("PRAGMA table_info(profile)")).fetchall()}
             for col, defn in new_profile_cols:
                 if col not in existing:
                     conn.execute(text(f"ALTER TABLE profile ADD COLUMN {col} {defn}"))
             conn.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.error("Failed to migrate profile table: %s", exc)
+            raise
 
 
 @contextmanager

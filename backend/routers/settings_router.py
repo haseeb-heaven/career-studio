@@ -1,10 +1,11 @@
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 from db import engine
-from models import Settings
+from models import Settings, User
 from services.ai_service import ollama_available, list_ollama_models
 from crypto import encrypt_key, _KEY_FIELDS
+from routers.auth_utils import get_current_user
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -49,7 +50,7 @@ def _key_status(db_val: str, env_var: str) -> str:
 
 
 @router.get("")
-def get_settings():
+def get_settings(user: User = Depends(get_current_user)):
     with Session(engine) as s:
         cfg = _get_or_create(s)
         return {
@@ -71,7 +72,7 @@ def get_settings():
 
 
 @router.put("")
-def update_settings(body: dict):
+def update_settings(body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as session:
         cfg = _get_or_create(session)
         for k, v in body.items():

@@ -7,7 +7,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 
-def _create_profile(client) -> int:
+def _get_auth_headers(client, username: str = "testuser", password: str = "password123") -> dict:
+    """Register (or login if already exists) and return auth headers."""
+    resp = client.post("/api/auth/register", json={"username": username, "password": password})
+    if resp.status_code == 400:  # already registered
+        resp = client.post("/api/auth/login", data={"username": username, "password": password})
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+
+def _create_profile(client, headers: dict = None) -> int:
     """Helper: import a minimal JSON to get a profile_id."""
     data = json.dumps({
         "full_name": "Test User",
@@ -19,40 +27,49 @@ def _create_profile(client) -> int:
         "education": [{"institution": "MIT", "degree": "BSc", "field": "CS", "start": "2016", "end": "2020"}],
         "certifications": [{"name": "AWS SAA", "issuer": "Amazon", "date": "2022"}],
     }).encode()
-    resp = client.post("/api/import", files={"file": ("p.json", data, "application/json")})
+    resp = client.post(
+        "/api/import",
+        files={"file": ("p.json", data, "application/json")},
+        headers=headers,
+    )
     assert resp.status_code == 201
     return resp.json()["profile_id"]
 
 
 class TestProfileCRUD:
     def test_list_profiles(self, client):
-        resp = client.get("/api/profiles")
+        headers = _get_auth_headers(client, "crud_list_user")
+        resp = client.get("/api/profiles", headers=headers)
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
     def test_get_profile(self, client):
-        pid = _create_profile(client)
-        resp = client.get(f"/api/profiles/{pid}")
+        headers = _get_auth_headers(client, "crud_get_user")
+        pid = _create_profile(client, headers)
+        resp = client.get(f"/api/profiles/{pid}", headers=headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body["full_name"] == "Test User"
         assert body["email"] == "test@example.com"
 
     def test_patch_profile(self, client):
-        pid = _create_profile(client)
-        resp = client.patch(f"/api/profiles/{pid}", json={"full_name": "Updated Name"})
+        headers = _get_auth_headers(client, "crud_patch_user")
+        pid = _create_profile(client, headers)
+        resp = client.patch(f"/api/profiles/{pid}", json={"full_name": "Updated Name"}, headers=headers)
         assert resp.status_code == 200
         assert resp.json()["full_name"] == "Updated Name"
 
     def test_get_nonexistent_profile(self, client):
-        resp = client.get("/api/profiles/99999")
+        headers = _get_auth_headers(client, "crud_nonexist_user")
+        resp = client.get("/api/profiles/99999", headers=headers)
         assert resp.status_code == 404
 
     def test_delete_profile(self, client):
-        pid = _create_profile(client)
-        resp = client.delete(f"/api/profiles/{pid}")
+        headers = _get_auth_headers(client, "crud_delete_user")
+        pid = _create_profile(client, headers)
+        resp = client.delete(f"/api/profiles/{pid}", headers=headers)
         assert resp.status_code == 204
-        resp2 = client.get(f"/api/profiles/{pid}")
+        resp2 = client.get(f"/api/profiles/{pid}", headers=headers)
         assert resp2.status_code == 404
 
 

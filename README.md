@@ -1,8 +1,8 @@
-# AI Career Studio 🚀
+# Career Studio AI 🚀
 
 <div align="center">
 
-<img src="docs/logo.jpg" alt="AI Career Studio Logo" width="160" style="border-radius: 24px; margin-bottom: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
+<img src="docs/logo.jpg" alt="Career Studio AI Logo" width="160" style="border-radius: 24px; margin-bottom: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
 
 ### **A local-first, AI-ready career management platform.**
 *Upload any resume format → parse it into a structured profile → edit everything locally → export to 7 formats.*

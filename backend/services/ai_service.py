@@ -1,5 +1,6 @@
-"""Unified AI provider interface. Reads Settings from DB to pick provider/model/key."""
+"""Unified AI provider interface with local (Ollama) and external (OpenAI/Anthropic/OpenRouter) support."""
 import json
+import urllib.request
 from sqlmodel import Session, select
 from db import engine
 from models import Settings
@@ -15,6 +16,47 @@ def _load_settings() -> Settings:
             s.refresh(cfg)
         return cfg
 
+
+# ---------- Local AI (Ollama) ----------
+
+def _call_ollama(base_url: str, model: str, system: str, user: str) -> str:
+    payload = json.dumps({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "stream": False,
+    }).encode()
+    req = urllib.request.Request(
+        f"{base_url.rstrip('/')}/api/chat",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        data = json.loads(resp.read())
+    return data["message"]["content"]
+
+
+def ollama_available(base_url: str) -> bool:
+    try:
+        urllib.request.urlopen(f"{base_url.rstrip('/')}/api/tags", timeout=3)
+        return True
+    except Exception:
+        return False
+
+
+def list_ollama_models(base_url: str) -> list[str]:
+    try:
+        with urllib.request.urlopen(f"{base_url.rstrip('/')}/api/tags", timeout=5) as resp:
+            data = json.loads(resp.read())
+        return [m["name"] for m in data.get("models", [])]
+    except Exception:
+        return []
+
+
+# ---------- External AI ----------
 
 def _call_openai(api_key: str, model: str, system: str, user: str) -> str:
     from openai import OpenAI
@@ -48,31 +90,59 @@ def _call_openrouter(api_key: str, model: str, system: str, user: str) -> str:
     return resp.choices[0].message.content or ""
 
 
-def complete(system: str, user: str) -> str:
-    """Call the configured AI provider and return the text response."""
-    cfg = _load_settings()
+def _call_external(cfg: Settings, system: str, user: str) -> str:
     provider = cfg.ai_provider
     model = cfg.ai_model
-
     if provider == "anthropic":
-        key = cfg.anthropic_api_key
-        if not key:
+        if not cfg.anthropic_api_key:
             raise ValueError("Anthropic API key not configured")
-        return _call_anthropic(key, model or "claude-haiku-4-5-20251001", system, user)
+        return _call_anthropic(cfg.anthropic_api_key, model or "claude-haiku-4-5-20251001", system, user)
     elif provider == "openrouter":
-        key = cfg.openrouter_api_key
-        if not key:
+        if not cfg.openrouter_api_key:
             raise ValueError("OpenRouter API key not configured")
-        return _call_openrouter(key, model or "openai/gpt-4o-mini", system, user)
-    else:  # openai (default)
-        key = cfg.api_key
-        if not key:
+        return _call_openrouter(cfg.openrouter_api_key, model or "openai/gpt-4o-mini", system, user)
+    else:
+        if not cfg.api_key:
             raise ValueError("OpenAI API key not configured")
-        return _call_openai(key, model or "gpt-4o-mini", system, user)
+        return _call_openai(cfg.api_key, model or "gpt-4o-mini", system, user)
+
+
+# ---------- Public interface ----------
+
+# Task complexity: "simple" = quick summaries / keyword extraction; "complex" = cover letters, roadmaps, full analysis
+def complete(system: str, user: str, complexity: str = "complex") -> str:
+    """Route to local or external AI based on settings and task complexity."""
+    cfg = _load_settings()
+
+    use_local = (
+        cfg.use_local_ai
+        and (complexity == "simple" or not cfg.local_for_simple or True)
+        and ollama_available(cfg.ollama_base_url)
+    )
+
+    # Use local for simple tasks when both are configured
+    if cfg.use_local_ai and cfg.local_for_simple and complexity == "simple":
+        if ollama_available(cfg.ollama_base_url):
+            return _call_ollama(cfg.ollama_base_url, cfg.ollama_model, system, user)
+
+    # Use local for ALL tasks when set to local-only
+    if cfg.use_local_ai and not cfg.local_for_simple:
+        if ollama_available(cfg.ollama_base_url):
+            return _call_ollama(cfg.ollama_base_url, cfg.ollama_model, system, user)
+
+    # Fall through to external
+    return _call_external(cfg, system, user)
+
+
+def complete_simple(system: str, user: str) -> str:
+    return complete(system, user, complexity="simple")
+
+
+def complete_complex(system: str, user: str) -> str:
+    return complete(system, user, complexity="complex")
 
 
 def profile_text_summary(profile) -> str:
-    """Convert a Profile ORM object into a compact text block for AI prompts."""
     lines = [
         f"Name: {profile.full_name}",
         f"Email: {profile.email}",
@@ -88,8 +158,7 @@ def profile_text_summary(profile) -> str:
         for b in exp.bullets:
             lines.append(f"  - {b.text}")
     for proj in profile.projects:
-        import json as _json
-        tech = ", ".join(_json.loads(proj.tech)) if proj.tech else ""
+        tech = ", ".join(json.loads(proj.tech)) if proj.tech else ""
         lines.append(f"Project: {proj.name} — {proj.description} [{tech}]")
     for edu in profile.education:
         lines.append(f"Education: {edu.degree} in {edu.field} at {edu.institution} ({edu.start}–{edu.end})")

@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel
-from db import engine
+from db import engine, migrate_db
 from routers import import_router, profile_router, export_router
 from routers import logs_router, settings_router, analysis_router, jobs_router
 
 
 def create_tables():
     SQLModel.metadata.create_all(engine)
+    migrate_db()
 
 
 def create_app() -> FastAPI:

@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from db import engine
 from models import Profile, CoverLetter, CareerPlan
 from services import activity
-from services.ai_service import complete, profile_text_summary
+from services.ai_service import complete_simple, complete_complex, profile_text_summary
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -41,7 +41,7 @@ def analyze(profile_id: int):
     user = f"Resume:\n{resume_text}"
 
     try:
-        raw = complete(system, user)
+        raw = complete_simple(system, user)
         import json
         # Strip markdown code fences if present
         raw = raw.strip()
@@ -95,7 +95,7 @@ def generate_cover_letter(profile_id: int, body: CoverLetterRequest):
     )
 
     try:
-        content = complete(system, user)
+        content = complete_complex(system, user)
     except Exception as e:
         logger.error("Cover letter generation failed: %s", e)
         raise HTTPException(status_code=502, detail=f"AI error: {e}")
@@ -175,7 +175,7 @@ def generate_roadmap(profile_id: int, body: RoadmapRequest):
     user = f"Resume:\n{resume_text}\n\nTask: {prompt_suffix}"
 
     try:
-        content = complete(system, user)
+        content = complete_complex(system, user)
     except Exception as e:
         logger.error("Roadmap generation failed: %s", e)
         raise HTTPException(status_code=502, detail=f"AI error: {e}")

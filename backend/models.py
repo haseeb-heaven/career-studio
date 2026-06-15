@@ -104,11 +104,18 @@ class Certification(SQLModel, table=True):
 
 class Settings(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    # External API
     ai_provider: str = Field(default="openai")   # openai | anthropic | openrouter
     ai_model: str = Field(default="gpt-4o-mini")
     api_key: str = Field(default="")
     openrouter_api_key: str = Field(default="")
     anthropic_api_key: str = Field(default="")
+    # Local AI (Ollama)
+    use_local_ai: bool = Field(default=False)
+    ollama_base_url: str = Field(default="http://localhost:11434")
+    ollama_model: str = Field(default="llama3.2")
+    # Task routing: use local for quick tasks, external for heavy ones
+    local_for_simple: bool = Field(default=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

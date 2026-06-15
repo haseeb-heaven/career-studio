@@ -1,11 +1,13 @@
 import db
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import Response
 from sqlmodel import Session
 from exporters import exporter_for
-from models import Profile
+from models import Profile, User
 from logger import get_logger
 from services.activity import log_activity
+from routers.auth_utils import get_current_user
+from routers.profile_router import _check_ownership
 
 logger = get_logger(__name__)
 
@@ -15,13 +17,14 @@ SUPPORTED = ["json", "csv", "xml", "docx", "pdf", "latex", "tex", "html", "portf
 
 
 @router.get("/{profile_id}/export/{fmt}")
-def export_profile(profile_id: int, fmt: str):
+def export_profile(profile_id: int, fmt: str, user: User = Depends(get_current_user)):
     if fmt not in SUPPORTED:
         raise HTTPException(400, f"Unsupported format: {fmt}. Choose from {SUPPORTED}")
     with Session(db.engine) as session:
         p = session.get(Profile, profile_id)
         if not p:
             raise HTTPException(404, f"Profile {profile_id} not found")
+        _check_ownership(p, user)
         # Eagerly load relationships so exporter sees them
         _ = list(p.skills or [])
         _ = list(p.experience or [])

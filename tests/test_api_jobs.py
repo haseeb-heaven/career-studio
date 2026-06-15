@@ -8,7 +8,14 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 
-def _create_profile_with_skills(client) -> int:
+def _get_auth_headers(client, username: str = "jobs_test_user") -> dict:
+    resp = client.post("/api/auth/register", json={"username": username, "password": "password123"})
+    if resp.status_code == 400:
+        resp = client.post("/api/auth/login", data={"username": username, "password": "password123"})
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+
+def _create_profile_with_skills(client, headers: dict = None) -> int:
     data = json.dumps({
         "full_name": "Dev User",
         "email": "dev@example.com",
@@ -19,7 +26,7 @@ def _create_profile_with_skills(client) -> int:
         ],
         "experience": [{"company": "AI Corp", "role": "ML Engineer", "start": "2020"}],
     }).encode()
-    resp = client.post("/api/import", files={"file": ("p.json", data, "application/json")})
+    resp = client.post("/api/import", files={"file": ("p.json", data, "application/json")}, headers=headers)
     assert resp.status_code == 201
     return resp.json()["profile_id"]
 
@@ -57,7 +64,8 @@ MOCK_REMOTEOK_RESPONSE = json.dumps([
 
 class TestJobSearch:
     def test_job_search_returns_results(self, client):
-        pid = _create_profile_with_skills(client)
+        headers = _get_auth_headers(client, "jobs_results_user")
+        pid = _create_profile_with_skills(client, headers)
         mock_resp = MagicMock()
         mock_resp.read.return_value = MOCK_REMOTIVE_RESPONSE
         mock_resp.__enter__ = lambda s: s
@@ -71,7 +79,7 @@ class TestJobSearch:
         with patch("routers.jobs_router.urllib.request.urlopen") as mock_urlopen, \
              patch("routers.jobs_router.urllib.request.Request") as mock_request:
             mock_urlopen.side_effect = [mock_resp, mock_ok_resp]
-            resp = client.get(f"/api/profiles/{pid}/jobs?limit=10")
+            resp = client.get(f"/api/profiles/{pid}/jobs?limit=10", headers=headers)
 
         assert resp.status_code == 200
         body = resp.json()
@@ -80,7 +88,8 @@ class TestJobSearch:
         assert body["query"], "Query should not be empty"
 
     def test_job_search_match_scores(self, client):
-        pid = _create_profile_with_skills(client)
+        headers = _get_auth_headers(client, "jobs_scores_user")
+        pid = _create_profile_with_skills(client, headers)
         mock_resp = MagicMock()
         mock_resp.read.return_value = MOCK_REMOTIVE_RESPONSE
         mock_resp.__enter__ = lambda s: s
@@ -94,7 +103,7 @@ class TestJobSearch:
         with patch("routers.jobs_router.urllib.request.urlopen") as mock_urlopen, \
              patch("routers.jobs_router.urllib.request.Request"):
             mock_urlopen.side_effect = [mock_resp, mock_ok_resp]
-            resp = client.get(f"/api/profiles/{pid}/jobs?limit=10")
+            resp = client.get(f"/api/profiles/{pid}/jobs?limit=10", headers=headers)
 
         jobs = resp.json()["jobs"]
         if jobs:
@@ -103,20 +112,23 @@ class TestJobSearch:
             assert 0 <= first["match_score"] <= 100
 
     def test_job_search_nonexistent_profile(self, client):
-        resp = client.get("/api/profiles/99999/jobs")
+        headers = _get_auth_headers(client, "jobs_nonexist_user")
+        resp = client.get("/api/profiles/99999/jobs", headers=headers)
         assert resp.status_code == 404
 
     def test_job_search_graceful_on_api_failure(self, client):
-        pid = _create_profile_with_skills(client)
+        headers = _get_auth_headers(client, "jobs_graceful_user")
+        pid = _create_profile_with_skills(client, headers)
         with patch("routers.jobs_router.urllib.request.urlopen", side_effect=Exception("Network error")), \
              patch("routers.jobs_router.urllib.request.Request"):
-            resp = client.get(f"/api/profiles/{pid}/jobs?limit=5")
+            resp = client.get(f"/api/profiles/{pid}/jobs?limit=5", headers=headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body["jobs"] == [] or isinstance(body["jobs"], list)
 
     def test_query_built_from_skills(self, client):
-        pid = _create_profile_with_skills(client)
+        headers = _get_auth_headers(client, "jobs_query_user")
+        pid = _create_profile_with_skills(client, headers)
         mock_resp = MagicMock()
         mock_resp.read.return_value = b'{"jobs": []}'
         mock_resp.__enter__ = lambda s: s
@@ -129,7 +141,7 @@ class TestJobSearch:
         with patch("routers.jobs_router.urllib.request.urlopen") as mu, \
              patch("routers.jobs_router.urllib.request.Request"):
             mu.side_effect = [mock_resp, mock_ok]
-            resp = client.get(f"/api/profiles/{pid}/jobs?limit=10")
+            resp = client.get(f"/api/profiles/{pid}/jobs?limit=10", headers=headers)
 
         query = resp.json()["query"]
         assert "Python" in query or "ML Engineer" in query or "Machine Learning" in query
@@ -138,30 +150,30 @@ class TestJobSearch:
 class TestMatchScoreUnit:
     def test_full_match(self):
         from routers.jobs_router import _match_score
-        score = _match_score("We need Python FastAPI developer", ["Python", "FastAPI"])
+        score = _match_score("Python FastAPI Developer", "Python and FastAPI experience needed", ["Python", "FastAPI"], "Python FastAPI")
         assert score == 100.0
 
     def test_partial_match(self):
         from routers.jobs_router import _match_score
-        score = _match_score("We need Python developer", ["Python", "FastAPI"])
+        score = _match_score("Python Developer", "Python experience needed", ["Python", "FastAPI"], "Python FastAPI")
         assert score == 50.0
 
     def test_no_match(self):
         from routers.jobs_router import _match_score
-        score = _match_score("Java enterprise developer needed", ["Python", "FastAPI"])
+        score = _match_score("Java Developer", "Java experience needed", ["Python", "FastAPI"], "Python FastAPI")
         assert score == 0.0
 
     def test_empty_skills(self):
         from routers.jobs_router import _match_score
-        score = _match_score("Some job description", [])
+        score = _match_score("Python Developer", "Python experience needed", [], "")
         assert score == 0.0
 
     def test_empty_description(self):
         from routers.jobs_router import _match_score
-        score = _match_score("", ["Python"])
+        score = _match_score("", "", ["Python"], "")
         assert score == 0.0
 
     def test_case_insensitive(self):
         from routers.jobs_router import _match_score
-        score = _match_score("We need PYTHON developer", ["Python"])
+        score = _match_score("PYTHON developer", "PYTHON experience", ["Python"], "PYTHON")
         assert score == 100.0

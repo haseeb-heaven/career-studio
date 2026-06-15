@@ -5,6 +5,7 @@ import urllib.request
 from sqlmodel import Session, select
 from db import engine
 from models import Settings
+from crypto import decrypt_key, _KEY_FIELDS
 
 
 def _friendly_api_error(e: Exception, provider: str) -> str:
@@ -34,7 +35,11 @@ def _load_settings() -> Settings:
             s.add(cfg)
             s.commit()
             s.refresh(cfg)
-        return cfg
+    for field in _KEY_FIELDS:
+        val = getattr(cfg, field, "")
+        if val:
+            setattr(cfg, field, decrypt_key(val))
+    return cfg
 
 
 # ---------- Local AI (Ollama) ----------

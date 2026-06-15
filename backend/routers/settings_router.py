@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 from db import engine
 from models import Settings
 from services.ai_service import ollama_available, list_ollama_models
+from crypto import encrypt_key, _KEY_FIELDS
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -11,7 +12,24 @@ ALLOWED = {
     "ai_provider", "ai_model", "api_key", "anthropic_api_key", "openrouter_api_key",
     "use_local_ai", "ollama_base_url", "ollama_model", "local_for_simple",
     "adzuna_app_id", "adzuna_app_key",
+    "linkedin_api_key", "indeed_api_key", "glassdoor_api_key",
 }
+
+
+def _migrate_encrypt_existing_keys(session: Session, cfg: Settings) -> None:
+    """Idempotent: encrypt any plain-text API keys that are already in the DB."""
+    changed = False
+    for field in _KEY_FIELDS:
+        val = getattr(cfg, field, "")
+        if val:
+            encrypted = encrypt_key(val)
+            if encrypted != val:
+                setattr(cfg, field, encrypted)
+                changed = True
+    if changed:
+        session.add(cfg)
+        session.commit()
+        session.refresh(cfg)
 
 
 def _get_or_create(session: Session) -> Settings:
@@ -21,6 +39,7 @@ def _get_or_create(session: Session) -> Settings:
         session.add(s)
         session.commit()
         session.refresh(s)
+    _migrate_encrypt_existing_keys(session, s)
     return s
 
 
@@ -45,6 +64,9 @@ def get_settings():
             "local_for_simple": cfg.local_for_simple,
             "adzuna_app_id": cfg.adzuna_app_id,
             "adzuna_app_key": _key_status(cfg.adzuna_app_key, "ADZUNA_APP_KEY"),
+            "linkedin_api_key": _key_status(cfg.linkedin_api_key, "LINKEDIN_API_KEY"),
+            "indeed_api_key": _key_status(cfg.indeed_api_key, "INDEED_API_KEY"),
+            "glassdoor_api_key": _key_status(cfg.glassdoor_api_key, "GLASSDOOR_API_KEY"),
         }
 
 
@@ -54,6 +76,10 @@ def update_settings(body: dict):
         cfg = _get_or_create(session)
         for k, v in body.items():
             if k in ALLOWED:
+                if k in _KEY_FIELDS and v == "***":
+                    continue
+                if k in _KEY_FIELDS and v:
+                    v = encrypt_key(v)
                 setattr(cfg, k, v)
         session.add(cfg)
         session.commit()

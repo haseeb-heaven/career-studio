@@ -300,3 +300,48 @@ class TestAnalysisRouterAuth:
         pid = imp.json()["profile_id"]
         resp = client.get(f"/api/profiles/{pid}/roadmaps", headers=h_b)
         assert resp.status_code == 403
+
+
+class TestExportRouterAuth:
+    """Export route must require auth and respect ownership."""
+
+    def _make_profile(self, client, username: str) -> tuple[dict, int]:
+        headers = _auth_headers(client, username)
+        data = json.dumps({"full_name": f"{username} Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=headers,
+        )
+        return headers, imp.json()["profile_id"]
+
+    def test_export_no_token_returns_401(self, client):
+        _, pid = self._make_profile(client, "exp_creator")
+        resp = client.get(f"/api/profiles/{pid}/export/json")
+        assert resp.status_code == 401
+
+    def test_export_wrong_user_returns_403(self, client):
+        h_a = _auth_headers(client, "exp_owner_a")
+        h_b = _auth_headers(client, "exp_owner_b")
+        data = json.dumps({"full_name": "Export Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=h_a,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.get(f"/api/profiles/{pid}/export/json", headers=h_b)
+        assert resp.status_code == 403
+
+    def test_export_owner_returns_200(self, client):
+        headers = _auth_headers(client, "exp_owner_200")
+        data = json.dumps({"full_name": "Export Owner Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=headers,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.get(f"/api/profiles/{pid}/export/json", headers=headers)
+        assert resp.status_code == 200
+        assert "application/json" in resp.headers["content-type"]

@@ -37,3 +37,6 @@ backend/*.log
 
 # Claude
 .claude/launch.json
+
+# Test Fixtures (containing personal/portfolio data)
+tests/fixtures/*

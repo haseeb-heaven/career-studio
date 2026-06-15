@@ -146,9 +146,8 @@ class TestProfileRouterAuth:
         assert resp.status_code == 401
 
     def test_get_profile_no_token_returns_401(self, client):
-        import json as _json
         headers = _auth_headers(client, "pauth_creator")
-        data = _json.dumps({"full_name": "Auth Test Profile"}).encode()
+        data = json.dumps({"full_name": "Auth Test Profile"}).encode()
         imp = client.post(
             "/api/import",
             files={"file": ("p.json", data, "application/json")},
@@ -159,9 +158,8 @@ class TestProfileRouterAuth:
         assert resp.status_code == 401
 
     def test_patch_profile_no_token_returns_401(self, client):
-        import json as _json
         headers = _auth_headers(client, "pauth_patcher")
-        data = _json.dumps({"full_name": "Patch Test"}).encode()
+        data = json.dumps({"full_name": "Patch Test"}).encode()
         imp = client.post(
             "/api/import",
             files={"file": ("p.json", data, "application/json")},
@@ -172,9 +170,8 @@ class TestProfileRouterAuth:
         assert resp.status_code == 401
 
     def test_delete_profile_no_token_returns_401(self, client):
-        import json as _json
         headers = _auth_headers(client, "pauth_deleter")
-        data = _json.dumps({"full_name": "Del Test"}).encode()
+        data = json.dumps({"full_name": "Del Test"}).encode()
         imp = client.post(
             "/api/import",
             files={"file": ("p.json", data, "application/json")},
@@ -185,10 +182,9 @@ class TestProfileRouterAuth:
         assert resp.status_code == 401
 
     def test_wrong_user_get_profile_returns_403(self, client):
-        import json as _json
         h_a = _auth_headers(client, "pauth_owner_a")
         h_b = _auth_headers(client, "pauth_owner_b")
-        data = _json.dumps({"full_name": "A Profile"}).encode()
+        data = json.dumps({"full_name": "A Profile"}).encode()
         imp = client.post(
             "/api/import",
             files={"file": ("p.json", data, "application/json")},
@@ -199,10 +195,9 @@ class TestProfileRouterAuth:
         assert resp.status_code == 403
 
     def test_wrong_user_delete_profile_returns_403(self, client):
-        import json as _json
         h_a = _auth_headers(client, "pauth_del_a")
         h_b = _auth_headers(client, "pauth_del_b")
-        data = _json.dumps({"full_name": "A Profile 2"}).encode()
+        data = json.dumps({"full_name": "A Profile 2"}).encode()
         imp = client.post(
             "/api/import",
             files={"file": ("p.json", data, "application/json")},
@@ -212,10 +207,22 @@ class TestProfileRouterAuth:
         resp = client.delete(f"/api/profiles/{pid}", headers=h_b)
         assert resp.status_code == 403
 
+    def test_wrong_user_patch_profile_returns_403(self, client):
+        h_a = _auth_headers(client, "pauth_patch_a")
+        h_b = _auth_headers(client, "pauth_patch_b")
+        data = json.dumps({"full_name": "A Patch Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=h_a,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.patch(f"/api/profiles/{pid}", json={"full_name": "Hacked"}, headers=h_b)
+        assert resp.status_code == 403
+
     def test_owner_can_get_profile(self, client):
-        import json as _json
         headers = _auth_headers(client, "pauth_own_get")
-        data = _json.dumps({"full_name": "Owner Profile"}).encode()
+        data = json.dumps({"full_name": "Owner Profile"}).encode()
         imp = client.post(
             "/api/import",
             files={"file": ("p.json", data, "application/json")},

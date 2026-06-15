@@ -21,14 +21,32 @@ class Profile(SQLModel, table=True):
     email: str = ""
     phone: str = ""
     location: str = ""
-    links: List["ContactLink"] = Relationship(back_populates="profile")
+    links: List["ContactLink"] = Relationship(
+        back_populates="profile",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
     # sections
     summary: str = ""
-    skills: List["Skill"] = Relationship(back_populates="profile")
-    experience: List["Experience"] = Relationship(back_populates="profile")
-    projects: List["Project"] = Relationship(back_populates="profile")
-    education: List["Education"] = Relationship(back_populates="profile")
-    certifications: List["Certification"] = Relationship(back_populates="profile")
+    skills: List["Skill"] = Relationship(
+        back_populates="profile",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
+    experience: List["Experience"] = Relationship(
+        back_populates="profile",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
+    projects: List["Project"] = Relationship(
+        back_populates="profile",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
+    education: List["Education"] = Relationship(
+        back_populates="profile",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
+    certifications: List["Certification"] = Relationship(
+        back_populates="profile",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
     # meta
     availability: str = ""
     compensation: str = ""
@@ -121,6 +139,9 @@ class Settings(SQLModel, table=True):
     anthropic_api_key: str = Field(default="")
     adzuna_app_id: str = Field(default="")
     adzuna_app_key: str = Field(default="")
+    linkedin_api_key: str = Field(default="")
+    indeed_api_key: str = Field(default="")
+    glassdoor_api_key: str = Field(default="")
     # Local AI (Ollama)
     use_local_ai: bool = Field(default=False)
     ollama_base_url: str = Field(default="http://localhost:11434")

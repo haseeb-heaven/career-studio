@@ -1,4 +1,4 @@
-"""Job matching — Remotive (free) + RemoteOK (free) + Adzuna (optional, needs keys)."""
+"""Job matching — RemoteOK + Arbeitnow (free, no auth) + Adzuna (optional)."""
 import json
 import urllib.request
 import urllib.parse
@@ -12,19 +12,32 @@ from logger import get_logger
 logger = get_logger(__name__)
 router = APIRouter(prefix="/profiles", tags=["jobs"])
 
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+
 
 def _build_keywords(profile: Profile) -> str:
-    skill_names = [s.name for s in (profile.skills or [])][:6]
-    role = profile.experience[0].role if profile.experience else ""
+    skill_names = [s.name for s in (profile.skills or [])][:5]
+    roles = [e.role for e in (profile.experience or []) if e.role]
+    role = roles[0] if roles else ""
     terms = ([role] if role else []) + skill_names
-    return " ".join(dict.fromkeys(terms))[:120]
+    query = " ".join(dict.fromkeys(terms))[:120].strip()
+    if not query:
+        # Fallback: derive from full_name context or use generic
+        query = "software developer"
+    return query
 
 
 def _fetch_remotive(query: str, limit: int) -> list[dict]:
+    """Remotive free API — needs browser-like User-Agent to avoid 403."""
     try:
         encoded = urllib.parse.quote(query)
         url = f"https://remotive.com/api/remote-jobs?search={encoded}&limit={limit}"
-        with urllib.request.urlopen(url, timeout=10) as resp:
+        req = urllib.request.Request(url, headers={"User-Agent": _BROWSER_UA})
+        with urllib.request.urlopen(req, timeout=12) as resp:
             data = json.loads(resp.read())
         return [
             {
@@ -39,6 +52,30 @@ def _fetch_remotive(query: str, limit: int) -> list[dict]:
         ]
     except Exception as e:
         logger.warning("Remotive fetch failed: %s", e)
+        return []
+
+
+def _fetch_arbeitnow(query: str, limit: int) -> list[dict]:
+    """Arbeitnow public job board — completely free, no auth, CORS-friendly."""
+    try:
+        encoded = urllib.parse.quote(query)
+        url = f"https://www.arbeitnow.com/api/job-board-api?search={encoded}"
+        req = urllib.request.Request(url, headers={"User-Agent": _BROWSER_UA, "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read())
+        jobs = []
+        for j in data.get("data", [])[:limit]:
+            jobs.append({
+                "title": j.get("title", ""),
+                "company": j.get("company_name", ""),
+                "location": j.get("location", "Remote") or "Remote",
+                "url": j.get("url", ""),
+                "description": (j.get("description", "") or "")[:500],
+                "source": "arbeitnow",
+            })
+        return jobs
+    except Exception as e:
+        logger.warning("Arbeitnow fetch failed: %s", e)
         return []
 
 
@@ -124,11 +161,12 @@ def search_jobs(profile_id: int, limit: int = Query(default=20, le=50)):
     third = max(1, limit // 3)
     half = max(1, limit // 2)
 
-    remotive_jobs = _fetch_remotive(query, half)
+    arbeitnow_jobs = _fetch_arbeitnow(query, half)
     remoteok_jobs = _fetch_remoteok(query, third)
+    remotive_jobs = _fetch_remotive(query, third)
     adzuna_jobs = _fetch_adzuna(query, third, adzuna_id, adzuna_key)
 
-    all_jobs = remotive_jobs + remoteok_jobs + adzuna_jobs
+    all_jobs = arbeitnow_jobs + remoteok_jobs + remotive_jobs + adzuna_jobs
 
     with Session(engine) as s:
         old = s.exec(select(JobMatch).where(JobMatch.profile_id == profile_id)).all()

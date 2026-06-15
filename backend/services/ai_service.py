@@ -1,5 +1,6 @@
 """Unified AI provider interface with local (Ollama) and external (OpenAI/Anthropic/OpenRouter) support."""
 import json
+import os
 import urllib.request
 from sqlmodel import Session, select
 from db import engine
@@ -94,17 +95,20 @@ def _call_external(cfg: Settings, system: str, user: str) -> str:
     provider = cfg.ai_provider
     model = cfg.ai_model
     if provider == "anthropic":
-        if not cfg.anthropic_api_key:
-            raise ValueError("Anthropic API key not configured")
-        return _call_anthropic(cfg.anthropic_api_key, model or "claude-haiku-4-5-20251001", system, user)
+        key = cfg.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY", "")
+        if not key:
+            raise ValueError("Anthropic API key not configured — set it in Settings or ANTHROPIC_API_KEY in .env")
+        return _call_anthropic(key, model or "claude-haiku-4-5-20251001", system, user)
     elif provider == "openrouter":
-        if not cfg.openrouter_api_key:
-            raise ValueError("OpenRouter API key not configured")
-        return _call_openrouter(cfg.openrouter_api_key, model or "openai/gpt-4o-mini", system, user)
-    else:
-        if not cfg.api_key:
-            raise ValueError("OpenAI API key not configured")
-        return _call_openai(cfg.api_key, model or "gpt-4o-mini", system, user)
+        key = cfg.openrouter_api_key or os.getenv("OPENROUTER_API_KEY", "")
+        if not key:
+            raise ValueError("OpenRouter API key not configured — set it in Settings or OPENROUTER_API_KEY in .env")
+        return _call_openrouter(key, model or "meta-llama/llama-3.1-8b-instruct:free", system, user)
+    else:  # openai
+        key = cfg.api_key or os.getenv("OPENAI_API_KEY", "")
+        if not key:
+            raise ValueError("OpenAI API key not configured — set it in Settings or OPENAI_API_KEY in .env")
+        return _call_openai(key, model or "gpt-4o-mini", system, user)
 
 
 # ---------- Public interface ----------

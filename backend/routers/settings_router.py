@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter
 from sqlmodel import Session, select
 from db import engine
@@ -23,6 +24,11 @@ def _get_or_create(session: Session) -> Settings:
     return s
 
 
+def _key_status(db_val: str, env_var: str) -> str:
+    """Return '***' if key is set (DB or env), '' otherwise."""
+    return "***" if (db_val or os.getenv(env_var, "")) else ""
+
+
 @router.get("")
 def get_settings():
     with Session(engine) as s:
@@ -30,15 +36,15 @@ def get_settings():
         return {
             "ai_provider": cfg.ai_provider,
             "ai_model": cfg.ai_model,
-            "api_key": "***" if cfg.api_key else "",
-            "anthropic_api_key": "***" if cfg.anthropic_api_key else "",
-            "openrouter_api_key": "***" if cfg.openrouter_api_key else "",
+            "api_key": _key_status(cfg.api_key, "OPENAI_API_KEY"),
+            "anthropic_api_key": _key_status(cfg.anthropic_api_key, "ANTHROPIC_API_KEY"),
+            "openrouter_api_key": _key_status(cfg.openrouter_api_key, "OPENROUTER_API_KEY"),
             "use_local_ai": cfg.use_local_ai,
             "ollama_base_url": cfg.ollama_base_url,
             "ollama_model": cfg.ollama_model,
             "local_for_simple": cfg.local_for_simple,
             "adzuna_app_id": cfg.adzuna_app_id,
-            "adzuna_app_key": "***" if cfg.adzuna_app_key else "",
+            "adzuna_app_key": _key_status(cfg.adzuna_app_key, "ADZUNA_APP_KEY"),
         }
 
 

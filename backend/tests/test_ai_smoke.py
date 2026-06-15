@@ -109,6 +109,15 @@ class TestValidModel:
         result = _valid_model("google/gemma-3-27b-it:free", "openrouter")
         assert result == "google/gemma-3-27b-it:free"
 
+    def test_all_json_openrouter_models_valid(self):
+        from services.ai_service import _valid_model
+        import json
+        with open("free_openrouter_models.json") as f:
+            data = json.load(f)
+        for item in data["free_openrouter_models"]:
+            model = item["model"]
+            assert _valid_model(model, "openrouter") == model
+
 
 # ── Provider routing ─────────────────────────────────────────────────────
 
@@ -134,13 +143,22 @@ class TestCompleteRouting:
     @patch("services.ai_service._call_openrouter")
     def test_routes_to_openrouter(self, mock_or, mock_settings):
         from services.ai_service import complete
+        import json
+        import random
+        # Load free models and randomly pick one
+        with open("free_openrouter_models.json") as f:
+            data = json.load(f)
+        models = [m["model"] for m in data["free_openrouter_models"]]
+        chosen_model = random.choice(models)
+
         mock_settings.return_value = _fake_settings(
             ai_provider="openrouter",
             openrouter_api_key="sk-or",
-            ai_model="meta-llama/llama-3.1-8b-instruct:free",
+            ai_model=chosen_model,
         )
         mock_or.return_value = "openrouter response"
         assert complete("sys", "user") == "openrouter response"
+        mock_or.assert_called_once_with("sk-or", chosen_model, "sys", "user")
 
     @patch("services.ai_service._load_settings")
     @patch("services.ai_service.ollama_available", return_value=True)

@@ -6,10 +6,38 @@ const BASE = "http://localhost:8000/api";
 
 const EXTERNAL_PROVIDERS = ["openai", "anthropic", "openrouter"] as const;
 
+const FREE_OPENROUTER_MODELS = [
+  { model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", use_case: "reasoning" },
+  { model: "nvidia/nemotron-3-super-120b-a12b:free", use_case: "general reasoning" },
+  { model: "nvidia/nemotron-3-nano-30b-a3b:free", use_case: "general" },
+  { model: "nvidia/nemotron-nano-12b-v2-vl:free", use_case: "vision-language" },
+  { model: "nvidia/nemotron-nano-9b-v2:free", use_case: "general" },
+  { model: "nvidia/nemotron-3-ultra-550b-a55b:free", use_case: "heavy reasoning" },
+  { model: "google/gemma-4-31b-it:free", use_case: "general" },
+  { model: "google/gemma-4-26b-a4b-it:free", use_case: "general" },
+  { model: "google/gemma-3-27b-it:free", use_case: "general" },
+  { model: "google/gemma-3-12b-it:free", use_case: "lightweight" },
+  { model: "google/gemma-3-4b-it:free", use_case: "edge" },
+  { model: "google/gemma-3n-e4b-it:free", use_case: "edge vision" },
+  { model: "google/gemma-3n-e2b-it:free", use_case: "edge vision" },
+  { model: "meta-llama/llama-3.3-70b-instruct:free", use_case: "instruct" },
+  { model: "meta-llama/llama-3.2-3b-instruct:free", use_case: "lightweight" },
+  { model: "openai/gpt-oss-120b:free", use_case: "general reasoning" },
+  { model: "openai/gpt-oss-20b:free", use_case: "light general" },
+  { model: "qwen/qwen3-coder:free", use_case: "coding / structured output" },
+  { model: "qwen/qwen3-next-80b-a3b-instruct:free", use_case: "instruct" },
+  { model: "liquid/lfm-2.5-1.2b-thinking:free", use_case: "thinking" },
+  { model: "liquid/lfm-2.5-1.2b-instruct:free", use_case: "lightweight fallback" },
+  { model: "z-ai/glm-4.5-air:free", use_case: "general" },
+  { model: "arcee-ai/trinity-large-preview:free", use_case: "general" },
+  { model: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", use_case: "general" },
+  { model: "nousresearch/hermes-3-llama-3.1-405b:free", use_case: "heavy reasoning" }
+];
+
 const EXTERNAL_MODELS: Record<string, string[]> = {
   openai:      ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
   anthropic:   ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-8"],
-  openrouter:  ["openai/gpt-4o-mini", "anthropic/claude-haiku-4-5-20251001", "google/gemini-flash-1.5", "meta-llama/llama-3.1-8b-instruct:free"],
+  openrouter:  FREE_OPENROUTER_MODELS.map((m) => m.model),
 };
 
 const OLLAMA_POPULAR = ["llama3.2", "llama3.1", "mistral", "mistral-nemo", "gemma2", "codellama", "phi3", "deepseek-r1"];
@@ -47,8 +75,25 @@ export default function SettingsTab() {
       // Settings API returns strings; coerce booleans defensively
       const boolVal = (v: string) => v === "true" || v === "1";
       setMode(boolVal(s.use_local_ai) ? "local" : "external");
-      setExternalProvider(s.ai_provider ?? "openai");
-      setExternalModel(s.ai_model ?? "gpt-4o-mini");
+      
+      const providerVal = s.ai_provider ?? "openai";
+      const modelVal = s.ai_model ?? "gpt-4o-mini";
+      setExternalProvider(providerVal);
+      setExternalModel(modelVal);
+
+      // Pre-populate customModel if it's a custom model ID not in our lists
+      if (providerVal === "openrouter") {
+        const isPredefined = FREE_OPENROUTER_MODELS.some((m) => m.model === modelVal);
+        if (!isPredefined) {
+          setCustomModel(modelVal);
+        }
+      } else {
+        const isPredefined = EXTERNAL_MODELS[providerVal]?.includes(modelVal);
+        if (!isPredefined) {
+          setCustomModel(modelVal);
+        }
+      }
+
       setOllamaUrl(s.ollama_base_url ?? "http://localhost:11434");
       setOllamaModel(s.ollama_model ?? "llama3.2");
       setLocalForSimple(boolVal(s.local_for_simple) || s.local_for_simple === "");
@@ -263,26 +308,61 @@ export default function SettingsTab() {
               {/* Model */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-2">Model</label>
-                <div className="flex flex-wrap gap-2">
-                  {EXTERNAL_MODELS[externalProvider].map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => { setExternalModel(m); setCustomModel(""); }}
-                      className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                        externalModel === m && !customModel
-                          ? "bg-blue-600 border-blue-600 text-white"
-                          : "border-slate-600 text-slate-400 hover:border-slate-400"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
+                {externalProvider === "openrouter" ? (
+                  <select
+                    value={customModel || externalModel}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const isFreeModel = FREE_OPENROUTER_MODELS.some((m) => m.model === val);
+                      if (isFreeModel) {
+                        setExternalModel(val);
+                        setCustomModel("");
+                      } else {
+                        setCustomModel(val);
+                      }
+                    }}
+                    className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="" disabled>-- Select a Free OpenRouter Model --</option>
+                    {FREE_OPENROUTER_MODELS.map((m) => (
+                      <option key={m.model} value={m.model}>
+                        {m.model} ({m.use_case})
+                      </option>
+                    ))}
+                    {customModel && !FREE_OPENROUTER_MODELS.some(m => m.model === customModel) && (
+                      <option value={customModel}>
+                        {customModel} (Custom)
+                      </option>
+                    )}
+                  </select>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {EXTERNAL_MODELS[externalProvider].map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => { setExternalModel(m); setCustomModel(""); }}
+                        className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                          externalModel === m && !customModel
+                            ? "bg-blue-600 border-blue-600 text-white"
+                            : "border-slate-600 text-slate-400 hover:border-slate-400"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <input
                   type="text"
-                  placeholder="Or type a custom model ID…"
+                  placeholder="Or enter a custom model ID (e.g. meta-llama/llama-3.1-405b)…"
                   value={customModel}
-                  onChange={(e) => setCustomModel(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomModel(val);
+                    if (!val && externalProvider === "openrouter") {
+                      setExternalModel(FREE_OPENROUTER_MODELS[0].model);
+                    }
+                  }}
                   className="mt-2 w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
               </div>

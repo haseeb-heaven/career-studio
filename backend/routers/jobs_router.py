@@ -20,132 +20,57 @@ _BROWSER_UA = (
 
 
 def _build_keywords(profile: Profile) -> str:
-    skill_names = [s.name for s in (profile.skills or [])][:5]
+    """Build a targeted job search query from profile skills and roles."""
+    # Collect top skill names (up to 6, prefer longer/specific ones)
+    skills = sorted(
+        [s.name for s in (profile.skills or []) if s.name],
+        key=lambda x: -len(x)
+    )[:6]
+
+    # Most recent/relevant role
     roles = [e.role for e in (profile.experience or []) if e.role]
     role = roles[0] if roles else ""
-    terms = ([role] if role else []) + skill_names
-    query = " ".join(dict.fromkeys(terms))[:120].strip()
+
+    # Build query: role first, then top skills
+    parts = []
+    if role:
+        parts.append(role)
+    # Add top 4 skills that aren't substrings of role
+    for s in skills:
+        if not any(s.lower() in p.lower() for p in parts):
+            parts.append(s)
+        if len(parts) >= 5:
+            break
+
+    query = " ".join(dict.fromkeys(parts))[:120].strip()
     if not query:
-        # Fallback: derive from full_name context or use generic
-        query = "software developer"
+        query = profile.summary[:80].strip() if profile.summary else "software developer"
     return query
 
 
-def _fetch_remotive(query: str, limit: int) -> list[dict]:
-    """Remotive free API — needs browser-like User-Agent to avoid 403."""
-    try:
-        encoded = urllib.parse.quote(query)
-        url = f"https://remotive.com/api/remote-jobs?search={encoded}&limit={limit}"
-        req = urllib.request.Request(url, headers={"User-Agent": _BROWSER_UA})
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            data = json.loads(resp.read())
-        return [
-            {
-                "title": j.get("title", ""),
-                "company": j.get("company_name", ""),
-                "location": j.get("candidate_required_location", "Remote"),
-                "url": j.get("url", ""),
-                "description": (j.get("description", "") or "")[:500],
-                "source": "remotive",
-            }
-            for j in data.get("jobs", [])
-        ]
-    except Exception as e:
-        logger.warning("Remotive fetch failed: %s", e)
-        return []
-
-
-def _fetch_arbeitnow(query: str, limit: int) -> list[dict]:
-    """Arbeitnow public job board — completely free, no auth, CORS-friendly."""
-    try:
-        encoded = urllib.parse.quote(query)
-        url = f"https://www.arbeitnow.com/api/job-board-api?search={encoded}"
-        req = urllib.request.Request(url, headers={"User-Agent": _BROWSER_UA, "Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            data = json.loads(resp.read())
-        jobs = []
-        for j in data.get("data", [])[:limit]:
-            jobs.append({
-                "title": j.get("title", ""),
-                "company": j.get("company_name", ""),
-                "location": j.get("location", "Remote") or "Remote",
-                "url": j.get("url", ""),
-                "description": (j.get("description", "") or "")[:500],
-                "source": "arbeitnow",
-            })
-        return jobs
-    except Exception as e:
-        logger.warning("Arbeitnow fetch failed: %s", e)
-        return []
-
-
-def _fetch_remoteok(query: str, limit: int) -> list[dict]:
-    """RemoteOK public API — completely free, no auth needed."""
-    try:
-        # RemoteOK takes comma-separated tags
-        tags = urllib.parse.quote(query.replace(" ", ","))
-        url = f"https://remoteok.com/api?tags={tags}"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (career-studio/1.0)"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read())
-        jobs = []
-        for j in data:
-            if not isinstance(j, dict) or "position" not in j:
-                continue
-            jobs.append({
-                "title": j.get("position", ""),
-                "company": j.get("company", ""),
-                "location": j.get("location", "Remote"),
-                "url": j.get("url", ""),
-                "description": (j.get("description", "") or "")[:500],
-                "source": "remoteok",
-            })
-        return jobs[:limit]
-    except Exception as e:
-        logger.warning("RemoteOK fetch failed: %s", e)
-        return []
-
-
-def _fetch_adzuna(query: str, limit: int, app_id: str, app_key: str) -> list[dict]:
-    """Adzuna API — only called when app_id and app_key are configured."""
-    if not app_id or not app_key:
-        return []
-    try:
-        encoded = urllib.parse.quote(query)
-        # Use what_and for multi-keyword and avoid query params that cause 400
-        url = (
-            f"https://api.adzuna.com/v1/api/jobs/us/search/1"
-            f"?app_id={app_id}&app_key={app_key}"
-            f"&results_per_page={limit}&what_and={encoded}"
-        )
-        req = urllib.request.Request(
-            url,
-            headers={"Accept": "application/json", "User-Agent": _BROWSER_UA},
-        )
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            data = json.loads(resp.read())
-        return [
-            {
-                "title": j.get("title", ""),
-                "company": j.get("company", {}).get("display_name", ""),
-                "location": j.get("location", {}).get("display_name", ""),
-                "url": j.get("redirect_url", ""),
-                "description": (j.get("description", "") or "")[:500],
-                "source": "adzuna",
-            }
-            for j in data.get("results", [])
-        ]
-    except Exception as e:
-        logger.warning("Adzuna fetch failed: %s", e)
-        return []
-
-
-def _match_score(job_desc: str, skill_names: list[str]) -> float:
-    if not skill_names or not job_desc:
+def _match_score(job_title: str, job_desc: str, skill_names: list[str], query: str) -> float:
+    """Score 0–100 based on how well job matches the profile skills and query."""
+    if not skill_names and not query:
         return 0.0
+
+    score = 0.0
+    title_lower = job_title.lower()
     desc_lower = job_desc.lower()
-    hits = sum(1 for s in skill_names if s.lower() in desc_lower)
-    return round(min(100.0, (hits / len(skill_names)) * 100), 1)
+
+    # Title match (weighted 50%)
+    query_words = [w for w in query.lower().split() if len(w) > 2]
+    title_hits = sum(1 for w in query_words if w in title_lower)
+    if query_words:
+        score += (title_hits / len(query_words)) * 50
+
+    # Skills in description (weighted 50%)
+    if skill_names:
+        skill_hits = sum(1 for s in skill_names if s.lower() in desc_lower)
+        score += (skill_hits / len(skill_names)) * 50
+
+    return round(min(100.0, score), 1)
+
+
 
 
 @router.get("/{profile_id}/jobs")
@@ -180,7 +105,7 @@ def search_jobs(profile_id: int, limit: int = Query(default=20, le=50)):
         s.commit()
 
         for j in all_jobs:
-            score = _match_score(j["description"], skill_names)
+            score = _match_score(j["title"], j["description"], skill_names, query)
             s.add(JobMatch(
                 profile_id=profile_id,
                 title=j["title"],

@@ -1,11 +1,11 @@
-# Career Studio 🚀
+# Career Studio AI 🚀
 
 <div align="center">
 
-![Career Studio](docs/screenshots/01-upload-screen.svg)
+<img src="docs/logo.jpg" alt="Career Studio AI Logo" width="160" style="border-radius: 24px; margin-bottom: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
 
-**A local-first, AI-ready career management platform.**  
-Upload any resume format → parse it into a structured profile → edit everything → export to 5 formats.
+### **A local-first, AI-ready career management platform.**
+*Upload any resume format → parse it into a structured profile → edit everything locally → export to 7 formats.*
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776ab?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -34,6 +34,20 @@ Career Studio is a **full-stack desktop web app** that turns any resume file int
 | **Export** | One-click download in 7 formats: JSON, CSV, XML, DOCX, PDF, LaTeX, HTML Portfolio |
 | **Logs** | Every action (import, export, analyze, etc.) logged with timestamps |
 | **Settings** | Configure AI provider (OpenAI / Anthropic / OpenRouter), model, and API key |
+
+---
+
+## ☁️ Deploy
+
+**One-click deploy to your preferred platform:**
+
+| Platform | Best For | Database | Deploy |
+|---|---|---|---|
+| **Railway** ⭐ | Full-stack · Recommended | SQLite persists ✅ | [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/deploy?repo=https://github.com/haseeb-heaven/career-studio-ai) |
+| **Render** | Full-stack · Free tier | SQLite persists ✅ | [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/haseeb-heaven/career-studio-ai) |
+| **Vercel** | Frontend only | N/A | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/haseeb-heaven/career-studio-ai) |
+
+📖 **Full deployment guide with step-by-step instructions for all platforms →** [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ---
 
@@ -89,7 +103,7 @@ career-studio/
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Local)
 
 ### Prerequisites
 
@@ -99,8 +113,8 @@ career-studio/
 ### 1. Clone
 
 ```bash
-git clone https://github.com/haseeb-heaven/career-studio.git
-cd career-studio
+git clone https://github.com/haseeb-heaven/career-studio-ai.git
+cd career-studio-ai
 ```
 
 ### 2. Backend
@@ -136,6 +150,13 @@ npm run dev
 ```
 
 Frontend available at **http://localhost:5173**
+
+### 4. Docker (Easiest)
+
+```bash
+docker-compose up
+# App at http://localhost
+```
 
 ---
 
@@ -266,6 +287,8 @@ All profile-linked tables use cascade-delete so removing a profile cleans up eve
 | pdfplumber | PDF text extraction |
 | python-docx | DOCX read/write |
 | ReportLab | Styled PDF generation |
+| openai | OpenAI + OpenRouter API client |
+| anthropic | Anthropic Claude API client |
 
 ### Frontend
 | Library | Purpose |
@@ -284,6 +307,7 @@ All profile-linked tables use cascade-delete so removing a profile cleans up eve
 |--------|---------|
 | `main` | Stable releases |
 | `develop` | Active development |
+| `deploy/cloud` | Cloud deployment configs |
 
 ---
 
@@ -294,19 +318,6 @@ All profile-linked tables use cascade-delete so removing a profile cleans up eve
 > Special love and gratitude to the teams behind **Claude Fable** and **Claude Mythos** — the models pushing the frontier of what AI-assisted engineering can be. This project is a testament to what's possible when great models meet great tooling.
 >
 > Built with ❤️ using Claude Code · Slice 2 complete — full AI-powered career platform.
-
----
-
-## 🛠️ Tech Stack (added in Slice 2)
-
-### Backend additions
-| Library | Purpose |
-|---------|---------|
-| openai | OpenAI + OpenRouter API client |
-| anthropic | Anthropic Claude API client |
-
-### New API endpoints
-15 REST endpoints total across import, profiles, export, analysis, jobs, logs, settings.
 
 ---
 
@@ -323,6 +334,12 @@ All profile-linked tables use cascade-delete so removing a profile cleans up eve
 - [ ] LinkedIn / Indeed job matching (OAuth)
 - [ ] AI interview prep (mock Q&A)
 - [ ] Salary benchmarking
+
+---
+
+## 📝 Changelog
+
+See the [Changelogs.md](Changelogs.md) file for the complete history of changes and updates.
 
 ---
 

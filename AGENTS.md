@@ -60,7 +60,12 @@ For multi-step tasks, state a brief plan:
 3. [Step] → verify: [check]
 ```
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+## 5. Development Workflow
+
+**Always follow this strict sequence when developing:**
+1. **Fix/Implement**: Fix bugs, issues, or implement features.
+2. **Test**: Run all relevant unit/integration tests to verify correctness and ensure zero regressions.
+3. **Rebuild**: Only compile/rebuild the application (e.g., `npm run build`) after step 1 and step 2 have succeeded.
 
 ---
 

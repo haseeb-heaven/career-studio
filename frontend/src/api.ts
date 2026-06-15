@@ -194,8 +194,19 @@ export interface JobMatch {
   match_score: number;
 }
 
-export async function searchJobs(profileId: number, limit = 20): Promise<{ query: string; jobs: JobMatch[] }> {
-  const res = await axios.get(`${BASE}/profiles/${profileId}/jobs?limit=${limit}`);
+export async function searchJobs(
+  profileId: number, 
+  limit = 20,
+  jobTitle = "",
+  location = "",
+  portal = "all"
+): Promise<{ query: string; jobs: JobMatch[] }> {
+  const params = new URLSearchParams();
+  params.append("limit", String(limit));
+  if (jobTitle) params.append("job_title", jobTitle);
+  if (location) params.append("location", location);
+  if (portal) params.append("portal", portal);
+  const res = await axios.get(`${BASE}/profiles/${profileId}/jobs?${params.toString()}`);
   return res.data;
 }
 

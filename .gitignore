@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 backend/.venv/
-backend/career_studio.db
+*.db
 *.egg-info/
 dist/
 build/
@@ -40,3 +40,6 @@ backend/*.log
 
 # Test Fixtures (containing personal/portfolio data)
 tests/fixtures/*
+
+# Docs superpowers
+docs/superpowers/

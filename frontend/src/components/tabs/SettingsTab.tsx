@@ -53,7 +53,7 @@ export default function SettingsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeSection, setActiveSection] = useState<"ai" | "routing" | "about">("ai");
+  const [activeSection, setActiveSection] = useState<"ai" | "routing" | "jobs" | "about">("ai");
 
   // Form state
   const [mode, setMode] = useState<AIMode>("external");
@@ -67,13 +67,18 @@ export default function SettingsTab() {
   const [ollamaModel, setOllamaModel] = useState("llama3.2");
   const [customOllamaModel, setCustomOllamaModel] = useState("");
   const [localForSimple, setLocalForSimple] = useState(true);
+  const [adzunaId, setAdzunaId] = useState("");
+  const [adzunaKey, setAdzunaKey] = useState("");
+  const [linkedinKey, setLinkedinKey] = useState("");
+  const [indeedKey, setIndeedKey] = useState("");
+  const [glassdoorKey, setGlassdoorKey] = useState("");
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus | null>(null);
   const [checkingOllama, setCheckingOllama] = useState(false);
 
   useEffect(() => {
     getSettings().then((s) => {
-      // Settings API returns strings; coerce booleans defensively
-      const boolVal = (v: string) => v === "true" || v === "1";
+      // Settings API returns strings or booleans; coerce booleans defensively
+      const boolVal = (v: any) => v === true || v === "true" || v === "1" || v === 1;
       setMode(boolVal(s.use_local_ai) ? "local" : "external");
       
       const providerVal = s.ai_provider ?? "openai";
@@ -97,6 +102,16 @@ export default function SettingsTab() {
       setOllamaUrl(s.ollama_base_url ?? "http://localhost:11434");
       setOllamaModel(s.ollama_model ?? "llama3.2");
       setLocalForSimple(boolVal(s.local_for_simple) || s.local_for_simple === "");
+      
+      // Pre-populate keys
+      if (s.api_key) setOpenaiKey(s.api_key);
+      if (s.anthropic_api_key) setAnthropicKey(s.anthropic_api_key);
+      if (s.openrouter_api_key) setOpenrouterKey(s.openrouter_api_key);
+      if (s.adzuna_app_id) setAdzunaId(s.adzuna_app_id);
+      if (s.adzuna_app_key) setAdzunaKey(s.adzuna_app_key);
+      if (s.linkedin_api_key) setLinkedinKey(s.linkedin_api_key);
+      if (s.indeed_api_key) setIndeedKey(s.indeed_api_key);
+      if (s.glassdoor_api_key) setGlassdoorKey(s.glassdoor_api_key);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -122,10 +137,15 @@ export default function SettingsTab() {
         ollama_base_url: ollamaUrl,
         ollama_model: customOllamaModel || ollamaModel,
         local_for_simple: localForSimple,
+        adzuna_app_id: adzunaId,
       };
       if (openaiKey) payload.api_key = openaiKey;
       if (anthropicKey) payload.anthropic_api_key = anthropicKey;
       if (openrouterKey) payload.openrouter_api_key = openrouterKey;
+      if (adzunaKey) payload.adzuna_app_key = adzunaKey;
+      if (linkedinKey) payload.linkedin_api_key = linkedinKey;
+      if (indeedKey) payload.indeed_api_key = indeedKey;
+      if (glassdoorKey) payload.glassdoor_api_key = glassdoorKey;
       await updateSettings(payload as Record<string, string>);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -139,6 +159,7 @@ export default function SettingsTab() {
   const sections = [
     { id: "ai" as const, icon: "🤖", label: "AI Provider" },
     { id: "routing" as const, icon: "🔀", label: "Task Routing" },
+    { id: "jobs" as const, icon: "💼", label: "Job Search" },
     { id: "about" as const, icon: "ℹ️", label: "About" },
   ];
 
@@ -471,7 +492,74 @@ export default function SettingsTab() {
         </div>
       )}
 
-      {/* ── About section ── */}
+      {activeSection === "jobs" && (
+        <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-5">
+          <h3 className="text-white font-semibold text-sm">Job Search Configuration</h3>
+          <p className="text-slate-400 text-xs">
+            Configure external job boards. By default, the app searches public APIs like Remotive, RemoteOK, and Arbeitnow. To enable Adzuna, provide your credentials.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Adzuna App ID (Optional API)</label>
+              <input
+                type="text"
+                placeholder="e.g. 12345678"
+                value={adzunaId}
+                onChange={(e) => setAdzunaId(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Adzuna API Key (Optional API)</label>
+              <input
+                type="password"
+                placeholder="e.g. abcd1234efgh5678... (leave blank to keep existing key)"
+                value={adzunaKey}
+                onChange={(e) => setAdzunaKey(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div className="border-t border-slate-800 my-4 pt-4">
+              <h4 className="text-white text-xs font-semibold mb-3">API Keys / Tokens (Last Resort)</h4>
+              <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
+                By default, job searches on LinkedIn, Indeed, and Glassdoor run without APIs (preferred). Provide API keys only if guest scraping gets rate-limited.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">LinkedIn API Key / Scraping Token</label>
+              <input
+                type="password"
+                placeholder="leave blank to use guest search (preferred)"
+                value={linkedinKey}
+                onChange={(e) => setLinkedinKey(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Indeed API Key / Token</label>
+              <input
+                type="password"
+                placeholder="leave blank to use guest search (preferred)"
+                value={indeedKey}
+                onChange={(e) => setIndeedKey(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Glassdoor API Key / Token</label>
+              <input
+                type="password"
+                placeholder="leave blank to use guest search (preferred)"
+                value={glassdoorKey}
+                onChange={(e) => setGlassdoorKey(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeSection === "about" && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-3">

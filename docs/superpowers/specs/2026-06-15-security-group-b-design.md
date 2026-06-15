@@ -252,15 +252,20 @@ No other changes to `ai_service.py`. The rest of the service already reads `cfg.
 
 ---
 
-## `backend/routers/jobs_router.py` — decrypt Adzuna/job-board keys
+## `backend/routers/jobs_router.py` — decrypt job-board keys
 
-`jobs_router.py` reads settings directly (not via `ai_service._load_settings`). Wherever it reads key fields from a Settings object, import `decrypt_key` from `crypto` and wrap the field access:
+`jobs_router.py` reads settings directly at lines 325–330 (not via `ai_service._load_settings`). Replace those five assignment lines with:
 
 ```python
-app_key = decrypt_key(cfg.adzuna_app_key) or os.getenv("ADZUNA_APP_KEY", "")
-linkedin_key = decrypt_key(cfg.linkedin_api_key) or os.getenv("LINKEDIN_API_KEY", "")
-# etc.
+cfg = s.exec(select(Settings)).first() or Settings()
+adzuna_id  = cfg.adzuna_app_id or ""                                  # plain app ID — no decrypt
+adzuna_key = decrypt_key(cfg.adzuna_app_key)   or ""
+linkedin_key  = decrypt_key(cfg.linkedin_api_key)  or ""
+indeed_key    = decrypt_key(cfg.indeed_api_key)    or ""
+glassdoor_key = decrypt_key(cfg.glassdoor_api_key) or ""
 ```
+
+`adzuna_app_id` is a public application identifier (not a secret) and is NOT in `_KEY_FIELDS` — it is never encrypted and needs no decryption.
 
 ---
 
@@ -288,6 +293,18 @@ This makes NULL-user_id profiles accessible to any authenticated user. This is c
 
 ---
 
+## Dependency
+
+`cryptography` is already present in `requirements.txt` as a transitive dependency of `passlib[bcrypt]`. Pin it explicitly to make the dep visible:
+
+```
+cryptography>=41.0.0
+```
+
+No new install needed; this is a documentation-only change to `requirements.txt`.
+
+---
+
 ## Testing
 
 New tests required (in `tests/test_api.py` or new `tests/test_auth.py`):
@@ -298,15 +315,22 @@ New tests required (in `tests/test_api.py` or new `tests/test_auth.py`):
 - `DELETE /api/profiles/{id}` with valid token but wrong user → 403
 - `POST /api/auth/login` with valid credentials → token returned
 - `GET /api/profiles` with valid token → only returns that user's profiles
-- `PUT /api/settings` with a real key string → stored value in DB is Fernet ciphertext
-- `PUT /api/settings` then `ai_service._load_settings()` → key field is decrypted plain-text
-- Startup migration: plain-text key in DB → `_get_or_create` encrypts it; second call leaves it unchanged
+- `PUT /api/settings` with a real key string → stored value in DB **starts with `gAAAAA`** (assert `stored.startswith("gAAAAA")`, matching the `_is_encrypted` contract exactly)
+- `PUT /api/settings` then `ai_service._load_settings()` → key field is decrypted plain-text (does not start with `gAAAAA`)
+- Startup migration: plain-text key in DB → `_get_or_create` encrypts it (value starts with `gAAAAA`); second call leaves it unchanged (idempotent)
+
+---
+
+## Known gap — `import_router.py` profile creation
+
+`import_router.py` creates new profiles but has no auth. Under the NULL-user_id policy, every imported profile will have `user_id = NULL` and be accessible by any authenticated user. This is intentional and acceptable for a single-user personal tool. It is a **known gap, not an oversight** — adding auth to `import_router.py` is a separate follow-up task once the core auth enforcement is stable.
 
 ---
 
 ## What is explicitly out of scope
 
-- `import_router.py` and `export_router.py` — not mentioned in Issue #2; profile creation auth is a follow-up
+- `import_router.py` — profile creation auth is a tracked follow-up (see Known Gap above)
+- `export_router.py` — reads profiles, does not mutate; not in Issue #2 scope
 - `settings_router.py` auth enforcement (the Settings endpoints themselves) — not in the issue scope
 - Frontend changes — zero
 - Issue 3 (multi-profile UI) — separate spec

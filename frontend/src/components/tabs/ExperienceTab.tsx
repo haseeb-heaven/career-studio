@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Profile, Experience, ExperienceBullet } from "../../types";
+import type { Profile, Experience } from "../../types";
 import {
   addExperience, updateExperience, deleteExperience,
   addBullet, updateBullet, deleteBullet,

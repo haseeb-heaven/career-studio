@@ -614,6 +614,7 @@ from services import activity
 from services.ai_service import complete_simple, complete_complex, profile_text_summary
 from logger import get_logger
 from routers.auth_utils import get_current_user
+from routers.profile_router import _check_ownership
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/profiles", tags=["analysis"])
@@ -625,11 +626,6 @@ def _get_profile(pid: int, session: Session) -> Profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     session.refresh(p)
     return p
-
-
-def _check_ownership(profile: Profile, user: User) -> None:
-    if profile.user_id is not None and profile.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 # ---------- /analyze ----------
@@ -997,15 +993,8 @@ from models import Profile, JobMatch, Settings, User
 from services import activity
 from logger import get_logger
 from routers.auth_utils import get_current_user
+from routers.profile_router import _check_ownership
 from crypto import decrypt_key
-```
-
-Change the `_check_ownership` helper and the `search_jobs` route signature/body. Add `_check_ownership` after the existing module-level constants:
-
-```python
-def _check_ownership(profile: Profile, user: User) -> None:
-    if profile.user_id is not None and profile.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
 ```
 
 Update the `search_jobs` function signature and settings reads:
@@ -1160,6 +1149,7 @@ from models import (
 from services.activity import log_activity
 from logger import get_logger
 from routers.auth_utils import get_current_user
+from routers.profile_router import _check_ownership
 import json
 
 logger = get_logger(__name__)
@@ -1171,11 +1161,6 @@ def _profile_or_404(session: Session, profile_id: int) -> Profile:
     if not p:
         raise HTTPException(404, f"Profile {profile_id} not found")
     return p
-
-
-def _check_ownership(profile: Profile, user: User) -> None:
-    if profile.user_id is not None and profile.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 # ──────────────────────────────────────────────

@@ -167,7 +167,7 @@ All routes in these three routers follow the same pattern:
 1. Add `user: User = Depends(get_current_user)` to the route signature.
 2. After loading the profile, call `_check_ownership(profile, user)`.
 
-The `_check_ownership` helper is defined locally in each router (or shared from `profile_router` — implementation choice, either is fine). The exact check is identical:
+The `_check_ownership` helper is defined once in `profile_router.py` and imported by analysis, jobs, and sections routers — avoids drift if the NULL-user_id policy ever changes.
 
 ```python
 if profile.user_id is not None and profile.user_id != user.id:

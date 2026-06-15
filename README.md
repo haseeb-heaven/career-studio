@@ -1,11 +1,11 @@
-# Career Studio 🚀
+# AI Career Studio 🚀
 
 <div align="center">
 
-![Career Studio](docs/screenshots/01-upload-screen.svg)
+<img src="docs/logo.jpg" alt="AI Career Studio Logo" width="160" style="border-radius: 24px; margin-bottom: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
 
-**A local-first, AI-ready career management platform.**  
-Upload any resume format → parse it into a structured profile → edit everything → export to 5 formats.
+### **A local-first, AI-ready career management platform.**
+*Upload any resume format → parse it into a structured profile → edit everything locally → export to 7 formats.*
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776ab?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -17,6 +17,7 @@ Upload any resume format → parse it into a structured profile → edit everyth
 </div>
 
 ---
+
 
 ## ✨ What it does
 

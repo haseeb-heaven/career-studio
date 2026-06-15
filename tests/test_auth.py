@@ -232,3 +232,71 @@ class TestProfileRouterAuth:
         resp = client.get(f"/api/profiles/{pid}", headers=headers)
         assert resp.status_code == 200
         assert resp.json()["full_name"] == "Owner Profile"
+
+
+class TestAnalysisRouterAuth:
+    """Analysis routes must require auth."""
+
+    def _make_profile(self, client, username: str) -> tuple[dict, int]:
+        headers = _auth_headers(client, username)
+        data = json.dumps({"full_name": f"{username} Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=headers,
+        )
+        return headers, imp.json()["profile_id"]
+
+    def test_analyze_no_token_returns_401(self, client):
+        _, pid = self._make_profile(client, "ana_creator_1")
+        resp = client.post(f"/api/profiles/{pid}/analyze")
+        assert resp.status_code == 401
+
+    def test_cover_letter_no_token_returns_401(self, client):
+        _, pid = self._make_profile(client, "ana_creator_2")
+        resp = client.post(
+            f"/api/profiles/{pid}/cover-letter",
+            json={"job_title": "Dev", "company": "Acme"},
+        )
+        assert resp.status_code == 401
+
+    def test_list_cover_letters_no_token_returns_401(self, client):
+        _, pid = self._make_profile(client, "ana_creator_3")
+        resp = client.get(f"/api/profiles/{pid}/cover-letters")
+        assert resp.status_code == 401
+
+    def test_roadmap_no_token_returns_401(self, client):
+        _, pid = self._make_profile(client, "ana_creator_4")
+        resp = client.post(f"/api/profiles/{pid}/roadmap", json={})
+        assert resp.status_code == 401
+
+    def test_list_roadmaps_no_token_returns_401(self, client):
+        _, pid = self._make_profile(client, "ana_creator_5")
+        resp = client.get(f"/api/profiles/{pid}/roadmaps")
+        assert resp.status_code == 401
+
+    def test_wrong_user_list_cover_letters_returns_403(self, client):
+        h_a = _auth_headers(client, "ana_owner_a")
+        h_b = _auth_headers(client, "ana_owner_b")
+        data = json.dumps({"full_name": "CL Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=h_a,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.get(f"/api/profiles/{pid}/cover-letters", headers=h_b)
+        assert resp.status_code == 403
+
+    def test_wrong_user_list_roadmaps_returns_403(self, client):
+        h_a = _auth_headers(client, "ana_rm_owner_a")
+        h_b = _auth_headers(client, "ana_rm_owner_b")
+        data = json.dumps({"full_name": "Roadmap Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=h_a,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.get(f"/api/profiles/{pid}/roadmaps", headers=h_b)
+        assert resp.status_code == 403

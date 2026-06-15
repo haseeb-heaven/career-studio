@@ -326,6 +326,12 @@ All profile-linked tables use cascade-delete so removing a profile cleans up eve
 
 ---
 
+## 📝 Changelog
+
+See the [Changelogs.md](Changelogs.md) file for the complete history of changes and updates.
+
+---
+
 ## 📄 License
 
 MIT © [Haseeb Mir](https://github.com/haseeb-heaven)

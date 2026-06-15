@@ -1,4 +1,5 @@
 """Centralised logging — stdout (INFO) + rotating file in project logs/ folder (DEBUG)."""
+import io
 import logging
 import logging.handlers
 import sys
@@ -32,8 +33,12 @@ def get_logger(name: str) -> logging.Logger:
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(fmt)
 
-        # Stdout — INFO level
-        sh = logging.StreamHandler(sys.stdout)
+        # Stdout — INFO level, UTF-8 so Unicode chars (→ etc.) don't crash on Windows cp1252
+        try:
+            _stream = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+        except AttributeError:
+            _stream = sys.stdout  # fallback if stdout has no buffer (e.g. redirected)
+        sh = logging.StreamHandler(_stream)
         sh.setLevel(logging.INFO)
         sh.setFormatter(fmt)
 

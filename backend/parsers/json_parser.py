@@ -41,27 +41,38 @@ class JsonParser:
             profile.certifications = []
             return ParseResult(profile=profile, warnings=warnings)
 
+        def _s(val, default="") -> str:
+            """Coerce any value to a plain string — dicts/lists become ''."""
+            if val is None or isinstance(val, (dict, list)):
+                return default
+            return str(val)
+
         # Case 2: dict — full or partial profile
         d = raw
         # flexible name field
-        name = d.get("full_name") or d.get("name") or d.get("fullName") or ""
+        name = _s(d.get("full_name") or d.get("name") or d.get("fullName"))
         if not name:
             warnings.append("No name found in JSON (expected 'full_name' or 'name'). Please edit manually.")
             name = "Unknown"
 
         profile = Profile(
             full_name=name,
-            email=d.get("email", ""),
-            phone=d.get("phone", ""),
-            location=d.get("location", ""),
-            summary=d.get("summary", d.get("about", d.get("objective", ""))),
-            availability=d.get("availability", ""),
-            compensation=d.get("compensation", ""),
+            email=_s(d.get("email", "")),
+            phone=_s(d.get("phone", "")),
+            location=_s(d.get("location", "")),
+            summary=_s(d.get("summary") or d.get("about") or d.get("objective")
+                       or d.get("professional_summary", "")),
+            availability=_s(d.get("availability", "")),
+            compensation=_s(d.get("compensation", "")),
         )
 
+        raw_links = d.get("links") or d.get("contact_links") or []
         profile.links = [
-            ContactLink(label=l.get("label", l.get("type", "")), url=l.get("url", l.get("href", "")))
-            for l in d.get("links", d.get("contact_links", []))
+            ContactLink(
+                label=_s(l.get("label") or l.get("type") or l.get("name", "")),
+                url=_s(l.get("url") or l.get("href") or l.get("link", "")),
+            )
+            for l in (raw_links if isinstance(raw_links, list) else [])
             if isinstance(l, dict)
         ]
         profile.skills = []

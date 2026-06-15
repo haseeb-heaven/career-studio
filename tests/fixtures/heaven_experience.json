@@ -1,0 +1,158 @@
+[
+  {
+    "title": "Software Developer",
+    "company": "Creed&Bear",
+    "employment_type": "Full-time",
+    "duration": "May 2024 - Present · 10 mos",
+    "location": "Dubai, United Arab Emirates · On-site",
+    "description": "• Developed backend systems for order management using microservices architecture and the latest technologies.\n• Collaborated with major cryptocurrency exchanges to enhance trading capabilities.\n• Contributed to the innovation and growth of a leading FinTech company in Dubai.",
+    "skills": [
+      "Python (Programming Language)",
+      "C (Programming Language)",
+      "Database Testing",
+      "SQL",
+      "ClickHouse",
+      "Asyncio",
+      "Cython"
+    ]
+  },
+  {
+    "title": "Software Developer",
+    "company": "Freelance",
+    "employment_type": "Freelance",
+    "duration": "Feb 2023 - Mar 2024 · 1 yr 2 mos",
+    "location": "Dubai, United Arab Emirates · On-site",
+    "description": "I have been working as a freelance developer specializing in AI and ML projects. Here are some of the projects I've developed:\n\nCode-Interpreter: (https://github.com/haseeb-heaven/code-interpreter)\n\nCreated a Code Interpreter that combines GPT, Gemini, Claude, and LLaMa models, simplifying tasks from basic file management to advanced multimedia conversion and data analysis, all through natural language commands.\n\nGemini-Interpreter: (https://github.com/haseeb-heaven/Gemini-Interpreter)\n\nGemini, a code generator and interpreter for Google Gemini, harnessing Python, Google Cloud, and GPT technologies to facilitate seamless code generation and interpretation​.\n\nLangChain-Coder: (https://github.com/haseeb-heaven/LangChain-Coder)\n\nA web application capable of generating code, fixing bugs, and executing tasks using GPT(OpenAI) and Codey(VertexAI) technologies, significantly enhancing automated code generation and bug resolution processes​.\n\nCodeRunner-Plugin: (https://github.com/haseeb-heaven/CodeRunner-Plugin)\n\nCreated a CodeRunner plugin enabling code execution and saving directly within Chat-GPT in the browser, supporting over 70+ languages and employing FastAPI, REST API, and GPT-4 technologies for enhanced functionality​.",
+    "skills": [
+      "Chatbot",
+      "AI",
+      "OpenAI",
+      "JavaScript",
+      "Machine Learning",
+      "Python (Programming Language)",
+      "GPT-4",
+      "ChatGPT",
+      "Software Testing"
+    ]
+  },
+  {
+    "title": "Software Developer",
+    "company": "Audiomob",
+    "employment_type": "Full-time",
+    "duration": "Jul 2022 - Jan 2023 · 7 mos",
+    "location": "Abu Dhabi, Abu Dhabi Emirate, United Arab Emirates",
+    "description": "• Developed Audio Ads for Unity 3D Game engine to generate revenue for developers.\n• Implemented Mobile Ads for iOS and Android compatibility for Unity projects.\n• Designed and maintained a robust Client Server Architecture for seamless integration.",
+    "skills": [
+      "Teamwork",
+      "iOS",
+      "Game Engines",
+      "iOS Development",
+      "C#",
+      "Software Development Methodologies",
+      "Swift (Programming Language)",
+      "C++",
+      "Unity",
+      "Object-Oriented Programming (OOP)"
+    ]
+  },
+  {
+    "title": "Software Developer",
+    "company": "iBLOXX Proprietary Trading DMCC",
+    "employment_type": "Internship",
+    "duration": "Feb 2022 - Apr 2022 · 3 mos",
+    "location": "Dubai, United Arab Emirates · On-site",
+    "description": "Developer dealing with Cryptocurrency and Blockchains. - Developed Crypto trading Bot connecting Crypto API Exchange. - Developed Script for collecting and refining data from various Crypto Exchange using GraphQL. - Improved Script for downloading data from Exchange - Experience in API and SDK Integration (REST,SOAP,WebSockets).",
+    "skills": [
+      "Teamwork",
+      "C#",
+      "API Development",
+      ".NET Framework",
+      "Object-Oriented Programming (OOP)",
+      "Python (Programming Language)"
+    ]
+  },
+  {
+    "title": "Software Developer",
+    "company": "Self-employed",
+    "employment_type": "Self-employed",
+    "duration": "Sep 2021 - Jan 2022 · 5 mos",
+    "location": "Bengaluru, Karnataka, India",
+    "description": "Worked on Gaming projects like - Level Editor, Game engine for PC Games like Project IGI, Doom, Quake 3. - Game Security tools and Reverse engineer project for most PC games. - Games/Tools in different platform. - NES (https://github.com/haseeb-heaven/RoboRun-NES) - Python (https://github.com/haseeb-heaven/JumPYMan-Game) - Level Editor (https://github.com/IGI-Research-Devs/I.G.I-1-Editor) - Game Engine (https://github.com/haseeb-heaven/BoardGamr-Engine)",
+    "skills": [
+      "C#",
+      "Software Development Methodologies",
+      "C++",
+      "Java",
+      "SQL",
+      "Python (Programming Language)"
+    ]
+  },
+  {
+    "title": "Game Security Analyst",
+    "company": "Rockstar Games",
+    "employment_type": "Full-time",
+    "duration": "Jun 2019 - Aug 2021 · 2 yrs 3 mos",
+    "location": "Bangalore Urban, Karnataka, India",
+    "description": "Worked as Game Security Analyst. - Developed custom tools for anti-cheat software to improve cheat reporting experience. - Improved cheat reporting more efficiently by introducing custom made automation tools and scripts. - Improved (SPL) scripts for real time database using queries to fetch data from server efficiently. - Monitor and document, in detail, users who are circumventing security protocols in GTA V & RDR 2. - Gather intelligence and Prepare detailed reports for our legal department. - Tune and support Anti Cheat measures and offer back end support.",
+    "skills": [
+      "Teamwork",
+      "C#",
+      "Software Development Methodologies",
+      "Splunk",
+      "C++",
+      "Databases",
+      "SPL"
+    ]
+  },
+  {
+    "title": "Software Developer",
+    "company": "Ena Technologies Pvt. Ltd",
+    "employment_type": "Full-time",
+    "duration": "Dec 2017 - Jan 2019 · 1 yr 2 mos",
+    "location": "Delhi, India",
+    "description": "Developed modules for anti-malware system. Hands-on experience on Malware Analysis Tools IDA Pro,Ghidra, x64dbg,OllyDbg, HxD,010 Editor, dnSpy. Improved database queries,SQL. Hands-on experience of Git and Maven repository. Hands-on experience of UI designing, testing & debugging using platforms like JIRA.",
+    "skills": [
+      "Software Development Methodologies",
+      "C (Programming Language)",
+      "C++",
+      "Databases",
+      "Object-Oriented Programming (OOP)",
+      "SQL",
+      "User Interface Design"
+    ]
+  },
+  {
+    "title": "Software Developer",
+    "company": "FHLABS INDIA PRIVATE LIMITED",
+    "employment_type": "Full-time",
+    "duration": "Jul 2017 - Nov 2017 · 5 mos",
+    "location": "Delhi, India",
+    "description": "Worked on FX Module for Bank of Canada in ERP. Hands-on experience in implementing software within Cloud Computing and Web-services. Hands-on experience in SOA,ERP and SaaS. Hands-on experience on API services like SOAP,REST.",
+    "skills": [
+      "HTML",
+      "jQuery",
+      "Java",
+      "Databases",
+      "JavaScript",
+      "Hibernate"
+    ]
+  },
+  {
+    "title": "Android Developer",
+    "company": "Xperia Technologies Pvt. Ltd.",
+    "employment_type": "Internship",
+    "duration": "Apr 2016 - Sep 2016 · 6 mos",
+    "location": "Not specified",
+    "description": "hired as intern and worked on project FaceTweetPlus Application which was Social Media manager which we can manage all our social media applications status from single application.",
+    "skills": []
+  },
+  {
+    "title": "iOS Developer",
+    "company": "Xperia Technologies Pvt. Ltd.",
+    "employment_type": "Internship",
+    "duration": "Apr 2016 - Sep 2016 · 6 mos",
+    "location": "Not specified",
+    "description": "worked as an intern on project , iMovieManager Application from which user can sort his favorite movies by genre, year etc which helps in sorting movies efficiently,",
+    "skills": []
+  }
+]

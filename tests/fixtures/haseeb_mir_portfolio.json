@@ -1,0 +1,152 @@
+{
+  "personal_info": {
+    "full_name": "Haseeb Mir",
+    "email": "haseebmir.hm@gmail.com",
+    "phone": "+919315839785",
+    "gender": "Male",
+    "location": "Srinagar, Jammu & Kashmir, India",
+    "previous_locations": [
+      "Bengaluru, India",
+      "Dubai, UAE"
+    ]
+  },
+  "professional_summary": "Backend & AI Engineer with 5+ years of professional software engineering experience and extensive open-source work in AI, LLM integrations, and developer tools. Specialized in scalable backend systems, microservices, RAG applications, and AI-powered solutions using Python, FastAPI, and SQL.",
+  "experience": {
+    "professional_years": 5,
+    "open_source_years": 3,
+    "total_note": "5+ years professional experience with additional open-source AI development experience",
+    "recent_work": "Backend systems, AI-powered applications, LLM integrations, APIs, microservices, and RAG solutions"
+  },
+  "skills": {
+    "backend": [
+      "Python",
+      "FastAPI",
+      "Flask",
+      "Microservices",
+      "REST APIs",
+      "GraphQL",
+      "WebSockets"
+    ],
+    "ai_ml": [
+      "LLMs",
+      "Generative AI",
+      "RAG",
+      "Embeddings",
+      "AI Agents",
+      "OpenAI",
+      "Gemini",
+      "Claude",
+      "LLaMA",
+      "LangChain",
+      "LangGraph",
+      "CrewAI"
+    ],
+    "databases": [
+      "PostgreSQL",
+      "MySQL",
+      "MongoDB",
+      "ClickHouse"
+    ],
+    "devops": [
+      "Docker",
+      "AWS",
+      "GitHub Actions",
+      "Git"
+    ],
+    "languages": [
+      "C++",
+      "C#",
+      "Java",
+      "JavaScript"
+    ]
+  },
+  "experience_breakdown": {
+    "python": "5 Years",
+    "fastapi_flask": "2-3 Years",
+    "docker": "1-2 Years",
+    "aws": "1-2 Years",
+    "git": "5+ Years",
+    "sql_postgresql": "4+ Years",
+    "llm_ai": "1-2 Years",
+    "rag": "1-2 Years",
+    "langchain": "1-2 Years",
+    "microservices": "3+ Years"
+  },
+  "current_status": {
+    "employment_status": "Available",
+    "last_working_day": "2025-05-11",
+    "reason_for_leaving": "Company faced financial challenges and downsized the team.",
+    "notice_period": "Immediate",
+    "immediate_joiner": true
+  },
+  "compensation": {
+    "current_ctc_lpa": 35,
+    "expected_ctc_lpa": "30-35",
+    "expected_ctc_note": "Negotiable based on role, responsibilities, and opportunity"
+  },
+  "work_preferences": {
+    "preferred": "Remote",
+    "open_to": [
+      "Remote",
+      "Hybrid",
+      "Onsite"
+    ],
+    "willing_to_relocate": true,
+    "preferred_locations": [
+      "Remote",
+      "Bengaluru",
+      "Hyderabad",
+      "Pune",
+      "India"
+    ]
+  },
+  "work_authorization": {
+    "authorized_in_india": true,
+    "requires_visa_sponsorship": false,
+    "willing_to_work_internationally": true
+  },
+  "education": {
+    "degree": "B.Tech in Computer Science",
+    "university": "University of Kashmir",
+    "year_of_passing": 2015
+  },
+  "online_profiles": {
+    "linkedin": "https://www.linkedin.com/in/haseebmir91",
+    "github": "https://github.com/haseeb-heaven",
+    "stackoverflow": "https://stackoverflow.com/users/6219626/heavenhm",
+    "portfolio": "https://haseeb-mir.vercel.app"
+  },
+  "screening_answers": {
+    "authorized_to_work": "Yes",
+    "requires_visa_sponsorship": "No",
+    "immediate_joiner": "Yes",
+    "notice_period": "Immediate",
+    "open_to_relocation": "Yes",
+    "open_to_remote": "Yes",
+    "open_to_hybrid": "Yes",
+    "years_of_experience": "5+ years professional experience with additional open-source AI development experience",
+    "recent_experience_summary": "Backend & AI Engineer focused on Python, FastAPI, microservices, APIs, LLM integrations, RAG systems, and AI-powered applications.",
+    "have_you_worked_with_llms": "Yes",
+    "llm_details": "Worked with OpenAI, Gemini, Claude, and LLaMA. Built AI assistants, RAG systems, agent workflows, and automation tools.",
+    "experience_with_docker": "Yes",
+    "experience_with_aws": "Yes",
+    "experience_with_microservices": "Yes",
+    "experience_with_sql": "Yes",
+    "background_check": "Yes",
+    "open_to_contract_roles": "Yes"
+  },
+  "hr_answers": {
+    "tell_me_about_yourself": "I am a Backend & AI Engineer with 5+ years of professional experience building scalable backend systems and AI-powered applications. My experience includes Python, FastAPI, microservices, APIs, LLM integrations, RAG systems, and open-source AI tools.",
+    "why_do_you_want_this_job": "The role aligns well with my experience in backend engineering and AI-powered applications, and it provides an opportunity to work on impactful and scalable solutions.",
+    "why_should_we_hire_you": "I bring a strong combination of backend engineering expertise and practical AI experience, with hands-on work building scalable systems, APIs, microservices, and LLM-based applications.",
+    "strengths": [
+      "Backend system design",
+      "Problem solving",
+      "Adaptability",
+      "Fast learning",
+      "AI integration"
+    ],
+    "weakness": "I sometimes spend extra time refining solutions, but I have improved my ability to balance quality with delivery timelines.",
+    "career_goal": "To continue growing as a Backend & AI Engineer while building large-scale systems and AI-powered applications."
+  }
+}

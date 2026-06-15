@@ -1,13 +1,13 @@
 # Python
+__pycache__/
+*.pyc
+.pytest_cache/
 backend/.venv/
-backend/__pycache__/
-backend/**/__pycache__/
-backend/*.pyc
 backend/career_studio.db
-backend/.pytest_cache/
 *.egg-info/
 dist/
 build/
+
 
 # Node / Frontend
 frontend/node_modules/

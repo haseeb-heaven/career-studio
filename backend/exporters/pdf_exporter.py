@@ -1,38 +1,37 @@
-import io
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+"""PDF exporter using fpdf2 — Unicode-capable, no global style registry."""
+from pathlib import Path
+
+from fpdf import FPDF
+
 from exporters.base import Exporter
 from exporters import register
+from logger import get_logger
 from models import Profile
 
-BLUE = colors.HexColor('#1e3a8a')
-MID = colors.HexColor('#475569')
-DARK = colors.HexColor('#0f172a')
+logger = get_logger(__name__)
+
+_FONTS_DIR = Path(__file__).parent.parent / "assets" / "fonts"
+_FONT_REGULAR = _FONTS_DIR / "DejaVuSans.ttf"
+_FONT_BOLD = _FONTS_DIR / "DejaVuSans-Bold.ttf"
+
+_BLUE = (30, 58, 138)
+_SLATE = (71, 85, 105)
+_DARK = (15, 23, 42)
 
 
-def _styles():
-    # Prefix names with "cs-" to avoid colliding with ReportLab's global style registry
-    # on repeated calls within the same process.
-    return {
-        'name':      ParagraphStyle('cs-name', fontName='Helvetica-Bold', fontSize=20,
-                                    textColor=BLUE, spaceAfter=2),
-        'contact':   ParagraphStyle('cs-contact', fontName='Helvetica', fontSize=9,
-                                    textColor=MID, spaceAfter=6),
-        'section':   ParagraphStyle('cs-section', fontName='Helvetica-Bold', fontSize=10,
-                                    textColor=BLUE, spaceBefore=10, spaceAfter=4,
-                                    textTransform='uppercase'),
-        'body':      ParagraphStyle('cs-body', fontName='Helvetica', fontSize=9,
-                                    textColor=DARK, leading=14, spaceAfter=3),
-        'bullet':    ParagraphStyle('cs-bullet', fontName='Helvetica', fontSize=9,
-                                    textColor=DARK, leading=13, leftIndent=14, spaceAfter=2),
-        'job_title': ParagraphStyle('cs-job_title', fontName='Helvetica-Bold', fontSize=10,
-                                    textColor=DARK),
-        'job_meta':  ParagraphStyle('cs-job_meta', fontName='Helvetica-Oblique', fontSize=8.5,
-                                    textColor=MID, spaceAfter=2),
-    }
+def _load_fonts(pdf: FPDF) -> None:
+    if not _FONT_REGULAR.exists():
+        raise FileNotFoundError(
+            f"Required font not found: {_FONT_REGULAR}. "
+            "Run the font setup step in the deployment guide."
+        )
+    if not _FONT_BOLD.exists():
+        raise FileNotFoundError(
+            f"Required font not found: {_FONT_BOLD}. "
+            "Run the font setup step in the deployment guide."
+        )
+    pdf.add_font("DejaVu", style="", fname=str(_FONT_REGULAR))
+    pdf.add_font("DejaVu", style="B", fname=str(_FONT_BOLD))
 
 
 @register("pdf")
@@ -41,66 +40,111 @@ class PdfExporter(Exporter):
     extension = "pdf"
 
     def export(self, profile: Profile) -> bytes:
-        buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=letter,
-                                leftMargin=0.75*inch, rightMargin=0.75*inch,
-                                topMargin=0.75*inch, bottomMargin=0.75*inch)
-        st = _styles()
-        story = []
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=19)
+        pdf.add_page()
+        pdf.set_margins(19, 19, 19)
+        _load_fonts(pdf)
 
-        story.append(Paragraph(profile.full_name, st['name']))
-        contact = " | ".join(filter(None, [profile.email, profile.phone, profile.location]))
-        story.append(Paragraph(contact, st['contact']))
+        # ── Name ──────────────────────────────────────────────────────────────
+        pdf.set_font("DejaVu", style="B", size=20)
+        pdf.set_text_color(*_BLUE)
+        pdf.cell(0, 10, profile.full_name, new_x="LMARGIN", new_y="NEXT")
 
-        def section(title):
-            story.append(HRFlowable(width="100%", thickness=1, color=BLUE, spaceAfter=4))
-            story.append(Paragraph(title, st['section']))
+        # ── Contact line ──────────────────────────────────────────────────────
+        contact_parts = [x for x in [profile.email, profile.phone, profile.location] if x]
+        if contact_parts:
+            pdf.set_font("DejaVu", size=9)
+            pdf.set_text_color(*_SLATE)
+            pdf.multi_cell(0, 6, " | ".join(contact_parts), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
 
         if profile.summary:
-            section("Summary")
-            story.append(Paragraph(profile.summary, st['body']))
+            self._section_title(pdf, "Summary")
+            self._body_line(pdf, profile.summary)
 
         if profile.skills:
-            section("Skills")
-            skill_text = " • ".join(f"{s.name} ({s.years}y)" for s in profile.skills)
-            story.append(Paragraph(skill_text, st['body']))
+            self._section_title(pdf, "Skills")
+            skill_text = " • ".join(
+                f"{s.name} ({s.years}y)" if s.years else s.name
+                for s in profile.skills
+            )
+            self._body_line(pdf, skill_text)
 
         if profile.experience:
-            section("Experience")
+            self._section_title(pdf, "Experience")
             for e in profile.experience:
-                story.append(Paragraph(f"{e.role} — {e.company}", st['job_title']))
-                story.append(Paragraph(f"{e.start} – {e.end}  {e.location}".strip(), st['job_meta']))
+                pdf.set_font("DejaVu", style="B", size=10)
+                pdf.set_text_color(*_DARK)
+                pdf.multi_cell(0, 7, f"{e.role} — {e.company}", new_x="LMARGIN", new_y="NEXT")
+                self._job_meta(pdf, f"{e.start} – {e.end}  {e.location}".strip())
                 for b in (e.bullets or []):
-                    story.append(Paragraph(f"• {b.text}", st['bullet']))
-                story.append(Spacer(1, 4))
+                    self._bullet(pdf, b.text)
+                pdf.ln(2)
 
         if profile.projects:
-            section("Projects")
+            self._section_title(pdf, "Projects")
             for p in profile.projects:
-                story.append(Paragraph(p.name, st['job_title']))
+                pdf.set_font("DejaVu", style="B", size=10)
+                pdf.set_text_color(*_DARK)
+                pdf.multi_cell(0, 7, p.name, new_x="LMARGIN", new_y="NEXT")
                 if p.description:
-                    story.append(Paragraph(p.description, st['body']))
-                if p.get_tech():
-                    story.append(Paragraph("Tech: " + ", ".join(p.get_tech()), st['body']))
-                story.append(Spacer(1, 4))
+                    self._body_line(pdf, p.description)
+                tech = p.get_tech()
+                if tech:
+                    self._body_line(pdf, "Tech: " + ", ".join(tech))
+                pdf.ln(2)
 
         if profile.education:
-            section("Education")
+            self._section_title(pdf, "Education")
             for ed in profile.education:
-                story.append(Paragraph(
-                    f"{ed.degree} {ed.field} — {ed.institution} ({ed.start}–{ed.end})",
-                    st['body']))
+                self._body_line(
+                    pdf,
+                    f"{ed.degree} {ed.field} — {ed.institution} ({ed.start}–{ed.end})".strip(" —()–")
+                )
 
         if profile.certifications:
-            section("Certifications")
+            self._section_title(pdf, "Certifications")
             for c in profile.certifications:
-                story.append(Paragraph(f"• {c.name} — {c.issuer} ({c.date})", st['bullet']))
+                self._bullet(pdf, f"{c.name} — {c.issuer} ({c.date})".strip(" —()"))
 
         if profile.availability or profile.compensation:
-            section("Availability & Compensation")
-            story.append(Paragraph(
-                f"Available: {profile.availability}  |  Compensation: {profile.compensation}",
-                st['body']))
+            self._section_title(pdf, "Availability & Compensation")
+            parts = []
+            if profile.availability:
+                parts.append(f"Available: {profile.availability}")
+            if profile.compensation:
+                parts.append(f"Compensation: {profile.compensation}")
+            self._body_line(pdf, "  |  ".join(parts))
 
-        doc.build(story)
-        return buf.getvalue()
+        return bytes(pdf.output())
+
+    def _section_title(self, pdf: FPDF, title: str) -> None:
+        pdf.set_draw_color(*_BLUE)
+        pdf.set_line_width(0.4)
+        pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+        pdf.ln(1)
+        pdf.set_font("DejaVu", style="B", size=10)
+        pdf.set_text_color(*_BLUE)
+        pdf.cell(0, 7, title.upper(), new_x="LMARGIN", new_y="NEXT")
+
+    def _body_line(self, pdf: FPDF, text: str) -> None:
+        pdf.set_font("DejaVu", size=9)
+        pdf.set_text_color(*_DARK)
+        pdf.multi_cell(0, 6, text, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+
+    def _bullet(self, pdf: FPDF, text: str) -> None:
+        pdf.set_font("DejaVu", size=9)
+        pdf.set_text_color(*_DARK)
+        pdf.set_x(pdf.l_margin + 5)
+        pdf.multi_cell(0, 6, f"• {text}", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(0.5)
+
+    def _job_meta(self, pdf: FPDF, text: str) -> None:
+        if not text.strip():
+            return
+        pdf.set_font("DejaVu", style="", size=8)
+        pdf.set_text_color(*_SLATE)
+        pdf.multi_cell(0, 5, text, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)

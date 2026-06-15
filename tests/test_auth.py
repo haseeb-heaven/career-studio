@@ -112,10 +112,9 @@ class TestProfileOwnership:
         assert not any(p["full_name"] == "Private Profile" for p in profiles_b)
 
     def test_unauthenticated_sees_all_profiles(self, client):
-        """Without a token, the list returns all profiles (guest/legacy mode)."""
+        """After auth enforcement, unauthenticated GET /profiles returns 401."""
         resp = client.get("/api/profiles")
-        assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
+        assert resp.status_code == 401
 
     def test_each_user_only_sees_own_profiles(self, client):
         h1 = _auth_headers(client, "iso_user1")
@@ -137,3 +136,92 @@ class TestProfileOwnership:
         assert "Iso User Two Profile" not in names1
         assert "Iso User Two Profile" in names2
         assert "Iso User One Profile" not in names2
+
+
+class TestProfileRouterAuth:
+    """Profile routes must require auth after enforcement."""
+
+    def test_list_profiles_no_token_returns_401(self, client):
+        resp = client.get("/api/profiles")
+        assert resp.status_code == 401
+
+    def test_get_profile_no_token_returns_401(self, client):
+        import json as _json
+        headers = _auth_headers(client, "pauth_creator")
+        data = _json.dumps({"full_name": "Auth Test Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=headers,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.get(f"/api/profiles/{pid}")
+        assert resp.status_code == 401
+
+    def test_patch_profile_no_token_returns_401(self, client):
+        import json as _json
+        headers = _auth_headers(client, "pauth_patcher")
+        data = _json.dumps({"full_name": "Patch Test"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=headers,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.patch(f"/api/profiles/{pid}", json={"full_name": "New Name"})
+        assert resp.status_code == 401
+
+    def test_delete_profile_no_token_returns_401(self, client):
+        import json as _json
+        headers = _auth_headers(client, "pauth_deleter")
+        data = _json.dumps({"full_name": "Del Test"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=headers,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.delete(f"/api/profiles/{pid}")
+        assert resp.status_code == 401
+
+    def test_wrong_user_get_profile_returns_403(self, client):
+        import json as _json
+        h_a = _auth_headers(client, "pauth_owner_a")
+        h_b = _auth_headers(client, "pauth_owner_b")
+        data = _json.dumps({"full_name": "A Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=h_a,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.get(f"/api/profiles/{pid}", headers=h_b)
+        assert resp.status_code == 403
+
+    def test_wrong_user_delete_profile_returns_403(self, client):
+        import json as _json
+        h_a = _auth_headers(client, "pauth_del_a")
+        h_b = _auth_headers(client, "pauth_del_b")
+        data = _json.dumps({"full_name": "A Profile 2"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=h_a,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.delete(f"/api/profiles/{pid}", headers=h_b)
+        assert resp.status_code == 403
+
+    def test_owner_can_get_profile(self, client):
+        import json as _json
+        headers = _auth_headers(client, "pauth_own_get")
+        data = _json.dumps({"full_name": "Owner Profile"}).encode()
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", data, "application/json")},
+            headers=headers,
+        )
+        pid = imp.json()["profile_id"]
+        resp = client.get(f"/api/profiles/{pid}", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["full_name"] == "Owner Profile"

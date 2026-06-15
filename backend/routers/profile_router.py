@@ -1,15 +1,15 @@
 import db
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
-from sqlalchemy import text
-from typing import Optional
-from models import Profile, Skill, Experience, ExperienceBullet, Project, Education, Certification, ContactLink, User
+from models import (
+    Profile, Skill, Experience, ExperienceBullet,
+    Project, Education, Certification, ContactLink, User,
+)
 from logger import get_logger
 from services.activity import log_activity
-from routers.auth_utils import get_current_user_optional
+from routers.auth_utils import get_current_user
 
 logger = get_logger(__name__)
-
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
 
@@ -20,29 +20,36 @@ def _get_or_404(session: Session, profile_id: int) -> Profile:
     return profile
 
 
+def _check_ownership(profile: Profile, user: User) -> None:
+    """Raise 403 if profile belongs to a different user.
+    NULL user_id profiles are accessible by any authenticated user (pre-auth data)."""
+    if profile.user_id is not None and profile.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @router.get("")
-def list_profiles(user: Optional[User] = Depends(get_current_user_optional)):
+def list_profiles(user: User = Depends(get_current_user)):
     with Session(db.engine) as session:
-        if user:
-            profiles = session.exec(select(Profile).where(Profile.user_id == user.id)).all()
-        else:
-            profiles = session.exec(select(Profile)).all()
+        profiles = session.exec(
+            select(Profile).where(
+                (Profile.user_id == user.id) | (Profile.user_id == None)  # noqa: E711
+            )
+        ).all()
         return [{"id": p.id, "full_name": p.full_name, "email": p.email} for p in profiles]
 
 
 @router.get("/{profile_id}")
-def get_profile(profile_id: int):
+def get_profile(profile_id: int, user: User = Depends(get_current_user)):
     logger.info(f"GET profile {profile_id}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
-        # Eagerly load relationships
+        _check_ownership(p, user)
         skills = list(p.skills or [])
         experience = list(p.experience or [])
         projects = list(p.projects or [])
         education = list(p.education or [])
         certifications = list(p.certifications or [])
         links = list(p.links or [])
-
         return {
             "id": p.id,
             "full_name": p.full_name,
@@ -52,7 +59,10 @@ def get_profile(profile_id: int):
             "summary": p.summary,
             "availability": p.availability,
             "compensation": p.compensation,
-            "skills": [{"id": s.id, "name": s.name, "category": s.category, "years": s.years} for s in skills],
+            "skills": [
+                {"id": s.id, "name": s.name, "category": s.category, "years": s.years}
+                for s in skills
+            ],
             "experience": [
                 {
                     "id": e.id, "company": e.company, "role": e.role,
@@ -62,13 +72,17 @@ def get_profile(profile_id: int):
                 for e in experience
             ],
             "projects": [
-                {"id": pr.id, "name": pr.name, "description": pr.description,
-                 "link": pr.link, "tech": pr.get_tech()}
+                {
+                    "id": pr.id, "name": pr.name, "description": pr.description,
+                    "link": pr.link, "tech": pr.get_tech(),
+                }
                 for pr in projects
             ],
             "education": [
-                {"id": ed.id, "institution": ed.institution, "degree": ed.degree,
-                 "field": ed.field, "start": ed.start, "end": ed.end}
+                {
+                    "id": ed.id, "institution": ed.institution, "degree": ed.degree,
+                    "field": ed.field, "start": ed.start, "end": ed.end,
+                }
                 for ed in education
             ],
             "certifications": [
@@ -80,11 +94,12 @@ def get_profile(profile_id: int):
 
 
 @router.patch("/{profile_id}")
-def patch_profile(profile_id: int, body: dict):
+def patch_profile(profile_id: int, body: dict, user: User = Depends(get_current_user)):
     ALLOWED = {"full_name", "email", "phone", "location", "summary", "availability", "compensation"}
     logger.info(f"PATCH profile {profile_id}: {list(body.keys())}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
+        _check_ownership(p, user)
         for k, v in body.items():
             if k in ALLOWED:
                 setattr(p, k, v)
@@ -96,10 +111,11 @@ def patch_profile(profile_id: int, body: dict):
 
 
 @router.delete("/{profile_id}", status_code=204)
-def delete_profile(profile_id: int):
+def delete_profile(profile_id: int, user: User = Depends(get_current_user)):
     logger.info(f"DELETE profile {profile_id}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
+        _check_ownership(p, user)
         session.delete(p)
         session.commit()
         log_activity("delete", f"profile #{profile_id}", profile_id)

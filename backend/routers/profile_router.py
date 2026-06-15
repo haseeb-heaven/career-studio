@@ -100,22 +100,6 @@ def delete_profile(profile_id: int):
     logger.info(f"DELETE profile {profile_id}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
-        # SQLite does not enforce FK cascades by default; delete children manually
-        for exp in list(p.experience or []):
-            for b in list(exp.bullets or []):
-                session.delete(b)
-            session.delete(exp)
-        for s in list(p.skills or []):
-            session.delete(s)
-        for pr in list(p.projects or []):
-            session.delete(pr)
-        for ed in list(p.education or []):
-            session.delete(ed)
-        for c in list(p.certifications or []):
-            session.delete(c)
-        for lnk in list(p.links or []):
-            session.delete(lnk)
-        session.flush()
         session.delete(p)
         session.commit()
         log_activity("delete", f"profile #{profile_id}", profile_id)

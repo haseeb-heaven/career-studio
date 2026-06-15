@@ -32,6 +32,8 @@ Thumbs.db
 # Logs (keep folder tracked via .gitkeep, ignore actual log files)
 logs/*.log
 logs/*.log.*
+backend/career_studio.log
+backend/*.log
 
 # Claude
 .claude/launch.json

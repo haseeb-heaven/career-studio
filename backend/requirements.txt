@@ -8,6 +8,7 @@ rsa==4.9.1
 six==1.17.0
 annotated-types==0.7.0
 anyio==4.13.0
+anthropic>=0.109.1
 certifi==2026.5.20
 cffi==2.0.0
 charset-normalizer==3.4.7
@@ -23,6 +24,7 @@ httpx==0.28.1
 idna==3.18
 iniconfig==2.3.0
 lxml==6.1.1
+openai>=2.41.1
 packaging==26.2
 pdfminer.six==20251230
 pdfplumber==0.11.9

@@ -1,13 +1,13 @@
 {
   "personal_info": {
     "full_name": "Haseeb Mir",
-    "email": "haseebmir.hm@gmail.com",
-    "phone": "+919315839785",
+    "email": "[EMAIL_ADDRESS]",
+    "phone": "+9999999999",
     "gender": "Male",
-    "location": "Srinagar, Jammu & Kashmir, India",
+    "location": "India",
     "previous_locations": [
-      "Bengaluru, India",
-      "Dubai, UAE"
+      "India",
+      "UAE"
     ]
   },
   "professional_summary": "Backend & AI Engineer with 5+ years of professional software engineering experience and extensive open-source work in AI, LLM integrations, and developer tools. Specialized in scalable backend systems, microservices, RAG applications, and AI-powered solutions using Python, FastAPI, and SQL.",
@@ -111,10 +111,10 @@
     "year_of_passing": 2015
   },
   "online_profiles": {
-    "linkedin": "https://www.linkedin.com/in/haseebmir91",
-    "github": "https://github.com/haseeb-heaven",
-    "stackoverflow": "https://stackoverflow.com/users/6219626/heavenhm",
-    "portfolio": "https://haseeb-mir.vercel.app"
+    "linkedin": "https://www.linkedin.com/in/placeholder",
+    "github": "https://github.com/placeholder",
+    "stackoverflow": "https://stackoverflow.com/users/placeholder",
+    "portfolio": "https://placeholder.vercel.app"
   },
   "screening_answers": {
     "authorized_to_work": "Yes",

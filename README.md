@@ -75,17 +75,19 @@ Career Studio AI is a **full-stack web application** that turns any resume file 
 
 ### One-Click Deploy
 
+> ℹ️ Railway and Render one-click buttons require a published template. Until then, use the direct deploy links below which open the platform's GitHub import flow with this repo pre-filled.
+
 <div align="center">
 
-| Platform | Supports | SQLite | Click to Deploy |
-|---|---|---|---|
-| **Railway** ⭐ Recommended | Frontend + Backend | Persists ✅ | [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/deploy?repo=https://github.com/haseeb-heaven/career-studio-ai) |
-| **Render** | Frontend + Backend | Persists ✅ | [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/haseeb-heaven/career-studio-ai) |
-| **Vercel** | Frontend only | — | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/haseeb-heaven/career-studio-ai) |
+| Platform | Best For | Click to Deploy |
+|---|---|---|
+| **Railway** ⭐ Recommended | Full-stack (backend + frontend) | [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new?template=https://github.com/haseeb-heaven/career-studio-ai) |
+| **Render** | Full-stack (backend + frontend) | [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/haseeb-heaven/career-studio-ai) |
+| **Vercel** | Frontend only | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/haseeb-heaven/career-studio-ai) |
 
 </div>
 
-> ⚠️ **Vercel hosts the frontend only.** Pair with Railway or Render for the backend API.
+> ⚠️ **Vercel hosts the frontend only.** Deploy the backend separately on Railway or Render.
 
 ### Required Environment Variables
 
@@ -94,7 +96,7 @@ Set these in your platform dashboard after deploying:
 **Backend**
 ```bash
 CORS_ORIGINS=https://your-frontend-url.vercel.app   # your frontend URL
-SECRET_KEY=your-random-32-char-secret               # for JWT auth
+SECRET_KEY=your-random-32-char-secret               # for JWT/session security
 DATABASE_URL=sqlite:////data/career_studio.db       # optional, has default
 ```
 

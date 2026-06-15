@@ -52,13 +52,18 @@ export interface ActivityLog {
   created_at: string;
 }
 
-export async function getLogs(limit = 100): Promise<ActivityLog[]> {
+export async function getLogs(limit = 200): Promise<ActivityLog[]> {
   const res = await axios.get(`${BASE}/logs?limit=${limit}`);
   return res.data;
 }
 
 export async function clearLogs(): Promise<void> {
   await axios.delete(`${BASE}/logs`);
+}
+
+export async function getLogStats(): Promise<{ total: number; by_action: Record<string, number> }> {
+  const res = await axios.get(`${BASE}/logs/stats`);
+  return res.data;
 }
 
 // ---- Analysis ----

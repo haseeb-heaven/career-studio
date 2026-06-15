@@ -29,5 +29,9 @@ frontend/.vite/
 .DS_Store
 Thumbs.db
 
+# Logs (keep folder tracked via .gitkeep, ignore actual log files)
+logs/*.log
+logs/*.log.*
+
 # Claude
 .claude/launch.json

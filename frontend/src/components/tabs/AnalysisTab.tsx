@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { analyzeProfile } from "../../api";
 import type { AnalysisResult } from "../../api";
+import { useToast } from "../Toast";
 
 interface Props { profileId: number; }
 
@@ -17,6 +18,7 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 export default function AnalysisTab({ profileId }: Props) {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
@@ -27,9 +29,11 @@ export default function AnalysisTab({ profileId }: Props) {
     try {
       const r = await analyzeProfile(profileId);
       setResult(r);
+      toast("success", "Analysis complete", `Resume scored ${r.score}/100`);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Analysis failed";
       setError(msg);
+      toast("error", "Analysis failed", msg);
     } finally {
       setLoading(false);
     }
@@ -39,8 +43,8 @@ export default function AnalysisTab({ profileId }: Props) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800">AI Resume Analysis</h2>
-          <p className="text-sm text-slate-500">Get an ATS score, strengths, weaknesses, and actionable suggestions.</p>
+          <h2 className="text-lg font-semibold text-white">AI Resume Analysis</h2>
+          <p className="text-sm text-slate-400">Get an ATS score, strengths, weaknesses, and actionable suggestions.</p>
         </div>
         <button
           onClick={run}
@@ -51,7 +55,15 @@ export default function AnalysisTab({ profileId }: Props) {
         </button>
       </div>
 
-      {error && <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+          <p className="font-semibold mb-1">❌ Analysis Error</p>
+          <p className="text-red-400/80">{error}</p>
+          {error.includes("API key") && (
+            <p className="mt-2 text-xs text-slate-400">→ Configure your API key in the <strong>Settings</strong> tab.</p>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className="flex items-center gap-3 text-sm text-blue-600 animate-pulse">

@@ -1,25 +1,46 @@
+"""Centralised logging — stdout (INFO) + rotating file in project logs/ folder (DEBUG)."""
 import logging
+import logging.handlers
 import sys
 from pathlib import Path
 
-LOG_FILE = Path(__file__).parent / "career_studio.log"
+# Write logs to career-studio/logs/ (one level above backend/)
+LOG_DIR = Path(__file__).parent.parent / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "career_studio.log"
+
+_ROOT = "career_studio"
+_configured = False
+
 
 def get_logger(name: str) -> logging.Logger:
-    logger = logging.getLogger(name)
-    if logger.handlers:
-        return logger
-    logger.setLevel(logging.DEBUG)
+    global _configured
+    logger = logging.getLogger(f"{_ROOT}.{name}")
 
-    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    if not _configured:
+        _configured = True
 
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setLevel(logging.INFO)
-    sh.setFormatter(fmt)
+        fmt = logging.Formatter(
+            "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
 
-    fh = logging.FileHandler(LOG_FILE, encoding="utf-8")
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(fmt)
+        # Rotating file — 5 MB × 3 backups, DEBUG level
+        fh = logging.handlers.RotatingFileHandler(
+            LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+        )
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(fmt)
 
-    logger.addHandler(sh)
-    logger.addHandler(fh)
+        # Stdout — INFO level
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setLevel(logging.INFO)
+        sh.setFormatter(fmt)
+
+        root = logging.getLogger(_ROOT)
+        root.setLevel(logging.DEBUG)
+        if not root.handlers:
+            root.addHandler(fh)
+            root.addHandler(sh)
+
     return logger

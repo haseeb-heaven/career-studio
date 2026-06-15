@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { searchJobs } from "../../api";
 import type { JobMatch } from "../../api";
+import { useToast } from "../Toast";
 
 interface Props { profileId: number; }
 
@@ -14,6 +15,7 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 export default function JobsTab({ profileId }: Props) {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [jobs, setJobs] = useState<JobMatch[]>([]);
@@ -28,9 +30,11 @@ export default function JobsTab({ profileId }: Props) {
       setQuery(r.query);
       setJobs(r.jobs);
       setSearched(true);
+      toast("success", "Jobs found", `${r.jobs.length} matching positions from Remotive & Adzuna`);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Job search failed";
       setError(msg);
+      toast("error", "Job search failed", msg);
     } finally {
       setLoading(false);
     }

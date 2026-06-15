@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { generateCoverLetter, listCoverLetters, deleteCoverLetter } from "../../api";
 import type { CoverLetterResult } from "../../api";
+import { useToast } from "../Toast";
 
 interface Props { profileId: number; }
 
 export default function CoverLetterTab({ profileId }: Props) {
+  const { toast } = useToast();
   const [jobTitle, setJobTitle] = useState("");
   const [company, setCompany] = useState("");
   const [notes, setNotes] = useState("");
@@ -31,9 +33,11 @@ export default function CoverLetterTab({ profileId }: Props) {
       const r = await generateCoverLetter(profileId, jobTitle, company, notes);
       setCurrent(r);
       setHistory((h) => [{ ...r, created_at: new Date().toISOString() }, ...h]);
+      toast("success", "Cover letter generated", `For ${jobTitle} at ${company}`);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Generation failed";
       setError(msg);
+      toast("error", "Cover letter failed", msg);
     } finally {
       setGenerating(false);
     }
@@ -86,7 +90,13 @@ export default function CoverLetterTab({ profileId }: Props) {
         </div>
       </div>
 
-      {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+          <p className="font-semibold mb-0.5">❌ Generation Error</p>
+          <p className="text-red-400/80">{error}</p>
+          {error.includes("API key") && <p className="mt-1.5 text-xs text-slate-400">→ Configure your API key in <strong>Settings</strong>.</p>}
+        </div>
+      )}
 
       <button
         onClick={generate}

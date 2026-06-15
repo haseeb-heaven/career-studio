@@ -72,14 +72,16 @@ const NAV_GROUPS: NavGroup[] = [
 
 interface Props {
   profileId: number;
+  importWarnings?: string[];
   onBack: () => void;
 }
 
-export default function ProfileEditor({ profileId, onBack }: Props) {
+export default function ProfileEditor({ profileId, importWarnings = [], onBack }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState<TabName>("Contact");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [warningsDismissed, setWarningsDismissed] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -194,6 +196,21 @@ export default function ProfileEditor({ profileId, onBack }: Props) {
             </div>
           ))}
         </nav>
+
+        {/* Import warnings in sidebar */}
+        {sidebarOpen && importWarnings.length > 0 && !warningsDismissed && (
+          <div className="mx-2 mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wide">⚠ Import Notes</span>
+              <button onClick={() => setWarningsDismissed(true)} className="text-slate-500 hover:text-slate-300 text-sm leading-none">×</button>
+            </div>
+            <ul className="space-y-1">
+              {importWarnings.map((w, i) => (
+                <li key={i} className="text-xs text-amber-300/80 leading-relaxed">• {w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Sidebar footer */}
         <div className="p-2 border-t border-slate-700/60 space-y-1">

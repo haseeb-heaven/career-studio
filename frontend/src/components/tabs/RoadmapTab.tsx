@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { generateRoadmap, listRoadmaps, deleteRoadmap } from "../../api";
 import type { RoadmapResult } from "../../api";
+import { useToast } from "../Toast";
 
 interface Props { profileId: number; }
 
@@ -11,6 +12,7 @@ const PLAN_TYPES = [
 ] as const;
 
 export default function RoadmapTab({ profileId }: Props) {
+  const { toast } = useToast();
   const [planType, setPlanType] = useState("roadmap");
   const [targetRole, setTargetRole] = useState("");
   const [years, setYears] = useState(3);
@@ -33,9 +35,11 @@ export default function RoadmapTab({ profileId }: Props) {
       const r = await generateRoadmap(profileId, planType, targetRole, years);
       setCurrent(r);
       setHistory((h) => [{ ...r, created_at: new Date().toISOString() }, ...h]);
+      toast("success", "Plan generated", `${years}-year ${planType} plan created`);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Generation failed";
       setError(msg);
+      toast("error", "Plan generation failed", msg);
     } finally {
       setGenerating(false);
     }

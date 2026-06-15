@@ -1,8 +1,29 @@
+import logging
 import os
+import warnings
 from dotenv import load_dotenv
 load_dotenv()  # pick up .env from backend dir (or parent) before anything else
 
 from fastapi import FastAPI
+
+_DEV_SECRET = "ai-career-studio-dev-secret-2026"
+_logger = logging.getLogger(__name__)
+
+
+def _check_secret_key() -> None:
+    """Warn loudly if SECRET_KEY is still the insecure development default."""
+    key = os.getenv("SECRET_KEY", "")
+    if not key or key == _DEV_SECRET:
+        msg = (
+            "SECRET_KEY is using the insecure development default. "
+            "Set the SECRET_KEY environment variable to a random 32+ character string "
+            "before deploying to production — all encrypted API keys and JWT tokens "
+            "will be compromised if this default is used in production."
+        )
+        if os.getenv("ENVIRONMENT", "development").lower() == "production":
+            raise RuntimeError(msg)
+        warnings.warn(msg, stacklevel=2)
+        _logger.warning(msg)
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel
 from db import engine, migrate_db
@@ -16,6 +37,7 @@ def create_tables():
 
 
 def create_app() -> FastAPI:
+    _check_secret_key()
     create_tables()
     app = FastAPI(title="AI Career Studio", version="0.1.0")
     cors_origins_env = os.getenv("CORS_ORIGINS", "")

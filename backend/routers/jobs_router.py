@@ -306,10 +306,13 @@ def _fetch_glassdoor(query: str, location: str, limit: int, api_key: str = "") -
     ]
 
 
+_SUPPORTED_PORTALS = {"all", "arbeitnow", "remoteok", "remotive", "linkedin", "indeed", "glassdoor", "adzuna"}
+
+
 @router.get("/{profile_id}/jobs")
 def search_jobs(
     profile_id: int,
-    limit: int = Query(default=20, le=50),
+    limit: int = Query(default=20, ge=1, le=50),
     job_title: str = Query(default=""),
     location: str = Query(default=""),
     portal: str = Query(default="all"),
@@ -342,11 +345,13 @@ def search_jobs(
         if adzuna_id and adzuna_key:
             portals_to_fetch.append("adzuna")
     else:
+        if p_lower not in _SUPPORTED_PORTALS:
+            raise HTTPException(status_code=400, detail=f"Unsupported portal '{portal}'. Supported: {', '.join(sorted(_SUPPORTED_PORTALS))}")
         portals_to_fetch = [p_lower]
 
     all_jobs = []
     num_portals = len(portals_to_fetch)
-    limit_per_portal = max(2, limit // num_portals)
+    limit_per_portal = max(1, (limit + num_portals - 1) // num_portals)
 
     for p_name in portals_to_fetch:
         if p_name == "arbeitnow":
@@ -363,6 +368,8 @@ def search_jobs(
             all_jobs.extend(_fetch_glassdoor(query, search_loc, limit_per_portal, glassdoor_key))
         elif p_name == "adzuna":
             all_jobs.extend(_fetch_adzuna(query, limit_per_portal, adzuna_id, adzuna_key))
+
+    all_jobs = all_jobs[:limit]
 
     with Session(engine) as s:
         old = s.exec(select(JobMatch).where(JobMatch.profile_id == profile_id)).all()

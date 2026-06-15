@@ -11,6 +11,15 @@ const PLAN_TYPES = [
   { value: "portfolio", label: "Portfolio Strategy",  emoji: "🎨" },
 ] as const;
 
+function safeExternalUrl(raw?: string): string {
+  try {
+    const u = new URL(raw ?? "");
+    return u.protocol === "http:" || u.protocol === "https:" ? u.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
 interface VisualPlanProps {
   plan: RoadmapResult;
   emoji: string;
@@ -188,9 +197,9 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
                     <h5 className="font-bold text-slate-100 text-sm leading-snug">{res.title}</h5>
                     <p className="text-xs text-slate-300 leading-relaxed">{res.description}</p>
                   </div>
-                  {res.url && (
+                  {safeExternalUrl(res.url) && (
                     <a
-                      href={res.url}
+                      href={safeExternalUrl(res.url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`w-full text-center rounded-lg ${btnStyle} py-2 text-xs font-semibold text-white shadow shadow-slate-950/40 transition-all block`}

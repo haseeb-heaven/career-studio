@@ -145,9 +145,9 @@ def _pick_tier(data: bytes) -> tuple[TierResult, list[str]]:
     if len(r.text) < 50:
         logger.info("Tier 1 yielded %d chars — falling back to Tier 2 (pymupdf)", len(r.text))
         r = _extract_tier2(data)
-    if len(r.text) < 100:
-        logger.info("Tier 2 yielded %d chars — falling back to Tier 3 (OCR)", len(r.text))
-        r = _extract_tier3(data)
+        if len(r.text) < 100:
+            logger.info("Tier 2 yielded %d chars — falling back to Tier 3 (OCR)", len(r.text))
+            r = _extract_tier3(data)
     warnings = [
         f"Extracted {len(r.text)} chars via Tier {r.tier} ({r.meta.get('tier_name', '?')})"
     ]

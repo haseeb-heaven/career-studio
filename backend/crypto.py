@@ -1,7 +1,10 @@
 import base64
 import hashlib
+import logging
 import os
 from cryptography.fernet import Fernet
+
+_logger = logging.getLogger(__name__)
 
 
 _KEY_FIELDS: tuple[str, ...] = (
@@ -40,4 +43,5 @@ def decrypt_key(val) -> str:
     try:
         return _get_fernet().decrypt(val.encode()).decode()
     except Exception:
+        _logger.warning("Failed to decrypt value; returning as-is (wrong key or corrupted ciphertext)")
         return val

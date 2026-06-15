@@ -76,8 +76,14 @@ class PdfExporter(Exporter):
             for e in profile.experience:
                 pdf.set_font("DejaVu", style="B", size=10)
                 pdf.set_text_color(*_DARK)
-                pdf.multi_cell(0, 7, f"{e.role} — {e.company}", new_x="LMARGIN", new_y="NEXT")
-                self._job_meta(pdf, f"{e.start} – {e.end}  {e.location}".strip())
+                role_company_parts = [p for p in [e.role, e.company] if p]
+                pdf.multi_cell(0, 7, " — ".join(role_company_parts), new_x="LMARGIN", new_y="NEXT")
+                date_parts = [p for p in [e.start, e.end] if p]
+                meta_str = " – ".join(date_parts)
+                if e.location:
+                    meta_str = (meta_str + "  " + e.location).strip()
+                if meta_str:
+                    self._job_meta(pdf, meta_str)
                 for b in (e.bullets or []):
                     self._bullet(pdf, b.text)
                 pdf.ln(2)
@@ -98,15 +104,23 @@ class PdfExporter(Exporter):
         if profile.education:
             self._section_title(pdf, "Education")
             for ed in profile.education:
-                self._body_line(
-                    pdf,
-                    f"{ed.degree} {ed.field} — {ed.institution} ({ed.start}–{ed.end})".strip(" —()–")
-                )
+                degree_field = " ".join(p for p in [ed.degree, ed.field] if p)
+                dates = "–".join(p for p in [ed.start, ed.end] if p)
+                institution_dates = ed.institution or ""
+                if dates:
+                    institution_dates = f"{institution_dates} ({dates})" if institution_dates else dates
+                parts = [p for p in [degree_field, institution_dates] if p]
+                self._body_line(pdf, " — ".join(parts))
 
         if profile.certifications:
             self._section_title(pdf, "Certifications")
             for c in profile.certifications:
-                self._bullet(pdf, f"{c.name} — {c.issuer} ({c.date})".strip(" —()"))
+                cert_parts = [p for p in [c.name, c.issuer] if p]
+                cert_line = " — ".join(cert_parts)
+                if c.date:
+                    cert_line = f"{cert_line} ({c.date})" if cert_line else c.date
+                if cert_line:
+                    self._bullet(pdf, cert_line)
 
         if profile.availability or profile.compensation:
             self._section_title(pdf, "Availability & Compensation")

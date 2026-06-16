@@ -40,8 +40,16 @@ def _get_or_create(session: Session) -> Settings:
         session.add(s)
         session.commit()
         session.refresh(s)
-    _migrate_encrypt_existing_keys(session, s)
     return s
+
+
+def run_startup_migration() -> None:
+    """Run once at startup: encrypt any plain-text API keys already in the DB.
+    Must not be called on every request — idempotent but incurs a write per boot."""
+    with Session(engine) as session:
+        cfg = session.exec(select(Settings)).first()
+        if cfg:
+            _migrate_encrypt_existing_keys(session, cfg)
 
 
 def _key_status(db_val: str, env_var: str) -> str:

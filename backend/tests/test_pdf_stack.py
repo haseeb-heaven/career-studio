@@ -433,3 +433,93 @@ def test_pdf_parser_parse_survives_corrupt_bytes():
     assert result.profile is not None
     assert any("Extracted" in w or "Tier" in w or "Could not" in w or "chars" in w
                for w in result.warnings)
+
+
+# ── Golden tests: heuristic parser field extraction ───────────────────────────
+
+@pytest.fixture
+def golden_pdf_bytes():
+    """Known resume PDF with specific skills, experience, and certifications.
+    These golden tests verify that the heuristic parser extracts named fields
+    rather than just confirming the parser doesn't crash."""
+    pdf = FPDF()
+    pdf.add_page()
+    # Name / contact block
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.cell(0, 10, "Alex Rivera", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(0, 6, "alex@example.com | +1 555-9999 | New York, NY", new_x="LMARGIN", new_y="NEXT")
+
+    # Skills section
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 9, "SKILLS", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(0, 6, "Python | JavaScript | Docker | Kubernetes | PostgreSQL", new_x="LMARGIN", new_y="NEXT")
+
+    # Experience section
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 9, "EXPERIENCE", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 7, "Staff Engineer", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(0, 6, "CloudBase Inc  |  2019 - Present", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 5, "- Designed multi-region deployment pipeline.", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 5, "- Reduced p99 latency by 40%.", new_x="LMARGIN", new_y="NEXT")
+
+    # Certifications section
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 9, "CERTIFICATIONS", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(0, 6, "AWS Solutions Architect | Amazon Web Services", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, "Certified Kubernetes Administrator | CNCF", new_x="LMARGIN", new_y="NEXT")
+
+    return bytes(pdf.output())
+
+
+class TestHeuristicParserGolden:
+    """Golden tests: parse a known synthetic PDF and assert specific fields are extracted.
+    These catch regressions where the parser silently drops sections."""
+
+    def setup_method(self):
+        from parsers import parser_for
+        self.parse = lambda data: parser_for("pdf").parse(data)
+
+    def test_golden_name(self, golden_pdf_bytes):
+        result = self.parse(golden_pdf_bytes)
+        assert "Alex" in result.profile.full_name, (
+            f"Expected 'Alex' in full_name, got {result.profile.full_name!r}"
+        )
+
+    def test_golden_skills_extracted(self, golden_pdf_bytes):
+        result = self.parse(golden_pdf_bytes)
+        names = [s.name.lower() for s in result.profile.skills]
+        assert any("python" in n for n in names), f"Expected Python in skills, got: {names}"
+        assert any("docker" in n for n in names), f"Expected Docker in skills, got: {names}"
+
+    def test_golden_skills_split_on_pipe(self, golden_pdf_bytes):
+        result = self.parse(golden_pdf_bytes)
+        # If splitting fails we'd get one giant skill name with pipes in it
+        for skill in result.profile.skills:
+            assert "|" not in skill.name, (
+                f"Skill not split correctly: {skill.name!r} — delimiter '|' still present"
+            )
+
+    def test_golden_experience_extracted(self, golden_pdf_bytes):
+        result = self.parse(golden_pdf_bytes)
+        assert len(result.profile.experience) >= 1, (
+            f"Expected at least 1 experience entry, got {len(result.profile.experience)}"
+        )
+        roles = [e.role for e in result.profile.experience]
+        assert any("Engineer" in r or "engineer" in r for r in roles), (
+            f"Expected 'Engineer' role, got: {roles}"
+        )
+
+    def test_golden_certifications_extracted(self, golden_pdf_bytes):
+        result = self.parse(golden_pdf_bytes)
+        assert len(result.profile.certifications) >= 1, (
+            f"Expected at least 1 certification, got {len(result.profile.certifications)}"
+        )
+        cert_names = [c.name for c in result.profile.certifications]
+        assert any("AWS" in n or "Kubernetes" in n for n in cert_names), (
+            f"Expected AWS or Kubernetes cert, got: {cert_names}"
+        )

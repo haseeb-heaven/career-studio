@@ -20,10 +20,15 @@ def _get_or_404(session: Session, profile_id: int) -> Profile:
     return profile
 
 
-def _check_ownership(profile: Profile, user: User) -> None:
-    """Raise 403 if profile belongs to a different user.
-    NULL user_id profiles are accessible by any authenticated user (pre-auth data)."""
-    if profile.user_id is not None and profile.user_id != user.id:
+def _check_ownership(session: Session, profile: Profile, user: User) -> None:
+    """Enforce ownership. Unclaimed profiles (user_id=NULL) are claimed by the first
+    authenticated user who touches them, preventing the global-shared-bucket problem."""
+    if profile.user_id is None:
+        profile.user_id = user.id
+        session.add(profile)
+        session.commit()
+        session.refresh(profile)
+    elif profile.user_id != user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
@@ -43,7 +48,7 @@ def get_profile(profile_id: int, user: User = Depends(get_current_user)):
     logger.info(f"GET profile {profile_id}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(session, p, user)
         skills = list(p.skills or [])
         experience = list(p.experience or [])
         projects = list(p.projects or [])
@@ -99,7 +104,7 @@ def patch_profile(profile_id: int, body: dict, user: User = Depends(get_current_
     logger.info(f"PATCH profile {profile_id}: {list(body.keys())}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(session, p, user)
         for k, v in body.items():
             if k in ALLOWED:
                 setattr(p, k, v)
@@ -115,7 +120,7 @@ def delete_profile(profile_id: int, user: User = Depends(get_current_user)):
     logger.info(f"DELETE profile {profile_id}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(session, p, user)
         session.delete(p)
         session.commit()
         log_activity("delete", f"profile #{profile_id}", profile_id)

@@ -4,6 +4,18 @@ All notable changes to the **AI Career Studio** project will be documented in th
 
 ---
 
+## [2.2.0-gh] - 2026-06-16
+### Added
+- Integrated **TestSprite** MCP server configuration in `mcp_config.json` with the required `API_KEY` to automate UI and API tests.
+- Synchronized [.env.example](file:///d:/Code/career-studio-ai/.env.example) to list all available environment variables (like model names, port, and test keys) with blank placeholder values.
+
+### Changed
+- Reorganized codebase automation and test scripts into a dedicated [scratch/](file:///d:/Code/career-studio-ai/scratch) folder.
+- Stopped tracking scripts ([scratch/build_and_run.ps1](file:///d:/Code/career-studio-ai/scratch/build_and_run.ps1) and [scratch/build_and_run.sh](file:///d:/Code/career-studio-ai/scratch/build_and_run.sh)) in Git index (using `git rm --cached`) to allow local development environment scripts while ignoring them globally under `scratch/*` via [.gitignore](file:///d:/Code/career-studio-ai/.gitignore).
+- Configured [scratch/run_frontend_tests.ps1](file:///d:/Code/career-studio-ai/scratch/run_frontend_tests.ps1) and [scratch/run_backend_tests.ps1](file:///d:/Code/career-studio-ai/scratch/run_backend_tests.ps1) to run with the specific Python environment at `D:\henv\Scripts\python.exe`.
+
+---
+
 ## [2.1.0] - 2026-06-15
 ### Added
 - One-click build and run automated scripts:

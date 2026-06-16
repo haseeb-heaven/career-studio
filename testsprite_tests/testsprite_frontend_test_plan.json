@@ -1,0 +1,1134 @@
+[
+  {
+    "id": "TC001",
+    "title": "Upload a supported resume and open the editor",
+    "description": "This verifies that a supported resume file can be imported from the home screen and opens in the profile editor.",
+    "category": "Resume Import and Saved Profile Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign in form"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume file from the home screen"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile editor opens with the imported resume parsed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Sign in and reach the upload screen",
+    "description": "This verifies that a returning user can authenticate successfully and land on the workspace upload screen.",
+    "category": "Authentication and Guest Access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the upload screen is displayed for the authenticated user"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Sign out and end the session",
+    "description": "This verifies that a signed-in user can end the session and return to the login screen.",
+    "category": "Resume Import and Saved Profile Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign in form"
+      },
+      {
+        "type": "action",
+        "description": "Sign out of the account"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the login screen is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Update the full name and keep it after reload",
+    "description": "This verifies that a user can edit the full name in the profile editor, save it, and see it persist after reloading the page.",
+    "category": "Profile Editor: Contact and Summary",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Edit the full name with updated content"
+      },
+      {
+        "type": "action",
+        "description": "Save the profile changes"
+      },
+      {
+        "type": "action",
+        "description": "Reload the page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated full name is still shown in the profile"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Create an account and enter the workspace",
+    "description": "This verifies that a new user can create an account and reach the upload screen in an authenticated session.",
+    "category": "Authentication and Guest Access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Choose to create a new account"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a new username"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a new password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the account creation form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the upload screen is displayed for the authenticated user"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Continue as a guest",
+    "description": "This verifies that a guest user can skip authentication and reach the upload screen.",
+    "category": "Authentication and Guest Access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Choose to continue as a guest"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the upload screen is displayed for the guest user"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Add a work experience entry",
+    "description": "This verifies that a user can add a work experience entry with role and date details and see it appear in the experience list.",
+    "category": "Profile Editor: Experience Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume file from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the experience section in the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new work experience entry with a valid role and dates"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new experience entry appears in the experience list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Update the professional summary and save it",
+    "description": "This verifies that a user can edit the professional summary in the profile editor and see the change persist.",
+    "category": "Profile Editor: Contact and Summary",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Edit the professional summary with updated content"
+      },
+      {
+        "type": "action",
+        "description": "Save the profile changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated summary is shown in the profile"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Open a saved profile from the list",
+    "description": "This verifies that a returning user can open an existing saved profile and have it load in the editor.",
+    "category": "Resume Import and Saved Profile Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved profiles list"
+      },
+      {
+        "type": "action",
+        "description": "Choose a saved profile to open"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected profile is loaded in the editor"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Add a new skill to the profile",
+    "description": "This verifies that a user can add a skill with its supporting details and see it appear in the skills list.",
+    "category": "Profile Editor: Skills Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume file from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the skills section in the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new skill with a valid name and category"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new skill appears in the skills list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Analyze a resume successfully",
+    "description": "This test verifies that a user can run AI resume analysis and see the resulting score and recommendations.",
+    "category": "AI Resume Analysis",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the analysis section"
+      },
+      {
+        "type": "action",
+        "description": "Start resume analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an analysis result is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify analysis recommendations are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Save AI provider settings",
+    "description": "Verify an authenticated user can update AI provider settings and see the changes saved successfully.",
+    "category": "AI Settings Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile editor settings section"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the API key field with a valid key value"
+      },
+      {
+        "type": "action",
+        "description": "Save the settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated AI settings remain available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Generate and save a cover letter",
+    "description": "This test verifies that a user can enter job details, generate a cover letter, and see it saved in history.",
+    "category": "AI Cover Letter Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the cover letter section"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a job title"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a company name"
+      },
+      {
+        "type": "action",
+        "description": "Generate a cover letter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a generated cover letter is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a saved cover letter history entry is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Switch to Ollama settings",
+    "description": "Verify an authenticated user can switch AI mode to Ollama and access the Ollama-specific configuration fields.",
+    "category": "AI Settings Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile editor settings section"
+      },
+      {
+        "type": "action",
+        "description": "Switch the AI provider mode to Ollama"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the Ollama configuration fields are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cloud provider key field is hidden"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Search for jobs and see matching results",
+    "description": "This test verifies that a user can search jobs and see results with the expected details.",
+    "category": "Job Search and Filtering",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the jobs section"
+      },
+      {
+        "type": "action",
+        "description": "Search for jobs"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify job search results are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify result details such as title, company, location, source badge, and match score are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Filter jobs by portal",
+    "description": "This test verifies that selecting a portal filter narrows the visible job results to that portal.",
+    "category": "Job Search and Filtering",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the jobs section"
+      },
+      {
+        "type": "action",
+        "description": "Search for jobs"
+      },
+      {
+        "type": "action",
+        "description": "Select a portal filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the job results are narrowed to the selected portal"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Export the current profile as JSON",
+    "description": "Verify an authenticated user can start a JSON export from the export panel.",
+    "category": "Profile Export",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the export panel"
+      },
+      {
+        "type": "action",
+        "description": "Select JSON as the export format"
+      },
+      {
+        "type": "action",
+        "description": "Start the export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a download is initiated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected export format remains visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Remove a skill from the profile",
+    "description": "This verifies that a user can delete an existing skill and see it disappear from the skills list.",
+    "category": "Profile Editor: Skills Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume file from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the skills section in the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new skill with a valid name and category"
+      },
+      {
+        "type": "action",
+        "description": "Remove the newly added skill"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the skill no longer appears in the skills list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Remove a work experience entry",
+    "description": "This verifies that a user can delete an existing work experience entry and see it disappear from the experience list.",
+    "category": "Profile Editor: Experience Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume file from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the experience section in the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new work experience entry with a valid role and dates"
+      },
+      {
+        "type": "action",
+        "description": "Remove the newly added work experience entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the experience entry no longer appears in the experience list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "Export the current profile as PDF",
+    "description": "Verify an authenticated user can start a PDF export from the export panel.",
+    "category": "Profile Export",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the export panel"
+      },
+      {
+        "type": "action",
+        "description": "Select PDF as the export format"
+      },
+      {
+        "type": "action",
+        "description": "Start the export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a download is initiated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected export format remains visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Add a project to the profile",
+    "description": "This verifies that a user can add a portfolio project and see it appear in the projects list.",
+    "category": "Profile Editor: Projects, Education, and Certifications",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume file from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the projects section in the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new project with a valid name and description"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new project appears in the projects list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Remove a saved profile after confirming deletion",
+    "description": "This verifies that a saved profile can be deleted from the list after confirmation and no longer appears afterward.",
+    "category": "Resume Import and Saved Profile Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved profiles list"
+      },
+      {
+        "type": "action",
+        "description": "Remove a saved profile and confirm the prompt"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile no longer appears in the saved profiles list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "Show export error when download cannot start",
+    "description": "Verify an authenticated user sees an export error state after attempting to export a profile.",
+    "category": "Profile Export",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the export panel"
+      },
+      {
+        "type": "action",
+        "description": "Select a file format for export"
+      },
+      {
+        "type": "action",
+        "description": "Start the export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an export error message is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no download is initiated"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "View previously generated cover letters",
+    "description": "This test verifies that a user can open the cover letter history and see previously generated letters listed.",
+    "category": "AI Cover Letter Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the cover letter section"
+      },
+      {
+        "type": "action",
+        "description": "Open the cover letter history"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify saved cover letter entries are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "Add an education entry to the profile",
+    "description": "This verifies that a user can add an education entry and see it appear in the education list.",
+    "category": "Profile Editor: Projects, Education, and Certifications",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume file from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the education section in the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new education entry with valid school and degree details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new education entry appears in the education list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "View activity log entries",
+    "description": "Verify an authenticated user can open the activity logs and review recent actions in a read-only list.",
+    "category": "Activity Logs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile editor logs section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify recent activity entries are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify each entry shows an action, detail, and timestamp"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Add a certification to the profile",
+    "description": "This verifies that a user can add a certification and see it appear in the certifications list.",
+    "category": "Profile Editor: Projects, Education, and Certifications",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume file from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the certifications section in the profile editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new certification with a valid name"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new certification appears in the certifications list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Open a job listing in a new tab",
+    "description": "This test verifies that choosing a job result opens the listing in a new browser tab.",
+    "category": "Job Search and Filtering",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the jobs section"
+      },
+      {
+        "type": "action",
+        "description": "Search for jobs"
+      },
+      {
+        "type": "action",
+        "description": "Choose a job result"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the job listing opens in a new browser tab"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "See an AI configuration error when analysis is unavailable",
+    "description": "This test verifies that attempting resume analysis without AI access shows a clear configuration error.",
+    "category": "AI Resume Analysis",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Continue as a guest user"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported resume from the home screen"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the analysis section"
+      },
+      {
+        "type": "action",
+        "description": "Start resume analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an AI configuration error is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC030",
+    "title": "Recover access successfully",
+    "description": "This verifies that a user can request password recovery and see a success confirmation.",
+    "category": "Authentication and Guest Access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Choose to recover access"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with an existing account name"
+      },
+      {
+        "type": "action",
+        "description": "Submit the recovery request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password recovery success message is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC031",
+    "title": "Show an inline error for invalid sign in",
+    "description": "This verifies that an incorrect password is rejected with an inline login error message.",
+    "category": "Authentication and Guest Access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with an incorrect password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an inline login error message is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC032",
+    "title": "View empty activity logs state",
+    "description": "Verify an authenticated user sees an empty state when no activity logs are available.",
+    "category": "Activity Logs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile editor logs section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no activity entries are displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

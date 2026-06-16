@@ -147,34 +147,48 @@ class TestOpenRouter:
 
 # ── Via Settings DB (end-to-end) ─────────────────────────────────────────────
 
+def _get_ai_auth_headers(client, username: str = "ai_routing_user", password: str = "password123") -> dict:
+    """Register (or login if already exists) and return auth headers."""
+    resp = client.post("/api/auth/register", json={"username": username, "password": password})
+    if resp.status_code == 400:  # already registered
+        resp = client.post("/api/auth/login", data={"username": username, "password": password})
+    if resp.status_code not in (200, 201):
+        raise AssertionError(f"Auth failed ({resp.status_code}): {resp.text}")
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+
 class TestAIServiceRouting:
     """Test the complete routing path: Settings DB → AI provider."""
 
     def _api_call(self, client, provider: str, key_field: str, api_key: str, model: str, endpoint: str, body: dict):
         """Helper: configure settings then call an AI endpoint. Returns response."""
-        client.put("/api/settings", json={
+        headers = _get_ai_auth_headers(client, f"ai_routing_{provider}")
+        resp = client.put("/api/settings", json={
             "ai_provider": provider,
             key_field: api_key,
             "ai_model": model,
-        })
+        }, headers=headers)
+        assert resp.status_code == 200, f"Settings update failed: {resp.text}"
         import json as _json
         data = _json.dumps({
             "full_name": "Test Developer",
             "skills": [{"name": "Python"}, {"name": "FastAPI"}],
             "experience": [{"company": "Acme", "role": "Backend Engineer", "start": "2021"}],
         }).encode()
-        imp = client.post("/api/import", files={"file": ("p.json", data, "application/json")})
+        imp = client.post("/api/import", files={"file": ("p.json", data, "application/json")}, headers=headers)
         pid = imp.json()["profile_id"]
-        return client.post(f"/api/profiles/{pid}/{endpoint}", json=body)
+        return client.post(f"/api/profiles/{pid}/{endpoint}", json=body, headers=headers)
 
     def _assert_ai_ok(self, resp, endpoint: str):
-        """Assert 200, or xfail on quota/rate-limit errors."""
+        """Assert 200, or xfail on quota/rate-limit/missing-dependency errors."""
         if resp.status_code == 502:
             detail = resp.json().get("detail", "")
             if any(s in detail for s in ["429", "quota", "rate", "insufficient", "402"]):
                 pytest.xfail(f"API quota/rate-limit: {detail[:120]}")
             if any(s in detail.lower() for s in ["401", "user not found", "invalid"]):
                 pytest.xfail(f"API auth error (check key validity): {detail[:120]}")
+            if "litellm" in detail.lower() or "not installed" in detail.lower():
+                pytest.xfail(f"Missing optional dependency: {detail[:120]}")
             pytest.fail(f"Unexpected 502: {detail[:200]}")
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text[:200]}"
         if endpoint == "analyze":

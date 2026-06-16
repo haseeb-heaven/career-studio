@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 backend/.venv/
-backend/career_studio.db
+*.db
 *.egg-info/
 dist/
 build/
@@ -32,9 +32,14 @@ Thumbs.db
 # Logs (keep folder tracked via .gitkeep, ignore actual log files)
 logs/*.log
 logs/*.log.*
+backend/career_studio.log
+backend/*.log
 
 # Claude
 .claude/launch.json
 
 # Test Fixtures (containing personal/portfolio data)
 tests/fixtures/*
+
+# Docs superpowers
+docs/superpowers/

@@ -1,12 +1,14 @@
 """Analysis endpoints: resume score, AI suggestions, cover letter, career roadmap."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from db import engine
-from models import Profile, CoverLetter, CareerPlan
+from models import Profile, CoverLetter, CareerPlan, User
 from services import activity
 from services.ai_service import complete_simple, complete_complex, profile_text_summary
 from logger import get_logger
+from routers.auth_utils import get_current_user
+from routers.profile_router import _check_ownership
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/profiles", tags=["analysis"])
@@ -23,9 +25,10 @@ def _get_profile(pid: int, session: Session) -> Profile:
 # ---------- /analyze ----------
 
 @router.post("/{profile_id}/analyze")
-def analyze(profile_id: int):
+def analyze(profile_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
+        _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
 
     system = (
@@ -38,12 +41,11 @@ def analyze(profile_id: int):
         '  "ats_keywords": list of 10 ATS keywords missing from the resume.\n'
         "Return ONLY valid JSON. No prose."
     )
-    user = f"Resume:\n{resume_text}"
+    user_msg = f"Resume:\n{resume_text}"
 
     try:
-        raw = complete_simple(system, user)
+        raw = complete_simple(system, user_msg)
         import json
-        # Strip markdown code fences if present
         raw = raw.strip()
         if raw.startswith("```"):
             raw = raw.split("```", 2)[1]
@@ -61,9 +63,9 @@ def analyze(profile_id: int):
 # ---------- /score ----------
 
 @router.get("/{profile_id}/score")
-def score(profile_id: int):
+def score(profile_id: int, user: User = Depends(get_current_user)):
     """Quick score-only endpoint (same AI call, cheaper to display)."""
-    return analyze(profile_id)
+    return analyze(profile_id, user)
 
 
 # ---------- /cover-letter ----------
@@ -75,9 +77,14 @@ class CoverLetterRequest(BaseModel):
 
 
 @router.post("/{profile_id}/cover-letter")
-def generate_cover_letter(profile_id: int, body: CoverLetterRequest):
+def generate_cover_letter(
+    profile_id: int,
+    body: CoverLetterRequest,
+    user: User = Depends(get_current_user),
+):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
+        _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
 
     system = (
@@ -87,7 +94,7 @@ def generate_cover_letter(profile_id: int, body: CoverLetterRequest):
         "why this company, call to action. Do not add placeholders. "
         "Return ONLY the cover letter text, no subject line or date header."
     )
-    user = (
+    user_msg = (
         f"Job Title: {body.job_title}\n"
         f"Company: {body.company}\n"
         f"Extra notes: {body.extra_notes}\n\n"
@@ -95,7 +102,7 @@ def generate_cover_letter(profile_id: int, body: CoverLetterRequest):
     )
 
     try:
-        content = complete_complex(system, user)
+        content = complete_complex(system, user_msg)
     except Exception as e:
         logger.error("Cover letter generation failed: %s", e)
         raise HTTPException(status_code=502, detail=f"AI error: {e}")
@@ -115,16 +122,29 @@ def generate_cover_letter(profile_id: int, body: CoverLetterRequest):
 
 
 @router.get("/{profile_id}/cover-letters")
-def list_cover_letters(profile_id: int):
+def list_cover_letters(profile_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
+        p = _get_profile(profile_id, s)
+        _check_ownership(s, p, user)
         rows = s.exec(select(CoverLetter).where(CoverLetter.profile_id == profile_id)).all()
-        return [{"id": r.id, "job_title": r.job_title, "company": r.company, "content": r.content,
-                 "created_at": r.created_at.isoformat()} for r in rows]
+        return [
+            {
+                "id": r.id, "job_title": r.job_title, "company": r.company,
+                "content": r.content, "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ]
 
 
 @router.delete("/{profile_id}/cover-letters/{cl_id}")
-def delete_cover_letter(profile_id: int, cl_id: int):
+def delete_cover_letter(
+    profile_id: int,
+    cl_id: int,
+    user: User = Depends(get_current_user),
+):
     with Session(engine) as s:
+        p = _get_profile(profile_id, s)
+        _check_ownership(s, p, user)
         cl = s.get(CoverLetter, cl_id)
         if not cl or cl.profile_id != profile_id:
             raise HTTPException(status_code=404)
@@ -142,40 +162,86 @@ class RoadmapRequest(BaseModel):
 
 
 @router.post("/{profile_id}/roadmap")
-def generate_roadmap(profile_id: int, body: RoadmapRequest):
+def generate_roadmap(
+    profile_id: int,
+    body: RoadmapRequest,
+    user: User = Depends(get_current_user),
+):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
+        _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
 
     plan_prompts = {
         "roadmap": (
-            "Create a detailed {years}-year career roadmap. Include: current position assessment, "
-            "milestone goals for each year, specific skills to acquire, certifications to pursue, "
-            "projects to build, networking targets, and salary progression expectations. "
-            "Target role: {role}. Format with clear sections and bullet points."
+            "Create a detailed {years}-year career roadmap targeting the role '{role}'. "
+            "You must return a single JSON object with this exact structure:\n"
+            "{{\n"
+            "  \"title\": \"Career Roadmap to {role}\",\n"
+            "  \"overview\": \"A 2-3 sentence overview of the starting point vs. target role.\",\n"
+            "  \"timeline\": [\n"
+            "    {{\n"
+            "      \"period\": \"Year 1\",\n"
+            "      \"milestones\": [\"milestone 1\", \"milestone 2\"],\n"
+            "      \"skills\": [\"skill 1\", \"skill 2\"],\n"
+            "      \"certifications\": [\"cert 1\"],\n"
+            "      \"actions\": [\"networking action 1\", \"target company list\"]\n"
+            "    }}\n"
+            "  ],\n"
+            "  \"projects\": [\n"
+            "    {{\n"
+            "      \"name\": \"Portfolio Project\",\n"
+            "      \"description\": \"Description of what to build to show capability.\",\n"
+            "      \"tech_stack\": [\"tech 1\", \"tech 2\"],\n"
+            "      \"github_strategy\": \"How to structure/document the repo.\"\n"
+            "    }}\n"
+            "  ],\n"
+            "  \"learning_resources\": [\n"
+            "    {{\n"
+            "      \"title\": \"Specific Course or Topic\",\n"
+            "      \"platform\": \"YouTube / Coursera / Udemy / edX / Books\",\n"
+            "      \"url\": \"https://www.youtube.com/results?search_query=advanced+typescript\",\n"
+            "      \"description\": \"Why this resource is essential.\"\n"
+            "    }}\n"
+            "  ],\n"
+            "  \"additional_strategy\": \"Salary progression expectations over {years} years.\"\n"
+            "}}\n"
+            "IMPORTANT: Return ONLY this JSON. Do not write any introduction or conclusion."
         ),
         "growth": (
-            "Create a personal growth and professional development plan for {years} years. "
-            "Focus on: leadership skills, communication, mentorship, side projects, open source, "
-            "speaking/writing, and building personal brand. Target role: {role}. "
-            "Format with clear sections and bullet points."
+            "Create a detailed {years}-year personal growth plan targeting the role '{role}'. "
+            "Return a JSON object with keys: title, overview, timeline, projects, learning_resources, additional_strategy. "
+            "IMPORTANT: Return ONLY this JSON."
         ),
         "portfolio": (
-            "Create a portfolio and projects roadmap for {years} years. "
-            "Suggest specific projects to build, technologies to demonstrate, "
-            "GitHub strategy, blog topics, and portfolio presentation. "
-            "Target role: {role}. Format with clear sections and bullet points."
+            "Create a detailed {years}-year portfolio strategy targeting the role '{role}'. "
+            "Return a JSON object with keys: title, overview, timeline, projects, learning_resources, additional_strategy. "
+            "IMPORTANT: Return ONLY this JSON."
         ),
     }
 
     template = plan_prompts.get(body.plan_type, plan_prompts["roadmap"])
     prompt_suffix = template.format(years=body.years_horizon, role=body.target_role or "senior engineer")
 
-    system = "You are an expert career coach and mentor with 20 years of experience in tech."
-    user = f"Resume:\n{resume_text}\n\nTask: {prompt_suffix}"
+    system = "You are an expert career coach with 20 years of tech experience. Return ONLY valid JSON."
+    user_msg = f"Resume:\n{resume_text}\n\nTask: {prompt_suffix}"
 
     try:
-        content = complete_complex(system, user)
+        content = complete_complex(system, user_msg)
+        content_stripped = content.strip()
+        if content_stripped.startswith("```"):
+            parts = content_stripped.split("```")
+            for part in parts:
+                part = part.strip()
+                if part.startswith("json"):
+                    part = part[4:].strip()
+                try:
+                    import json
+                    json.loads(part)
+                    content = part
+                    break
+                except Exception:
+                    pass
     except Exception as e:
         logger.error("Roadmap generation failed: %s", e)
         raise HTTPException(status_code=502, detail=f"AI error: {e}")
@@ -194,16 +260,29 @@ def generate_roadmap(profile_id: int, body: RoadmapRequest):
 
 
 @router.get("/{profile_id}/roadmaps")
-def list_roadmaps(profile_id: int):
+def list_roadmaps(profile_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
+        p = _get_profile(profile_id, s)
+        _check_ownership(s, p, user)
         rows = s.exec(select(CareerPlan).where(CareerPlan.profile_id == profile_id)).all()
-        return [{"id": r.id, "plan_type": r.plan_type, "content": r.content,
-                 "created_at": r.created_at.isoformat()} for r in rows]
+        return [
+            {
+                "id": r.id, "plan_type": r.plan_type,
+                "content": r.content, "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ]
 
 
 @router.delete("/{profile_id}/roadmaps/{plan_id}")
-def delete_roadmap(profile_id: int, plan_id: int):
+def delete_roadmap(
+    profile_id: int,
+    plan_id: int,
+    user: User = Depends(get_current_user),
+):
     with Session(engine) as s:
+        p = _get_profile(profile_id, s)
+        _check_ownership(s, p, user)
         plan = s.get(CareerPlan, plan_id)
         if not plan or plan.profile_id != profile_id:
             raise HTTPException(status_code=404)

@@ -1,4 +1,4 @@
-import { exportUrl } from "../api";
+import { exportProfileBlob } from "../api";
 
 interface Props {
   profileId: number;
@@ -16,14 +16,29 @@ const FORMATS = [
 ] as const;
 
 export default function ExportPanel({ profileId, fullName }: Props) {
-  function download(fmt: string) {
-    const url = exportUrl(profileId, fmt);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${fullName.replace(/\s+/g, "_")}.${fmt}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  async function download(fmt: string) {
+    try {
+      const blob = await exportProfileBlob(profileId, fmt);
+      let extension = fmt;
+      if (fmt === "portfolio") {
+        extension = "html";
+      } else if (fmt === "latex") {
+        extension = "tex";
+      }
+      const cleanName = fullName.replace(/[^\w\-]/g, "_").replace(/^_+|_+$/g, "") || "profile";
+      const filename = `${cleanName}.${extension}`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+    }
   }
 
   return (

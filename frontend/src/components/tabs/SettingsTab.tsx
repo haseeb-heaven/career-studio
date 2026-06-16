@@ -6,10 +6,38 @@ const BASE = "http://localhost:8000/api";
 
 const EXTERNAL_PROVIDERS = ["openai", "anthropic", "openrouter"] as const;
 
+const FREE_OPENROUTER_MODELS = [
+  { model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", use_case: "reasoning" },
+  { model: "nvidia/nemotron-3-super-120b-a12b:free", use_case: "general reasoning" },
+  { model: "nvidia/nemotron-3-nano-30b-a3b:free", use_case: "general" },
+  { model: "nvidia/nemotron-nano-12b-v2-vl:free", use_case: "vision-language" },
+  { model: "nvidia/nemotron-nano-9b-v2:free", use_case: "general" },
+  { model: "nvidia/nemotron-3-ultra-550b-a55b:free", use_case: "heavy reasoning" },
+  { model: "google/gemma-4-31b-it:free", use_case: "general" },
+  { model: "google/gemma-4-26b-a4b-it:free", use_case: "general" },
+  { model: "google/gemma-3-27b-it:free", use_case: "general" },
+  { model: "google/gemma-3-12b-it:free", use_case: "lightweight" },
+  { model: "google/gemma-3-4b-it:free", use_case: "edge" },
+  { model: "google/gemma-3n-e4b-it:free", use_case: "edge vision" },
+  { model: "google/gemma-3n-e2b-it:free", use_case: "edge vision" },
+  { model: "meta-llama/llama-3.3-70b-instruct:free", use_case: "instruct" },
+  { model: "meta-llama/llama-3.2-3b-instruct:free", use_case: "lightweight" },
+  { model: "openai/gpt-oss-120b:free", use_case: "general reasoning" },
+  { model: "openai/gpt-oss-20b:free", use_case: "light general" },
+  { model: "qwen/qwen3-coder:free", use_case: "coding / structured output" },
+  { model: "qwen/qwen3-next-80b-a3b-instruct:free", use_case: "instruct" },
+  { model: "liquid/lfm-2.5-1.2b-thinking:free", use_case: "thinking" },
+  { model: "liquid/lfm-2.5-1.2b-instruct:free", use_case: "lightweight fallback" },
+  { model: "z-ai/glm-4.5-air:free", use_case: "general" },
+  { model: "arcee-ai/trinity-large-preview:free", use_case: "general" },
+  { model: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", use_case: "general" },
+  { model: "nousresearch/hermes-3-llama-3.1-405b:free", use_case: "heavy reasoning" }
+];
+
 const EXTERNAL_MODELS: Record<string, string[]> = {
   openai:      ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
   anthropic:   ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-8"],
-  openrouter:  ["openai/gpt-4o-mini", "anthropic/claude-haiku-4-5-20251001", "google/gemini-flash-1.5", "meta-llama/llama-3.1-8b-instruct:free"],
+  openrouter:  FREE_OPENROUTER_MODELS.map((m) => m.model),
 };
 
 const OLLAMA_POPULAR = ["llama3.2", "llama3.1", "mistral", "mistral-nemo", "gemma2", "codellama", "phi3", "deepseek-r1"];
@@ -25,7 +53,7 @@ export default function SettingsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeSection, setActiveSection] = useState<"ai" | "routing" | "about">("ai");
+  const [activeSection, setActiveSection] = useState<"ai" | "routing" | "jobs" | "about">("ai");
 
   // Form state
   const [mode, setMode] = useState<AIMode>("external");
@@ -39,19 +67,51 @@ export default function SettingsTab() {
   const [ollamaModel, setOllamaModel] = useState("llama3.2");
   const [customOllamaModel, setCustomOllamaModel] = useState("");
   const [localForSimple, setLocalForSimple] = useState(true);
+  const [adzunaId, setAdzunaId] = useState("");
+  const [adzunaKey, setAdzunaKey] = useState("");
+  const [linkedinKey, setLinkedinKey] = useState("");
+  const [indeedKey, setIndeedKey] = useState("");
+  const [glassdoorKey, setGlassdoorKey] = useState("");
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus | null>(null);
   const [checkingOllama, setCheckingOllama] = useState(false);
 
   useEffect(() => {
     getSettings().then((s) => {
-      // Settings API returns strings; coerce booleans defensively
-      const boolVal = (v: string) => v === "true" || v === "1";
+      // Settings API returns strings or booleans; coerce booleans defensively
+      const boolVal = (v: any) => v === true || v === "true" || v === "1" || v === 1;
       setMode(boolVal(s.use_local_ai) ? "local" : "external");
-      setExternalProvider(s.ai_provider ?? "openai");
-      setExternalModel(s.ai_model ?? "gpt-4o-mini");
+      
+      const providerVal = s.ai_provider ?? "openai";
+      const modelVal = s.ai_model ?? "gpt-4o-mini";
+      setExternalProvider(providerVal);
+      setExternalModel(modelVal);
+
+      // Pre-populate customModel if it's a custom model ID not in our lists
+      if (providerVal === "openrouter") {
+        const isPredefined = FREE_OPENROUTER_MODELS.some((m) => m.model === modelVal);
+        if (!isPredefined) {
+          setCustomModel(modelVal);
+        }
+      } else {
+        const isPredefined = EXTERNAL_MODELS[providerVal]?.includes(modelVal);
+        if (!isPredefined) {
+          setCustomModel(modelVal);
+        }
+      }
+
       setOllamaUrl(s.ollama_base_url ?? "http://localhost:11434");
       setOllamaModel(s.ollama_model ?? "llama3.2");
       setLocalForSimple(boolVal(s.local_for_simple) || s.local_for_simple === "");
+      
+      // Pre-populate keys
+      if (s.api_key) setOpenaiKey(s.api_key);
+      if (s.anthropic_api_key) setAnthropicKey(s.anthropic_api_key);
+      if (s.openrouter_api_key) setOpenrouterKey(s.openrouter_api_key);
+      if (s.adzuna_app_id) setAdzunaId(s.adzuna_app_id);
+      if (s.adzuna_app_key) setAdzunaKey(s.adzuna_app_key);
+      if (s.linkedin_api_key) setLinkedinKey(s.linkedin_api_key);
+      if (s.indeed_api_key) setIndeedKey(s.indeed_api_key);
+      if (s.glassdoor_api_key) setGlassdoorKey(s.glassdoor_api_key);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -77,10 +137,15 @@ export default function SettingsTab() {
         ollama_base_url: ollamaUrl,
         ollama_model: customOllamaModel || ollamaModel,
         local_for_simple: localForSimple,
+        adzuna_app_id: adzunaId,
       };
       if (openaiKey) payload.api_key = openaiKey;
       if (anthropicKey) payload.anthropic_api_key = anthropicKey;
       if (openrouterKey) payload.openrouter_api_key = openrouterKey;
+      if (adzunaKey) payload.adzuna_app_key = adzunaKey;
+      if (linkedinKey) payload.linkedin_api_key = linkedinKey;
+      if (indeedKey) payload.indeed_api_key = indeedKey;
+      if (glassdoorKey) payload.glassdoor_api_key = glassdoorKey;
       await updateSettings(payload as Record<string, string>);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -94,6 +159,7 @@ export default function SettingsTab() {
   const sections = [
     { id: "ai" as const, icon: "🤖", label: "AI Provider" },
     { id: "routing" as const, icon: "🔀", label: "Task Routing" },
+    { id: "jobs" as const, icon: "💼", label: "Job Search" },
     { id: "about" as const, icon: "ℹ️", label: "About" },
   ];
 
@@ -263,26 +329,61 @@ export default function SettingsTab() {
               {/* Model */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-2">Model</label>
-                <div className="flex flex-wrap gap-2">
-                  {EXTERNAL_MODELS[externalProvider].map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => { setExternalModel(m); setCustomModel(""); }}
-                      className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                        externalModel === m && !customModel
-                          ? "bg-blue-600 border-blue-600 text-white"
-                          : "border-slate-600 text-slate-400 hover:border-slate-400"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
+                {externalProvider === "openrouter" ? (
+                  <select
+                    value={customModel || externalModel}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const isFreeModel = FREE_OPENROUTER_MODELS.some((m) => m.model === val);
+                      if (isFreeModel) {
+                        setExternalModel(val);
+                        setCustomModel("");
+                      } else {
+                        setCustomModel(val);
+                      }
+                    }}
+                    className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="" disabled>-- Select a Free OpenRouter Model --</option>
+                    {FREE_OPENROUTER_MODELS.map((m) => (
+                      <option key={m.model} value={m.model}>
+                        {m.model} ({m.use_case})
+                      </option>
+                    ))}
+                    {customModel && !FREE_OPENROUTER_MODELS.some(m => m.model === customModel) && (
+                      <option value={customModel}>
+                        {customModel} (Custom)
+                      </option>
+                    )}
+                  </select>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {EXTERNAL_MODELS[externalProvider].map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => { setExternalModel(m); setCustomModel(""); }}
+                        className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                          externalModel === m && !customModel
+                            ? "bg-blue-600 border-blue-600 text-white"
+                            : "border-slate-600 text-slate-400 hover:border-slate-400"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <input
                   type="text"
-                  placeholder="Or type a custom model ID…"
+                  placeholder="Or enter a custom model ID (e.g. meta-llama/llama-3.1-405b)…"
                   value={customModel}
-                  onChange={(e) => setCustomModel(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomModel(val);
+                    if (!val && externalProvider === "openrouter") {
+                      setExternalModel(FREE_OPENROUTER_MODELS[0].model);
+                    }
+                  }}
                   className="mt-2 w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
               </div>
@@ -391,7 +492,74 @@ export default function SettingsTab() {
         </div>
       )}
 
-      {/* ── About section ── */}
+      {activeSection === "jobs" && (
+        <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-5">
+          <h3 className="text-white font-semibold text-sm">Job Search Configuration</h3>
+          <p className="text-slate-400 text-xs">
+            Configure external job boards. By default, the app searches public APIs like Remotive, RemoteOK, and Arbeitnow. To enable Adzuna, provide your credentials.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Adzuna App ID (Optional API)</label>
+              <input
+                type="text"
+                placeholder="e.g. 12345678"
+                value={adzunaId}
+                onChange={(e) => setAdzunaId(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Adzuna API Key (Optional API)</label>
+              <input
+                type="password"
+                placeholder="e.g. abcd1234efgh5678... (leave blank to keep existing key)"
+                value={adzunaKey}
+                onChange={(e) => setAdzunaKey(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div className="border-t border-slate-800 my-4 pt-4">
+              <h4 className="text-white text-xs font-semibold mb-3">API Keys / Tokens (Last Resort)</h4>
+              <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
+                By default, job searches on LinkedIn, Indeed, and Glassdoor run without APIs (preferred). Provide API keys only if guest scraping gets rate-limited.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">LinkedIn API Key / Scraping Token</label>
+              <input
+                type="password"
+                placeholder="leave blank to use guest search (preferred)"
+                value={linkedinKey}
+                onChange={(e) => setLinkedinKey(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Indeed API Key / Token</label>
+              <input
+                type="password"
+                placeholder="leave blank to use guest search (preferred)"
+                value={indeedKey}
+                onChange={(e) => setIndeedKey(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Glassdoor API Key / Token</label>
+              <input
+                type="password"
+                placeholder="leave blank to use guest search (preferred)"
+                value={glassdoorKey}
+                onChange={(e) => setGlassdoorKey(e.target.value)}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeSection === "about" && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-3">

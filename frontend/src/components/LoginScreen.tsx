@@ -1,29 +1,57 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { AuthUser } from "../types";
-import { register, login, setAuthToken } from "../api";
+import { register, login, setAuthToken, forgotPassword, resetPassword } from "../api";
 
 interface Props {
   onAuth: (user: AuthUser) => void;
   onGuest: () => void;
 }
 
-type Tab = "login" | "register";
+type Tab = "login" | "register" | "forgot" | "reset";
 
 export default function LoginScreen({ onAuth, onGuest }: Props) {
   const [tab, setTab] = useState<Tab>("login");
+  const [resetToken, setResetToken] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [devResetUrl, setDevResetUrl] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      setResetToken(token);
+      setTab("reset");
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSuccessMsg("");
     setLoading(true);
     try {
       let result;
-      if (tab === "register") {
+      if (tab === "forgot") {
+        const res = await forgotPassword(username.trim());
+        setSuccessMsg(res.message);
+        if (res.dev_reset_url) setDevResetUrl(res.dev_reset_url);
+        return;
+      } else if (tab === "reset") {
+        const res = await resetPassword(resetToken, password);
+        setSuccessMsg(res.message);
+        setTimeout(() => {
+          window.history.replaceState({}, document.title, "/");
+          setTab("login");
+          setPassword("");
+          setSuccessMsg("");
+        }, 2000);
+        return;
+      } else if (tab === "register") {
         result = await register(username.trim(), password, email.trim());
       } else {
         result = await login(username.trim(), password);
@@ -66,6 +94,7 @@ export default function LoginScreen({ onAuth, onGuest }: Props) {
         </div>
 
         {/* Tabs */}
+        {tab !== "reset" && tab !== "forgot" && (
         <div style={{
           display: "flex",
           borderBottom: "2px solid var(--color-border)",
@@ -74,7 +103,7 @@ export default function LoginScreen({ onAuth, onGuest }: Props) {
           {(["login", "register"] as Tab[]).map((t) => (
             <button
               key={t}
-              onClick={() => { setTab(t); setError(""); }}
+              onClick={() => { setTab(t); setError(""); setSuccessMsg(""); setDevResetUrl(""); }}
               style={{
                 flex: 1,
                 padding: "0.6rem",
@@ -93,8 +122,25 @@ export default function LoginScreen({ onAuth, onGuest }: Props) {
             </button>
           ))}
         </div>
+        )}
+
+        {tab === "forgot" && (
+          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+            <h2 style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>Reset Password</h2>
+            <p style={{ fontSize: "0.9rem", color: "var(--color-text-muted)" }}>
+              Enter your username and we'll send a reset link to your registered email address.
+            </p>
+          </div>
+        )}
+
+        {tab === "reset" && (
+          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+            <h2 style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>Set New Password</h2>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
+          {tab !== "reset" && (
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.3rem", color: "var(--color-text-muted)" }}>
               Username
@@ -118,6 +164,7 @@ export default function LoginScreen({ onAuth, onGuest }: Props) {
               }}
             />
           </div>
+          )}
 
           {tab === "register" && (
             <div style={{ marginBottom: "1rem" }}>
@@ -143,9 +190,10 @@ export default function LoginScreen({ onAuth, onGuest }: Props) {
             </div>
           )}
 
+          {tab !== "forgot" && (
           <div style={{ marginBottom: "1.25rem" }}>
             <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.3rem", color: "var(--color-text-muted)" }}>
-              Password {tab === "register" && <span style={{ fontWeight: 400 }}>(min 6 chars)</span>}
+              {tab === "reset" ? "New Password" : "Password"} {tab === "register" && <span style={{ fontWeight: 400 }}>(min 6 chars)</span>}
             </label>
             <input
               type="password"
@@ -166,6 +214,7 @@ export default function LoginScreen({ onAuth, onGuest }: Props) {
               }}
             />
           </div>
+          )}
 
           {error && (
             <div style={{
@@ -178,6 +227,30 @@ export default function LoginScreen({ onAuth, onGuest }: Props) {
               fontSize: "0.875rem",
             }}>
               {error}
+            </div>
+          )}
+
+          {successMsg && (
+            <div style={{
+              marginBottom: "1rem",
+              padding: "0.6rem 0.75rem",
+              borderRadius: "6px",
+              background: "rgba(40, 167, 69, 0.1)",
+              border: "1px solid rgba(40, 167, 69, 0.3)",
+              color: "#28a745",
+              fontSize: "0.875rem",
+            }}>
+              {successMsg}
+              {devResetUrl && (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <a
+                    href={devResetUrl}
+                    style={{ color: "#28a745", fontWeight: 600, wordBreak: "break-all" }}
+                  >
+                    Click here to reset your password →
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -197,11 +270,42 @@ export default function LoginScreen({ onAuth, onGuest }: Props) {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Please wait…" : tab === "login" ? "Sign In" : "Create Account"}
+            {loading ? "Please wait…" : tab === "login" ? "Sign In" : tab === "register" ? "Create Account" : tab === "forgot" ? "Send Reset Link" : "Reset Password"}
           </button>
         </form>
 
-        <div style={{ textAlign: "center", marginTop: "1.25rem" }}>
+        <div style={{ textAlign: "center", marginTop: "1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {tab === "login" && (
+            <button
+              type="button"
+              onClick={() => { setTab("forgot"); setError(""); setSuccessMsg(""); setDevResetUrl(""); }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--color-accent)",
+                fontSize: "0.85rem",
+                cursor: "pointer",
+              }}
+            >
+              Forgot Password?
+            </button>
+          )}
+          {(tab === "forgot" || tab === "reset") && (
+            <button
+              type="button"
+              onClick={() => { setTab("login"); setError(""); setSuccessMsg(""); setDevResetUrl(""); }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--color-text-muted)",
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Back to Sign In
+            </button>
+          )}
           <button
             onClick={onGuest}
             style={{

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "post api auth register valid user",
+    "description": "Test user registration with valid username, password, and optional email to receive 201 response with access token and user details."
+  },
+  {
+    "id": "TC002",
+    "title": "post api auth login valid credentials",
+    "description": "Test user login with valid username and password to receive 200 response with JWT token payload."
+  },
+  {
+    "id": "TC003",
+    "title": "get api auth me authenticated user",
+    "description": "Test retrieval of current authenticated user profile with valid Bearer token to receive 200 response with user info."
+  },
+  {
+    "id": "TC004",
+    "title": "post api auth forgot password unknown user",
+    "description": "Test forgot password request with unknown username to receive 404 user not found error."
+  },
+  {
+    "id": "TC005",
+    "title": "post api auth reset password invalid token",
+    "description": "Test password reset with expired or invalid reset token or short new password to receive 400 validation error."
+  },
+  {
+    "id": "TC006",
+    "title": "get api profiles list owned profiles",
+    "description": "Test listing all profiles belonging to authenticated user to receive 200 response with profile list."
+  },
+  {
+    "id": "TC007",
+    "title": "patch api profiles update top level fields",
+    "description": "Test updating top-level profile fields with partial data to receive 200 response with updated profile info."
+  },
+  {
+    "id": "TC008",
+    "title": "delete api profiles delete profile",
+    "description": "Test deleting a profile and all its children with valid authentication to receive 204 no content response."
+  },
+  {
+    "id": "TC009",
+    "title": "post api import upload resume file",
+    "description": "Test uploading a supported resume file to create a new profile and receive 201 response with profile id and warnings."
+  },
+  {
+    "id": "TC010",
+    "title": "get api profiles export supported format",
+    "description": "Test exporting a profile in a supported format with valid authentication to receive 200 binary file download."
+  }
+]

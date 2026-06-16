@@ -93,6 +93,63 @@ def test_pdf_exporter_produces_pdf_bytes(profile):
     assert len(result) > 1000
 
 
+def test_pdf_exporter_repeated_calls_do_not_crash(profile):
+    """Regression: ReportLab ParagraphStyle global registry caused crash on 2nd call."""
+    exp = exporter_for("pdf")
+    result1 = exp.export(profile)
+    result2 = exp.export(profile)
+    assert result1[:4] == b"%PDF"
+    assert result2[:4] == b"%PDF"
+
+
+def test_pdf_exporter_contains_profile_name(profile):
+    """The exported PDF bytes must contain the profile name as text."""
+    import pdfplumber
+    import io
+    exp = exporter_for("pdf")
+    result = exp.export(profile)
+    with pdfplumber.open(io.BytesIO(result)) as pdf:
+        text = "".join(p.extract_text() or "" for p in pdf.pages)
+    assert "Jane Doe" in text
+
+
+def test_pdf_exporter_contains_skills(profile):
+    import pdfplumber, io
+    exp = exporter_for("pdf")
+    result = exp.export(profile)
+    with pdfplumber.open(io.BytesIO(result)) as pdf:
+        text = "".join(p.extract_text() or "" for p in pdf.pages)
+    assert "Python" in text
+
+
+def test_pdf_exporter_contains_experience(profile):
+    import pdfplumber, io
+    exp = exporter_for("pdf")
+    result = exp.export(profile)
+    with pdfplumber.open(io.BytesIO(result)) as pdf:
+        text = "".join(p.extract_text() or "" for p in pdf.pages)
+    assert "Acme" in text
+    assert "Built microservices" in text
+
+
+def test_pdf_exporter_unicode_name(session):
+    """Non-ASCII names must not crash the exporter."""
+    from models import Profile
+    p = Profile(full_name="Søren Ågård", email="soren@example.com")
+    session.add(p)
+    session.commit()
+    session.refresh(p)
+    p.skills = []
+    p.experience = []
+    p.projects = []
+    p.education = []
+    p.certifications = []
+    p.links = []
+    exp = exporter_for("pdf")
+    result = exp.export(p)
+    assert result[:4] == b"%PDF"
+
+
 def test_json_round_trip(profile):
     from parsers import parser_for as pfr
     exp = exporter_for("json")

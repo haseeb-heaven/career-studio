@@ -129,7 +129,7 @@ export default function ProfileEditor({ profileId, importWarnings = [], onBack, 
       case "Analysis":       return <AnalysisTab profileId={profile.id} />;
       case "Cover Letter":   return <CoverLetterTab profileId={profile.id} />;
       case "Roadmap":        return <RoadmapTab profileId={profile.id} />;
-      case "Jobs":           return <JobsTab profileId={profile.id} />;
+      case "Jobs":           return <JobsTab profileId={profile.id} profile={profile} />;
       case "Logs":           return <LogsTab />;
       case "Settings":       return <SettingsTab />;
     }

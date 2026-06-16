@@ -36,7 +36,7 @@ export default function UploadScreen({ onImported, authUser, onLogout }: Props) 
       onImported(result.profile_id, result.warnings);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-        ?? "Upload failed — check backend is running on port 8000.";
+        ?? "Upload failed — check the backend is running.";
       setError(msg);
     } finally {
       setLoading(false);

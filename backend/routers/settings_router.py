@@ -1,9 +1,11 @@
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 from db import engine
-from models import Settings
+from models import Settings, User
 from services.ai_service import ollama_available, list_ollama_models
+from security_crypto import encrypt_key, _KEY_FIELDS
+from routers.auth_utils import get_current_user
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -11,7 +13,24 @@ ALLOWED = {
     "ai_provider", "ai_model", "api_key", "anthropic_api_key", "openrouter_api_key",
     "use_local_ai", "ollama_base_url", "ollama_model", "local_for_simple",
     "adzuna_app_id", "adzuna_app_key",
+    "linkedin_api_key", "indeed_api_key", "glassdoor_api_key",
 }
+
+
+def _migrate_encrypt_existing_keys(session: Session, cfg: Settings) -> None:
+    """Idempotent: encrypt any plain-text API keys that are already in the DB."""
+    changed = False
+    for field in _KEY_FIELDS:
+        val = getattr(cfg, field, "")
+        if val:
+            encrypted = encrypt_key(val)
+            if encrypted != val:
+                setattr(cfg, field, encrypted)
+                changed = True
+    if changed:
+        session.add(cfg)
+        session.commit()
+        session.refresh(cfg)
 
 
 def _get_or_create(session: Session) -> Settings:
@@ -24,13 +43,22 @@ def _get_or_create(session: Session) -> Settings:
     return s
 
 
+def run_startup_migration() -> None:
+    """Run once at startup: encrypt any plain-text API keys already in the DB.
+    Must not be called on every request — idempotent but incurs a write per boot."""
+    with Session(engine) as session:
+        cfg = session.exec(select(Settings)).first()
+        if cfg:
+            _migrate_encrypt_existing_keys(session, cfg)
+
+
 def _key_status(db_val: str, env_var: str) -> str:
     """Return '***' if key is set (DB or env), '' otherwise."""
     return "***" if (db_val or os.getenv(env_var, "")) else ""
 
 
 @router.get("")
-def get_settings():
+def get_settings(user: User = Depends(get_current_user)):
     with Session(engine) as s:
         cfg = _get_or_create(s)
         return {
@@ -45,15 +73,22 @@ def get_settings():
             "local_for_simple": cfg.local_for_simple,
             "adzuna_app_id": cfg.adzuna_app_id,
             "adzuna_app_key": _key_status(cfg.adzuna_app_key, "ADZUNA_APP_KEY"),
+            "linkedin_api_key": _key_status(cfg.linkedin_api_key, "LINKEDIN_API_KEY"),
+            "indeed_api_key": _key_status(cfg.indeed_api_key, "INDEED_API_KEY"),
+            "glassdoor_api_key": _key_status(cfg.glassdoor_api_key, "GLASSDOOR_API_KEY"),
         }
 
 
 @router.put("")
-def update_settings(body: dict):
+def update_settings(body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as session:
         cfg = _get_or_create(session)
         for k, v in body.items():
             if k in ALLOWED:
+                if k in _KEY_FIELDS and v == "***":
+                    continue
+                if k in _KEY_FIELDS and v:
+                    v = encrypt_key(v)
                 setattr(cfg, k, v)
         session.add(cfg)
         session.commit()

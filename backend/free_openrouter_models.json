@@ -1,0 +1,126 @@
+{
+  "free_openrouter_models": [
+    {
+      "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "use_case": "reasoning"
+    },
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "use_case": "general reasoning"
+    },
+    {
+      "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+      "use_case": "general"
+    },
+    {
+      "model": "nvidia/nemotron-nano-12b-v2-vl:free",
+      "use_case": "vision-language"
+    },
+    {
+      "model": "nvidia/nemotron-nano-9b-v2:free",
+      "use_case": "general"
+    },
+    {
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "use_case": "heavy reasoning"
+    },
+    {
+      "model": "google/gemma-4-31b-it:free",
+      "use_case": "general"
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "use_case": "general"
+    },
+    {
+      "model": "google/gemma-3-27b-it:free",
+      "use_case": "general"
+    },
+    {
+      "model": "google/gemma-3-12b-it:free",
+      "use_case": "lightweight"
+    },
+    {
+      "model": "google/gemma-3-4b-it:free",
+      "use_case": "edge"
+    },
+    {
+      "model": "google/gemma-3n-e4b-it:free",
+      "use_case": "edge vision"
+    },
+    {
+      "model": "google/gemma-3n-e2b-it:free",
+      "use_case": "edge vision"
+    },
+    {
+      "model": "meta-llama/llama-3.3-70b-instruct:free",
+      "use_case": "instruct"
+    },
+    {
+      "model": "meta-llama/llama-3.2-3b-instruct:free",
+      "use_case": "lightweight"
+    },
+    {
+      "model": "openai/gpt-oss-120b:free",
+      "use_case": "general reasoning"
+    },
+    {
+      "model": "openai/gpt-oss-20b:free",
+      "use_case": "light general"
+    },
+    {
+      "model": "qwen/qwen3-coder:free",
+      "use_case": "coding / structured output"
+    },
+    {
+      "model": "qwen/qwen3-next-80b-a3b-instruct:free",
+      "use_case": "instruct"
+    },
+    {
+      "model": "liquid/lfm-2.5-1.2b-thinking:free",
+      "use_case": "thinking"
+    },
+    {
+      "model": "liquid/lfm-2.5-1.2b-instruct:free",
+      "use_case": "lightweight fallback"
+    },
+    {
+      "model": "z-ai/glm-4.5-air:free",
+      "use_case": "general"
+    },
+    {
+      "model": "arcee-ai/trinity-large-preview:free",
+      "use_case": "general"
+    },
+    {
+      "model": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+      "use_case": "general"
+    },
+    {
+      "model": "nousresearch/hermes-3-llama-3.1-405b:free",
+      "use_case": "heavy reasoning"
+    }
+  ],
+  "career_studio_recommended": [
+    {
+      "model": "qwen/qwen3-coder:free",
+      "reason": "best for coding and structured JSON output"
+    },
+    {
+      "model": "openai/gpt-oss-120b:free",
+      "reason": "best general reasoning for resume analysis and cover letters"
+    },
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "reason": "alternative heavy reasoning model"
+    },
+    {
+      "model": "liquid/lfm-2.5-1.2b-instruct:free",
+      "reason": "lightweight fallback for simple tasks"
+    },
+    {
+      "model": "meta-llama/llama-3.2-3b-instruct:free",
+      "reason": "lightweight fallback for simple tasks"
+    }
+  ]
+}

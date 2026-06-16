@@ -4,7 +4,7 @@ import os
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -42,3 +42,21 @@ def get_current_user_optional(
         return session.get(User, user_id)
     except (JWTError, KeyError, ValueError):
         return None
+
+
+def get_current_user(
+    token: Optional[str] = Depends(oauth2_scheme),
+    session: Session = Depends(db.get_session_dep),
+) -> User:
+    """Required auth dependency. Raises 401 if token is missing or invalid."""
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload["sub"])
+        user = session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except (JWTError, KeyError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid token")

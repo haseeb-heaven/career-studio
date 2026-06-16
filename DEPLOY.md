@@ -51,6 +51,7 @@
 
 | Variable | Where | Description |
 |---|---|---|
+| `SECRET_KEY` | Backend | **Required in production.** Random 32+ character string used for JWT signing and API-key encryption. If unset, the insecure development default is used — all tokens and stored API keys are compromised. Generate with: `openssl rand -hex 32` |
 | `DATABASE_URL` | Backend | SQLite path or PostgreSQL URL |
 | `CORS_ORIGINS` | Backend | Comma-separated allowed frontend origins |
 | `VITE_API_BASE_URL` | Frontend build | Full URL to backend API |

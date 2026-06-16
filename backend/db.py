@@ -1,10 +1,23 @@
-from sqlmodel import create_engine, SQLModel, Session
-from sqlalchemy import text
-from contextlib import contextmanager
+import logging
 import os
+import sqlite3
+from contextlib import contextmanager
+from sqlmodel import create_engine, SQLModel, Session
+from sqlalchemy import event, text
+from sqlalchemy.engine import Engine
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./career_studio.db")
+_logger = logging.getLogger(__name__)
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./career_studio_new.db")
 engine = create_engine(DATABASE_URL, echo=False)
+
+
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 def create_db_and_tables():
@@ -20,6 +33,9 @@ def migrate_db():
         ("local_for_simple","INTEGER DEFAULT 1"),
         ("adzuna_app_id",  "TEXT DEFAULT ''"),
         ("adzuna_app_key", "TEXT DEFAULT ''"),
+        ("linkedin_api_key", "TEXT DEFAULT ''"),
+        ("indeed_api_key", "TEXT DEFAULT ''"),
+        ("glassdoor_api_key", "TEXT DEFAULT ''"),
     ]
     new_profile_cols = [
         ("user_id", "INTEGER"),
@@ -31,16 +47,18 @@ def migrate_db():
                 if col not in existing:
                     conn.execute(text(f"ALTER TABLE settings ADD COLUMN {col} {defn}"))
             conn.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.error("Failed to migrate settings table: %s", exc)
+            raise
         try:
             existing = {row[1] for row in conn.execute(text("PRAGMA table_info(profile)")).fetchall()}
             for col, defn in new_profile_cols:
                 if col not in existing:
                     conn.execute(text(f"ALTER TABLE profile ADD COLUMN {col} {defn}"))
             conn.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.error("Failed to migrate profile table: %s", exc)
+            raise
 
 
 @contextmanager

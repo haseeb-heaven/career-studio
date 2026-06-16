@@ -36,7 +36,7 @@ backend/career_studio.log
 backend/*.log
 
 # Claude
-.claude/launch.json
+.claude/
 
 # Test Fixtures (containing personal/portfolio data)
 tests/fixtures/*
@@ -50,7 +50,13 @@ backend/test_app.py
 backend/test_db.py
 backend/test_import.py
 backend/test_sqlmodel.py
-testsprite_tests/*
+testsprite_tests/tmp/
+
+# Temporary files and folders
+tmp/
+.tmp/
+*.tmp
+*.temp
 
 # Local log files
 *.log

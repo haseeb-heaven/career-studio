@@ -81,7 +81,7 @@
       },
       {
         "type": "action",
-        "description": "Upload a supported resume file"
+        "description": "Upload the resume file at D:\\Code\\career-studio-ai\\testsprite_tests\\fixtures\\sample_resume.pdf using the file upload control"
       },
       {
         "type": "assertion",
@@ -221,16 +221,48 @@
   {
     "id": "TC008",
     "title": "Open the password reset view from a reset link",
-    "description": "This verifies that a reset-token deep link opens the password reset view and allows the user to submit a new password.",
+    "description": "This verifies that the forgot-password UI flow produces a real reset link, clicking it opens the password reset view, and the user can submit a new password. Uses a dedicated reset-test account (tc008-reset-user) to avoid breaking the shared test account.",
     "category": "Login & Account Access",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to /?token=<jwt>"
+        "description": "Navigate to /"
       },
       {
         "type": "action",
-        "description": "Fill in the new password field with a valid new password"
+        "description": "Switch to the 'Create Account' tab and register a new account with username 'tc008-reset-user' and password 'OldPass123' to create a fresh account for this test"
+      },
+      {
+        "type": "action",
+        "description": "Sign out after successful registration"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Forgot Password?' button on the login screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with 'tc008-reset-user'"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Send Reset Link' button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the success message with a reset link is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Click here to reset your password' link in the success message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the Set New Password view is shown"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the new password field with 'NewPassword123'"
       },
       {
         "type": "action",
@@ -357,7 +389,7 @@
   {
     "id": "TC012",
     "title": "Generate a resume analysis for a loaded profile",
-    "description": "This test verifies that a user can open the analysis section for an imported profile and receive a completed AI resume analysis with key findings.",
+    "description": "This test verifies that a user can load a profile, configure an AI provider in the Settings tab (only visible after a profile is loaded in the editor sidebar), and receive a completed AI resume analysis. IMPORTANT: Settings tab is in the profile editor sidebar under System section — it is NOT accessible from the login screen.",
     "category": "Profile Analysis",
     "steps": [
       {
@@ -366,11 +398,43 @@
       },
       {
         "type": "action",
-        "description": "Load a profile into the editor"
+        "description": "Log in with username 'haseeb-heaven' and password '123456'"
       },
       {
         "type": "action",
-        "description": "Open the analysis section"
+        "description": "Import a resume file (D:\\Code\\career-studio-ai\\testsprite_tests\\fixtures\\sample_resume.pdf) to load a profile into the editor first"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile editor sidebar is visible with tabs including Settings"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Settings' tab (gear icon, under System section in the sidebar)"
+      },
+      {
+        "type": "action",
+        "description": "Select 'openrouter' as the AI provider"
+      },
+      {
+        "type": "action",
+        "description": "Enter the OPENROUTER_API_KEY value (from env) in the API key field"
+      },
+      {
+        "type": "action",
+        "description": "Save the AI settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify settings saved successfully"
+      },
+      {
+        "type": "action",
+        "description": "Import the resume file at D:\\Code\\career-studio-ai\\testsprite_tests\\fixtures\\sample_resume.pdf to load a profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Analysis' tab in the sidebar"
       },
       {
         "type": "action",

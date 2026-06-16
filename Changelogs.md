@@ -4,6 +4,26 @@ All notable changes to the **AI Career Studio** project will be documented in th
 
 ---
 
+## [2.3.0-gh] - 2026-06-17
+
+### Added
+- Expanded job board sources from 2 to 11+ providers: Himalayas (with salary data), The Muse, Jobicy, We Work Remotely (Tier 1 no-auth); Findwork, Jooble (Tier 2 API key); LinkedIn, Indeed, Glassdoor, Google Jobs (deep links).
+- Added `salary` and `is_deep_link` fields to `JobMatch` model.
+- Async parallel job fetching with `asyncio.gather` and `asyncio.to_thread`.
+- Deduplication of job results by `(title, company)` key.
+- Vite dev server reads `FRONTEND_HOST` and `FRONTEND_PORT` from root `.env`.
+- `scripts/sync-testsprite-env.js` to keep TestSprite config in sync with `.env`.
+- 22 new backend unit tests covering deduplication, new job sources, and deep links (33 total passing).
+- Fixed TestSprite frontend tests TC003, TC008, TC012 — TC008 now uses proper forgot-password UI flow with dedicated reset account, TC003 and TC012 use synthetic PDF upload for cloud test environment.
+
+### Changed
+- `backend/routers/jobs_router.py` fully rewritten as async endpoint with parallel fetching.
+- `_SUPPORTED_PORTALS` expanded to include all 11+ sources.
+- TestSprite test plan updated with correct step sequences for TC003, TC008, TC012.
+- `.gitignore` updated to track TestSprite test files while excluding `testsprite_tests/tmp/`.
+
+---
+
 ## [2.2.0-gh] - 2026-06-16
 ### Added
 - Integrated **TestSprite** MCP server configuration in `mcp_config.json` with the required `API_KEY` to automate UI and API tests.

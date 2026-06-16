@@ -45,11 +45,12 @@ tests/fixtures/*
 docs/superpowers/
 
 # Local dev / test scripts (not for repo)
-run_backend_8003.py
+scratch/*
 backend/test_app.py
 backend/test_db.py
 backend/test_import.py
 backend/test_sqlmodel.py
+testsprite_tests/*
 
 # Local log files
 *.log
@@ -62,3 +63,6 @@ testsprite_tests/tmp/execution.lock
 testsprite_tests/tmp/mcp.log
 testsprite_tests/tmp/test_results.json
 testsprite_tests/testsprite-mcp-test-report.html
+
+*.yaml
+*.log

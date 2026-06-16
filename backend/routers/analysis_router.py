@@ -28,7 +28,7 @@ def _get_profile(pid: int, session: Session) -> Profile:
 def analyze(profile_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
 
     system = (
@@ -84,7 +84,7 @@ def generate_cover_letter(
 ):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
 
     system = (
@@ -125,7 +125,7 @@ def generate_cover_letter(
 def list_cover_letters(profile_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         rows = s.exec(select(CoverLetter).where(CoverLetter.profile_id == profile_id)).all()
         return [
             {
@@ -144,7 +144,7 @@ def delete_cover_letter(
 ):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         cl = s.get(CoverLetter, cl_id)
         if not cl or cl.profile_id != profile_id:
             raise HTTPException(status_code=404)
@@ -169,7 +169,7 @@ def generate_roadmap(
 ):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
 
     plan_prompts = {
@@ -263,7 +263,7 @@ def generate_roadmap(
 def list_roadmaps(profile_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         rows = s.exec(select(CareerPlan).where(CareerPlan.profile_id == profile_id)).all()
         return [
             {
@@ -282,7 +282,7 @@ def delete_roadmap(
 ):
     with Session(engine) as s:
         p = _get_profile(profile_id, s)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         plan = s.get(CareerPlan, plan_id)
         if not plan or plan.profile_id != profile_id:
             raise HTTPException(status_code=404)

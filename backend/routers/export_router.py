@@ -24,7 +24,7 @@ def export_profile(profile_id: int, fmt: str, user: User = Depends(get_current_u
         p = session.get(Profile, profile_id)
         if not p:
             raise HTTPException(404, f"Profile {profile_id} not found")
-        _check_ownership(p, user)
+        _check_ownership(session, p, user)
         # Eagerly load relationships so exporter sees them
         _ = list(p.skills or [])
         _ = list(p.experience or [])

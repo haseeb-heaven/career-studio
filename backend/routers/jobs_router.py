@@ -322,7 +322,7 @@ def search_jobs(
         p = s.get(Profile, profile_id)
         if not p:
             raise HTTPException(status_code=404, detail="Profile not found")
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         s.refresh(p)
         skill_names = [sk.name for sk in (p.skills or [])]
 

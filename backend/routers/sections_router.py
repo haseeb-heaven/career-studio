@@ -31,7 +31,7 @@ def _profile_or_404(session: Session, profile_id: int) -> Profile:
 def add_skill(profile_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         skill = Skill(
             profile_id=profile_id,
             name=body.get("name", ""),
@@ -49,7 +49,7 @@ def add_skill(profile_id: int, body: dict, user: User = Depends(get_current_user
 def update_skill(profile_id: int, skill_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         skill = s.get(Skill, skill_id)
         if not skill or skill.profile_id != profile_id:
             raise HTTPException(404, "Skill not found")
@@ -69,7 +69,7 @@ def update_skill(profile_id: int, skill_id: int, body: dict, user: User = Depend
 def delete_skill(profile_id: int, skill_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         skill = s.get(Skill, skill_id)
         if not skill or skill.profile_id != profile_id:
             raise HTTPException(404, "Skill not found")
@@ -93,7 +93,7 @@ def _exp_dict(e: Experience) -> dict:
 def add_experience(profile_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         exp = Experience(
             profile_id=profile_id,
             company=body.get("company", ""),
@@ -116,7 +116,7 @@ def add_experience(profile_id: int, body: dict, user: User = Depends(get_current
 def update_experience(profile_id: int, exp_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         exp = s.get(Experience, exp_id)
         if not exp or exp.profile_id != profile_id:
             raise HTTPException(404, "Experience not found")
@@ -133,7 +133,7 @@ def update_experience(profile_id: int, exp_id: int, body: dict, user: User = Dep
 def delete_experience(profile_id: int, exp_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         exp = s.get(Experience, exp_id)
         if not exp or exp.profile_id != profile_id:
             raise HTTPException(404, "Experience not found")
@@ -151,7 +151,7 @@ def delete_experience(profile_id: int, exp_id: int, user: User = Depends(get_cur
 def add_bullet(profile_id: int, exp_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         exp = s.get(Experience, exp_id)
         if not exp or exp.profile_id != profile_id:
             raise HTTPException(404, "Experience not found")
@@ -166,7 +166,7 @@ def add_bullet(profile_id: int, exp_id: int, body: dict, user: User = Depends(ge
 def update_bullet(profile_id: int, exp_id: int, bullet_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         bullet = s.get(ExperienceBullet, bullet_id)
         if not bullet or bullet.experience_id != exp_id:
             raise HTTPException(404, "Bullet not found")
@@ -181,7 +181,7 @@ def update_bullet(profile_id: int, exp_id: int, bullet_id: int, body: dict, user
 def delete_bullet(profile_id: int, exp_id: int, bullet_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         bullet = s.get(ExperienceBullet, bullet_id)
         if not bullet or bullet.experience_id != exp_id:
             raise HTTPException(404, "Bullet not found")
@@ -204,7 +204,7 @@ def _proj_dict(p: Project) -> dict:
 def add_project(profile_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         proj = Project(
             profile_id=profile_id,
             name=body.get("name", ""),
@@ -223,7 +223,7 @@ def add_project(profile_id: int, body: dict, user: User = Depends(get_current_us
 def update_project(profile_id: int, proj_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         proj = s.get(Project, proj_id)
         if not proj or proj.profile_id != profile_id:
             raise HTTPException(404, "Project not found")
@@ -242,7 +242,7 @@ def update_project(profile_id: int, proj_id: int, body: dict, user: User = Depen
 def delete_project(profile_id: int, proj_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         proj = s.get(Project, proj_id)
         if not proj or proj.profile_id != profile_id:
             raise HTTPException(404, "Project not found")
@@ -265,7 +265,7 @@ def _edu_dict(ed: Education) -> dict:
 def add_education(profile_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         ed = Education(
             profile_id=profile_id,
             institution=body.get("institution", ""),
@@ -285,7 +285,7 @@ def add_education(profile_id: int, body: dict, user: User = Depends(get_current_
 def update_education(profile_id: int, edu_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         ed = s.get(Education, edu_id)
         if not ed or ed.profile_id != profile_id:
             raise HTTPException(404, "Education not found")
@@ -302,7 +302,7 @@ def update_education(profile_id: int, edu_id: int, body: dict, user: User = Depe
 def delete_education(profile_id: int, edu_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         ed = s.get(Education, edu_id)
         if not ed or ed.profile_id != profile_id:
             raise HTTPException(404, "Education not found")
@@ -322,7 +322,7 @@ def _cert_dict(c: Certification) -> dict:
 def add_certification(profile_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         cert = Certification(
             profile_id=profile_id,
             name=body.get("name", ""),
@@ -340,7 +340,7 @@ def add_certification(profile_id: int, body: dict, user: User = Depends(get_curr
 def update_certification(profile_id: int, cert_id: int, body: dict, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         cert = s.get(Certification, cert_id)
         if not cert or cert.profile_id != profile_id:
             raise HTTPException(404, "Certification not found")
@@ -357,7 +357,7 @@ def update_certification(profile_id: int, cert_id: int, body: dict, user: User =
 def delete_certification(profile_id: int, cert_id: int, user: User = Depends(get_current_user)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(p, user)
+        _check_ownership(s, p, user)
         cert = s.get(Certification, cert_id)
         if not cert or cert.profile_id != profile_id:
             raise HTTPException(404, "Certification not found")

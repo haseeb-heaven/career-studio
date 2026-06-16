@@ -11,7 +11,7 @@ from services import activity
 from logger import get_logger
 from routers.auth_utils import get_current_user
 from routers.profile_router import _check_ownership
-from crypto import decrypt_key
+from security_crypto import decrypt_key
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/profiles", tags=["jobs"])

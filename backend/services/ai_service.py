@@ -5,7 +5,7 @@ import urllib.request
 from sqlmodel import Session, select
 from db import engine
 from models import Settings
-from crypto import decrypt_key, _KEY_FIELDS
+from security_crypto import decrypt_key, _KEY_FIELDS
 
 
 def _friendly_api_error(e: Exception, provider: str) -> str:
@@ -47,11 +47,6 @@ def _load_settings() -> Settings:
 def _call_litellm(model: str, api_key: str | None, system: str, user: str, provider: str, api_base: str | None = None) -> str:
     try:
         import litellm
-    except ImportError:
-        raise RuntimeError(
-            "litellm package not installed. Run: pip install litellm"
-        )
-    try:
         litellm.telemetry = False
         litellm.logging = False
         
@@ -70,8 +65,75 @@ def _call_litellm(model: str, api_key: str | None, system: str, user: str, provi
             
         resp = litellm.completion(**kwargs)
         return resp.choices[0].message.content or ""
+    except ImportError:
+        # Fall back to using native libraries if litellm is not installed
+        try:
+            messages = [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ]
+            
+            clean_model = model
+            model_provider = provider.lower()
+            if "/" in model:
+                prefix, clean_model = model.split("/", 1)
+                if prefix in ["openai", "anthropic", "openrouter", "ollama"]:
+                    model_provider = prefix
+
+            if model_provider == "anthropic":
+                import anthropic
+                client = anthropic.Anthropic(api_key=api_key)
+                resp = client.messages.create(
+                    model=clean_model,
+                    max_tokens=4000,
+                    system=system,
+                    messages=[{"role": "user", "content": user}]
+                )
+                return "".join(block.text for block in resp.content if hasattr(block, "text"))
+
+            elif model_provider == "openrouter":
+                from openai import OpenAI
+                client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://openrouter.ai/api/v1"
+                )
+                resp = client.chat.completions.create(
+                    model=clean_model,
+                    messages=messages,
+                )
+                return resp.choices[0].message.content or ""
+
+            elif model_provider == "ollama":
+                import urllib.request
+                import json
+                url = f"{(api_base or 'http://localhost:11434').rstrip('/')}/api/chat"
+                payload = {
+                    "model": clean_model,
+                    "messages": messages,
+                    "stream": False
+                }
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=120) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    return res_data.get("message", {}).get("content", "")
+
+            else:
+                from openai import OpenAI
+                client = OpenAI(api_key=api_key)
+                resp = client.chat.completions.create(
+                    model=clean_model,
+                    messages=messages,
+                )
+                return resp.choices[0].message.content or ""
+        except Exception as e:
+            raise RuntimeError(_friendly_api_error(e, provider)) from e
     except Exception as e:
         raise RuntimeError(_friendly_api_error(e, provider)) from e
+
 
 
 def _call_ollama(base_url: str, model: str, system: str, user: str) -> str:

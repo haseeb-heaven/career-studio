@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { Profile, ImportResult, AuthUser } from "./types";
 
-const BASE = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8000/api";
+const BASE = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8001/api";
 
 // ---- Auth token management ----
 export function setAuthToken(token: string | null): void {
@@ -29,6 +29,16 @@ export async function login(username: string, password: string): Promise<TokenOu
   form.append("username", username);
   form.append("password", password);
   const res = await axios.post<TokenOut>(`${BASE}/auth/login`, form);
+  return res.data;
+}
+
+export async function forgotPassword(username: string): Promise<{ message: string; dev_reset_url?: string | null }> {
+  const res = await axios.post<{ message: string; dev_reset_url?: string | null }>(`${BASE}/auth/forgot-password`, { username });
+  return res.data;
+}
+
+export async function resetPassword(token: string, new_password: string): Promise<{ message: string }> {
+  const res = await axios.post<{ message: string }>(`${BASE}/auth/reset-password`, { token, new_password });
   return res.data;
 }
 
@@ -71,6 +81,14 @@ export async function deleteProfile(id: number): Promise<void> {
 export function exportUrl(profileId: number, fmt: string): string {
   return `${BASE}/profiles/${profileId}/export/${fmt}`;
 }
+
+export async function exportProfileBlob(profileId: number, fmt: string): Promise<Blob> {
+  const res = await axios.get(`${BASE}/profiles/${profileId}/export/${fmt}`, {
+    responseType: "blob",
+  });
+  return res.data;
+}
+
 
 // ---- Settings ----
 export async function getSettings(): Promise<Record<string, string>> {

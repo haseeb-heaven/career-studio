@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 
 _logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./career_studio.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./career_studio_new.db")
 engine = create_engine(DATABASE_URL, echo=False)
 
 

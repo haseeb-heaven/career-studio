@@ -207,6 +207,33 @@ _SECTION_MAP = {
     "achievements": "certifications",
     "honours": "certifications",
     "honors": "certifications",
+    "accomplishments": "certifications",
+    "professional development": "certifications",
+    # extra experience aliases
+    "career experience": "experience",
+    "recent experience": "experience",
+    "working experience": "experience",
+    # extra skills aliases
+    "languages": "skills",
+    "tools & technologies": "skills",
+    "skills & technologies": "skills",
+    "technical expertise": "skills",
+    "software skills": "skills",
+    "hard skills": "skills",
+    "soft skills": "skills",
+    "frameworks": "skills",
+    # extra education aliases
+    "educational background": "education",
+    "training": "education",
+    "academic history": "education",
+    # extra summary aliases
+    "introduction": "summary",
+    "professional profile": "summary",
+    "overview": "summary",
+    # extra projects aliases
+    "key projects": "projects",
+    "notable projects": "projects",
+    "academic projects": "projects",
 }
 
 # Date patterns  e.g. "Jan 2020", "2020", "01/2020", "January 2020"
@@ -219,8 +246,18 @@ _DATE_RE = re.compile(
 
 _BULLET_CHARS = set("•·▪▸►▶◆●○◦–-*›❖")
 _EMAIL_RE = re.compile(r"[\w.+\-]+@[\w.\-]+\.\w{2,}")
-_PHONE_RE = re.compile(r"(?:\+?\d[\d\s\-().]{7,}\d)")
+_PHONE_RE = re.compile(
+    r"(?:\+[\d\s\-().]{7,}\d)"           # +countrycode format: +1 555-555-5555
+    r"|(?:\(\d{3}\)\s*[\d\s\-]{6,}\d)"   # (555) 555-5555
+    r"|(?:\d{3}[.\-]\d{3}[.\-]\d{4})"    # 555-555-5555 or 555.555.5555
+    r"|(?<!\d)\d{10,}(?!\d)",             # 10+ consecutive digits (avoids year ranges)
+)
 _URL_RE = re.compile(r"https?://[^\s]+|linkedin\.com/[^\s]+|github\.com/[^\s]+", re.IGNORECASE)
+_DEGREE_RE = re.compile(
+    r"\b(bachelor|master|b\.?sc|m\.?sc|phd|b\.?eng|m\.?eng|b\.?tech|m\.?tech|"
+    r"diploma|associate|doctorate|mba|b\.?a|m\.?a|b\.?s|m\.?s)\b",
+    re.IGNORECASE,
+)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -370,8 +407,8 @@ def _heuristic_parse(words: list[dict], tables: list[list], text: str) -> Profil
                     profile.full_name = candidate
                     break
 
-    # ── Contact: regex scan of first 10 lines ──
-    for line in lines[:10]:
+    # ── Contact: regex scan of first 20 lines ──
+    for line in lines[:20]:
         em = _EMAIL_RE.search(line)
         if em and not profile.email:
             profile.email = em.group()
@@ -399,12 +436,15 @@ def _heuristic_parse(words: list[dict], tables: list[list], text: str) -> Profil
     current_exp: Experience | None = None
     current_proj: Project | None = None
     summary_lines: list[str] = []
+    # True immediately after we create an experience entry whose company is still unknown
+    exp_needs_company: bool = False
 
     for i, line in enumerate(all_lines):
         if i in line_to_section:
             current_section = line_to_section[i]
             current_exp = None
             current_proj = None
+            exp_needs_company = False
             continue
 
         sec = _is_section_header(line)
@@ -412,12 +452,18 @@ def _heuristic_parse(words: list[dict], tables: list[list], text: str) -> Profil
             current_section = sec
             current_exp = None
             current_proj = None
+            exp_needs_company = False
             continue
 
         clean = line.strip()
         if not clean:
             continue
-        if _looks_like_email_or_phone(clean):
+
+        # Skip email/phone lines ONLY before any named section is entered —
+        # they are the contact header we already scanned above.  Inside sections
+        # these lines carry real content (date ranges used to match the old broad
+        # regex and silently drop date lines from every section).
+        if not current_section and _looks_like_email_or_phone(clean):
             continue
 
         if current_section == "summary":
@@ -425,77 +471,146 @@ def _heuristic_parse(words: list[dict], tables: list[list], text: str) -> Profil
 
         elif current_section == "skills":
             text_part = _strip_bullet(clean)
+            # Strip "Category: " label before splitting (e.g. "Languages: Python, C++")
+            colon_pos = text_part.find(":")
+            comma_pos = text_part.find(",")
+            if colon_pos != -1 and (comma_pos == -1 or colon_pos < comma_pos):
+                text_part = text_part[colon_pos + 1:].strip()
+            if not text_part:
+                continue
             for sep in (",", "|", "•", "·", "/", ";"):
                 if sep in text_part:
                     for part in text_part.split(sep):
                         part = part.strip()
-                        if 2 <= len(part) <= 40 and not _DATE_RE.search(part):
+                        if 2 <= len(part) <= 60 and not _DATE_RE.search(part) and not _looks_like_date_line(part):
                             _skill_names.append(part)
                     break
             else:
-                if ":" in text_part:
-                    _, rest = text_part.split(":", 1)
-                    for p in [x.strip() for x in rest.split(",") if x.strip()]:
-                        if 2 <= len(p) <= 40:
-                            _skill_names.append(p)
-                elif 2 <= len(text_part) <= 40 and not _looks_like_date_line(text_part):
+                if 2 <= len(text_part) <= 60 and not _looks_like_date_line(text_part):
                     _skill_names.append(text_part)
 
         elif current_section == "experience":
-            role, company = "", ""
-            for sep in (" — ", " – ", " | ", " @ ", " at "):
-                if sep in clean:
-                    parts = clean.split(sep, 1)
-                    role, company = parts[0].strip(), parts[1].strip()
-                    break
-            is_bullet = clean[0] in _BULLET_CHARS or bool(re.match(r"^[-*+]\s", clean))
-            if is_bullet and current_exp is not None:
-                bullet_text = _strip_bullet(clean)
-                if bullet_text:
-                    current_exp.bullets.append(ExperienceBullet(text=bullet_text))
-            elif (role and company) or (
-                not _looks_like_date_line(clean) and not is_bullet and len(clean.split()) <= 8
-            ):
-                if not role:
-                    role = clean
-                    company = ""
-                start, end = _extract_date_range(clean)
+            is_bullet = (
+                (bool(clean) and clean[0] in _BULLET_CHARS)
+                or bool(re.match(r"^[-*+]\s", clean))
+            )
+            has_date = bool(_DATE_RE.search(clean))
+
+            if is_bullet:
+                if current_exp is not None:
+                    bullet_text = _strip_bullet(clean)
+                    if bullet_text:
+                        current_exp.bullets.append(ExperienceBullet(text=bullet_text))
+
+            elif has_date:
+                # Strip date tokens; remainder may be a company name on the same line
+                non_date = _DATE_RE.sub("", clean).strip(" \t-–—|,()./")
+                s, e = _extract_date_range(clean)
+                if current_exp is not None and not current_exp.start:
+                    current_exp.start = s
+                    current_exp.end = e
+                    if non_date and not current_exp.company and len(non_date.split()) <= 7:
+                        current_exp.company = non_date
+                    exp_needs_company = False
+                elif non_date and len(non_date.split()) <= 10:
+                    # Date + title on one line with no prior role entry
+                    exp = Experience(company="", role=non_date, start=s, end=e)
+                    exp.bullets = []
+                    profile.experience.append(exp)
+                    current_exp = exp
+                    exp_needs_company = False
+
+            elif exp_needs_company and current_exp is not None and len(clean.split()) <= 8:
+                # Short non-bullet non-date line right after a role → company name
+                current_exp.company = clean
+                exp_needs_company = False
+
+            elif len(clean.split()) <= 10 and not _looks_like_date_line(clean):
+                # New role / job title
+                role, company, start, end = clean, "", "", ""
+                for sep in (" — ", " – ", " | ", " @ "):
+                    if sep in clean:
+                        parts = clean.split(sep, 1)
+                        role = parts[0].strip()
+                        rest = parts[1].strip()
+                        company = _DATE_RE.sub("", rest).strip(" \t-–—|,()")
+                        start, end = _extract_date_range(rest)
+                        break
                 exp = Experience(company=company, role=role, start=start, end=end)
                 exp.bullets = []
                 profile.experience.append(exp)
                 current_exp = exp
-            elif _looks_like_date_line(clean) and current_exp and not current_exp.start:
-                s, e = _extract_date_range(clean)
-                current_exp.start = s
-                current_exp.end = e
-            elif current_exp is not None and not _looks_like_date_line(clean):
-                if (len(clean) > 20 and clean[0].islower()) or len(clean.split()) > 5:
+                exp_needs_company = not bool(company)
+
+            else:
+                # Long or date-heavy line → bullet for current experience
+                if current_exp is not None and len(clean) > 15:
                     current_exp.bullets.append(ExperienceBullet(text=clean))
+                exp_needs_company = False
 
         elif current_section == "education":
-            if _looks_like_date_line(clean) and profile.education:
+            has_date = bool(_DATE_RE.search(clean))
+            if has_date:
+                non_date = _DATE_RE.sub("", clean).strip(" \t-–—|,()./")
                 s, e = _extract_date_range(clean)
-                if not profile.education[-1].start:
+                if profile.education and not profile.education[-1].start:
                     profile.education[-1].start = s
                     profile.education[-1].end = e
+                    # Institution name may be embedded on the same line as dates
+                    if non_date and not profile.education[-1].institution:
+                        profile.education[-1].institution = non_date
+                elif non_date:
+                    deg, inst, field = "", non_date, ""
+                    for sep in (" — ", " – ", " | "):
+                        if sep in non_date:
+                            parts = non_date.split(sep, 1)
+                            deg, inst = parts[0].strip(), parts[1].strip()
+                            break
+                    m = re.match(r"(.+?)\s+in\s+(.+)", deg or inst, re.IGNORECASE)
+                    if m and deg:
+                        deg, field = m.group(1).strip(), m.group(2).strip()
+                    profile.education.append(Education(institution=inst, degree=deg, field=field, start=s, end=e))
             elif not _is_section_header(clean):
-                start, end = _extract_date_range(clean)
                 deg, inst, field = "", clean, ""
-                for sep in (" — ", " – ", " | ", ", "):
+                start, end = "", ""
+                for sep in (" — ", " – ", " | "):
                     if sep in clean:
                         parts = clean.split(sep, 1)
                         deg, inst = parts[0].strip(), parts[1].strip()
-                        inst = _DATE_RE.sub("", inst).strip(" -–—(),")
+                        inst = _DATE_RE.sub("", inst).strip(" \t-–—(),")
+                        start, end = _extract_date_range(clean)
                         break
-                m = re.match(r"(.+?)\s+in\s+(.+)", deg, re.IGNORECASE)
+                m = re.match(r"(.+?)\s+in\s+(.+)", deg or inst, re.IGNORECASE)
                 if m:
-                    deg, field = m.group(1).strip(), m.group(2).strip()
-                profile.education.append(Education(
-                    institution=inst, degree=deg, field=field, start=start, end=end
-                ))
+                    if deg:
+                        deg, field = m.group(1).strip(), m.group(2).strip()
+                    else:
+                        deg, field = m.group(1).strip(), m.group(2).strip()
+                        inst = ""
+                is_degree_line = bool(_DEGREE_RE.search(deg or inst))
+                if is_degree_line:
+                    if profile.education and not profile.education[-1].degree:
+                        # Attach degree to the most recent institution-only entry
+                        profile.education[-1].degree = deg or inst
+                        profile.education[-1].field = field
+                        if start and not profile.education[-1].start:
+                            profile.education[-1].start = start
+                        if end and not profile.education[-1].end:
+                            profile.education[-1].end = end
+                    else:
+                        profile.education.append(Education(institution="", degree=deg or inst, field=field, start=start, end=end))
+                else:
+                    if profile.education and not profile.education[-1].institution:
+                        # Attach institution to an existing degree-only entry
+                        profile.education[-1].institution = inst
+                    else:
+                        profile.education.append(Education(institution=inst, degree=deg, field=field, start=start, end=end))
 
         elif current_section == "projects":
-            is_bullet = clean[0] in _BULLET_CHARS or bool(re.match(r"^[-*+]\s", clean))
+            is_bullet = (
+                (bool(clean) and clean[0] in _BULLET_CHARS)
+                or bool(re.match(r"^[-*+]\s", clean))
+            )
             if is_bullet and current_proj is not None:
                 current_proj.description = (current_proj.description + " " + _strip_bullet(clean)).strip()
             elif not _looks_like_date_line(clean):

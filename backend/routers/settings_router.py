@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from db import engine
 from models import Settings, User
 from services.ai_service import ollama_available, list_ollama_models
-from crypto import encrypt_key, _KEY_FIELDS
+from security_crypto import encrypt_key, _KEY_FIELDS
 from routers.auth_utils import get_current_user
 
 router = APIRouter(prefix="/settings", tags=["settings"])

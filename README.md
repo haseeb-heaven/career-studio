@@ -1,142 +1,160 @@
-# Career Studio AI 🚀
-
 <div align="center">
 
-<img src="docs/logo.jpg" alt="Career Studio AI Logo" width="160" style="border-radius: 24px; margin-bottom: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
+<img src="docs/logo.jpg" alt="Career Studio AI" width="140" style="border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);" />
 
-### **A local-first, AI-ready career management platform.**
-*Upload any resume format → parse it into a structured profile → edit everything locally → export to 7 formats.*
+# Career Studio AI
 
-[![Python](https://img.shields.io/badge/Python-3.11+-3776ab?logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06b6d4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+**A local-first, AI-powered career management platform.**  
+Upload any resume → parse → edit → analyze with AI → export in 7 formats → match live jobs.
+
+<br/>
+
+[![Python](https://img.shields.io/badge/Python-3.11+-3776ab?logo=python&logoColor=white&style=flat-square)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white&style=flat-square)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white&style=flat-square)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white&style=flat-square)](https://typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06b6d4?logo=tailwindcss&logoColor=white&style=flat-square)](https://tailwindcss.com)
+[![SQLite](https://img.shields.io/badge/SQLite-local--first-003b57?logo=sqlite&logoColor=white&style=flat-square)](https://sqlite.org)
+[![Tests](https://img.shields.io/badge/tests-35%20passing-brightgreen?style=flat-square&logo=pytest&logoColor=white)](backend/tests/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+
+<br/>
+
+**[⚡ Quick Start](#-quick-start-local) · [☁️ Deploy](#️-deploy) · [📖 API Docs](#-api-reference) · [🗺️ Roadmap](#️-roadmap)**
 
 </div>
 
 ---
 
+## ✨ What It Does
 
-## ✨ What it does
+Career Studio AI is a **full-stack web application** that turns any resume file into a fully editable, AI-powered career profile — with zero cloud dependency, zero subscriptions, and zero data leaving your machine.
 
-Career Studio is a **full-stack desktop web app** that turns any resume file into a fully editable, exportable, AI-powered career profile — no cloud, no subscriptions, no data leaving your machine.
-
-| Step | What happens |
-|------|-------------|
-| **Upload** | Drag & drop a `.json`, `.csv`, `.xml`, `.docx`, or `.pdf` resume |
-| **Parse** | Backend extracts name, contact, skills, experience, projects, education, certifications |
-| **Edit** | Tabbed CRUD editor — change anything in the browser |
-| **AI Analysis** | Score your resume (0-100), get ATS keyword gaps, strengths & actionable suggestions |
-| **Cover Letter** | AI-generated, personalized cover letters by job title + company — saved with history |
-| **Roadmap** | Career roadmap, growth plan, or portfolio strategy for 1–10 year horizon |
-| **Jobs** | Live job matching from Remotive + Adzuna, scored by skill keyword overlap |
-| **Export** | One-click download in 7 formats: JSON, CSV, XML, DOCX, PDF, LaTeX, HTML Portfolio |
-| **Logs** | Every action (import, export, analyze, etc.) logged with timestamps |
-| **Settings** | Configure AI provider (OpenAI / Anthropic / OpenRouter), model, and API key |
+| Step | What Happens |
+|---|---|
+| **📤 Upload** | Drag & drop `.json`, `.csv`, `.xml`, `.docx`, or `.pdf` resume |
+| **🔍 Parse** | Extracts name, contact, skills, experience, projects, education, certifications |
+| **✏️ Edit** | 14-tab CRUD editor — change everything in the browser |
+| **🤖 AI Analysis** | Score resume (0–100), ATS keyword gaps, strengths & actionable suggestions |
+| **📝 Cover Letter** | AI-generated cover letters by job title + company — saved with history |
+| **🗺️ Roadmap** | Career roadmap and growth plan for 1–10 year horizon |
+| **💼 Jobs** | Live job matching from Remotive + Adzuna, scored by skill overlap |
+| **📦 Export** | One-click download in 7 formats: JSON, CSV, XML, DOCX, PDF, LaTeX, HTML Portfolio |
+| **📋 Logs** | Every action logged with timestamps |
+| **⚙️ Settings** | Configure AI provider: OpenAI, Anthropic, or OpenRouter |
 
 ---
 
 ## 📸 Screenshots
 
-### Upload Screen
-![Upload Screen](docs/screenshots/01-upload-screen.png)
+<div align="center">
 
-### Profile Editor
-![Profile Editor — Contact Tab](docs/screenshots/02-profile-editor.png)
+**Upload Screen**
 
-### Export Panel
-![Export Panel](docs/screenshots/03-export-panel.png)
+![Upload Screen](https://raw.githubusercontent.com/haseeb-heaven/career-studio-ai/develop/docs/screenshots/01-upload-screen.png)
 
----
+<br/>
 
-## 🏗️ Architecture
+**Profile Editor — 14-Tab Navigation**
 
-```
-career-studio/
-├── backend/                  # FastAPI + SQLite
-│   ├── models.py             # SQLModel ORM — 13 tables
-│   ├── db.py                 # SQLite engine + session
-│   ├── logger.py             # Python logging to stdout + file
-│   ├── main.py               # FastAPI app with CORS
-│   ├── parsers/              # Plugin registry — JSON, CSV, XML, DOCX, PDF
-│   ├── exporters/            # Plugin registry — JSON, CSV, XML, DOCX, PDF, LaTeX, HTML
-│   ├── services/
-│   │   ├── activity.py       # Activity log writer
-│   │   └── ai_service.py     # Unified OpenAI / Anthropic / OpenRouter interface
-│   ├── routers/
-│   │   ├── import_router.py  # POST /api/import
-│   │   ├── profile_router.py # GET/PATCH/DELETE /api/profiles/{id}
-│   │   ├── export_router.py  # GET /api/profiles/{id}/export/{fmt}
-│   │   ├── analysis_router.py# POST /analyze /cover-letter /roadmap; GET /score
-│   │   ├── jobs_router.py    # GET /api/profiles/{id}/jobs
-│   │   ├── logs_router.py    # GET/DELETE /api/logs
-│   │   └── settings_router.py# GET/PUT /api/settings
-│   └── tests/                # 35 pytest tests (TDD throughout)
-└── frontend/                 # React 18 + Vite + Tailwind CSS
-    └── src/
-        ├── api.ts            # Axios API client (all endpoints)
-        ├── types.ts          # TypeScript interfaces
-        ├── components/
-        │   ├── UploadScreen.tsx
-        │   ├── ProfileEditor.tsx  # 14-tab grouped navigation
-        │   ├── ExportPanel.tsx    # 7 formats incl. LaTeX + Portfolio
-        │   └── tabs/         # Contact, Summary, Skills, Experience, Projects,
-        │                     #   Education, Certifications, Analysis, CoverLetter,
-        │                     #   Roadmap, Jobs, Logs, Settings, Export
-        └── App.tsx
-```
+![Profile Editor](https://raw.githubusercontent.com/haseeb-heaven/career-studio-ai/develop/docs/screenshots/02-profile-editor.png)
+
+<br/>
+
+**Export Panel — 7 Formats**
+
+![Export Panel](https://raw.githubusercontent.com/haseeb-heaven/career-studio-ai/develop/docs/screenshots/03-export-panel.png)
+
+</div>
 
 ---
 
-## 🚀 Quick Start
+## ☁️ Deploy
+
+> 📖 **Full platform-by-platform guide with step-by-step instructions → [DEPLOYMENT.md](DEPLOYMENT.md)**
+
+### One-Click Deploy
+
+> ℹ️ Railway and Render one-click buttons require a published template. Until then, use the direct deploy links below which open the platform's GitHub import flow with this repo pre-filled.
+
+<div align="center">
+
+| Platform | Best For | Click to Deploy |
+|---|---|---|
+| **Railway** ⭐ Recommended | Full-stack (backend + frontend) | [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new?template=https://github.com/haseeb-heaven/career-studio-ai) |
+| **Render** | Full-stack (backend + frontend) | [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/haseeb-heaven/career-studio-ai) |
+| **Vercel** | Frontend only | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/haseeb-heaven/career-studio-ai) |
+
+</div>
+
+> ⚠️ **Vercel hosts the frontend only.** Deploy the backend separately on Railway or Render.
+
+### Required Environment Variables
+
+Set these in your platform dashboard after deploying:
+
+**Backend**
+```bash
+CORS_ORIGINS=https://your-frontend-url.vercel.app   # your frontend URL
+SECRET_KEY=your-random-32-char-secret               # for JWT/session security
+DATABASE_URL=sqlite:////data/career_studio.db       # optional, has default
+```
+
+**Frontend**
+```bash
+VITE_API_URL=https://your-backend.up.railway.app    # your backend URL
+```
+
+### Docker (Self-Hosted)
+
+```bash
+git clone https://github.com/haseeb-heaven/career-studio-ai.git
+cd career-studio-ai
+
+export CORS_ORIGINS=http://localhost
+docker-compose up -d
+
+# App running at http://localhost
+```
+
+---
+
+## 🚀 Quick Start (Local)
 
 ### Prerequisites
-
 - Python 3.11+
 - Node.js 18+
 
 ### 1. Clone
-
 ```bash
-git clone https://github.com/haseeb-heaven/career-studio.git
-cd career-studio
+git clone https://github.com/haseeb-heaven/career-studio-ai.git
+cd career-studio-ai
 ```
 
 ### 2. Backend
-
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv .venv
 
-# Activate (Windows)
+# Windows
 .venv\Scripts\activate
-# Activate (macOS/Linux)
+# macOS/Linux
 source .venv/bin/activate
 
-# Install dependencies
-pip install fastapi uvicorn sqlmodel pdfplumber python-docx reportlab
-
-# Run
+pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-Backend available at **http://localhost:8000**  
-Interactive API docs at **http://localhost:8000/docs**
+> API at **http://localhost:8000** · Swagger docs at **http://localhost:8000/docs**
 
 ### 3. Frontend
-
 ```bash
 cd frontend
-
 npm install
 npm run dev
 ```
 
-Frontend available at **http://localhost:5173**
+> App at **http://localhost:5173**
 
 ---
 
@@ -144,115 +162,137 @@ Frontend available at **http://localhost:5173**
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -v
+python -m pytest -v
 ```
 
 ```
 35 passed in 1.85s
 ```
 
-Tests cover: models, all 5 parsers, all 5 exporters, all API endpoints (import, CRUD, export).
+Covers: models, all 5 parsers, all 5 exporters, all REST endpoints.
+
+---
+
+## 🏗️ Architecture
+
+```
+career-studio-ai/
+├── backend/                     # FastAPI + SQLite
+│   ├── main.py                  # App entry — CORS, routers, startup
+│   ├── models.py                # SQLModel ORM — 13 tables
+│   ├── db.py                    # SQLite engine — DATABASE_URL from env
+│   ├── parsers/                 # Plugin registry: JSON · CSV · XML · DOCX · PDF
+│   ├── exporters/               # Plugin registry: JSON · CSV · XML · DOCX · PDF · LaTeX · HTML
+│   ├── services/
+│   │   ├── ai_service.py        # Unified OpenAI / Anthropic / OpenRouter interface
+│   │   └── activity.py          # Activity log writer
+│   ├── routers/
+│   │   ├── import_router.py     # POST /api/import
+│   │   ├── profile_router.py    # GET · PATCH · DELETE /api/profiles/{id}
+│   │   ├── export_router.py     # GET /api/profiles/{id}/export/{fmt}
+│   │   ├── analysis_router.py   # POST /analyze · /cover-letter · /roadmap
+│   │   ├── jobs_router.py       # GET /api/profiles/{id}/jobs
+│   │   ├── logs_router.py       # GET · DELETE /api/logs
+│   │   └── settings_router.py   # GET · PUT /api/settings
+│   └── tests/                   # 35 pytest tests
+└── frontend/                    # React 18 + Vite + TypeScript + Tailwind
+    └── src/
+        ├── api.ts               # Axios client — all endpoints
+        ├── types.ts             # TypeScript interfaces
+        ├── App.tsx
+        └── components/
+            ├── UploadScreen.tsx
+            ├── ProfileEditor.tsx  # 14-tab navigation
+            ├── ExportPanel.tsx
+            └── tabs/            # Contact · Summary · Skills · Experience · Projects
+                                 # Education · Certifications · Analysis · CoverLetter
+                                 # Roadmap · Jobs · Logs · Settings · Export
+```
 
 ---
 
 ## 📂 Supported Formats
 
-| Format | Parse (import) | Export (download) |
-|--------|:--------------:|:-----------------:|
-| JSON   | ✅ Full fidelity | ✅ |
-| CSV    | ✅ Full fidelity | ✅ |
-| XML    | ✅ Full fidelity | ✅ |
-| DOCX   | ✅ Best-effort  | ✅ Styled (blue/teal) |
-| PDF    | ✅ Best-effort  | ✅ Styled (blue/teal) |
-| LaTeX  | —               | ✅ Full `article` document |
-| HTML   | —               | ✅ Styled portfolio page |
+| Format | Import | Export |
+|---|:---:|:---:|
+| JSON | ✅ Full fidelity | ✅ |
+| CSV | ✅ Full fidelity | ✅ |
+| XML | ✅ Full fidelity | ✅ |
+| DOCX | ✅ Best-effort | ✅ Styled |
+| PDF | ✅ Best-effort | ✅ Styled |
+| LaTeX | — | ✅ Full `article` |
+| HTML Portfolio | — | ✅ Styled page |
 
-> **Best-effort** means the parser extracts what it can from design-heavy layouts. Always review the parsed profile and correct anything missed. JSON/CSV/XML imports are lossless.
+> **Best-effort** = parser extracts what it can from design-heavy files. JSON/CSV/XML imports are lossless.
 
 ---
 
 ## 🔌 API Reference
 
 ### Import
-
 ```http
 POST /api/import
 Content-Type: multipart/form-data
-
 file: <binary>
-```
-
-```json
-{ "profile_id": 1, "warnings": [] }
+→ { profile_id: 1, warnings: [] }
 ```
 
 ### Profile CRUD
-
 ```http
-GET    /api/profiles              # List all profiles
-GET    /api/profiles/{id}         # Full profile with all relations
-PATCH  /api/profiles/{id}         # Update contact/summary/meta fields
-DELETE /api/profiles/{id}         # Delete (cascades to all children)
+GET    /api/profiles           # List all profiles
+GET    /api/profiles/{id}      # Full profile with all relations
+PATCH  /api/profiles/{id}      # Update contact / summary / meta
+DELETE /api/profiles/{id}      # Cascade-delete profile + all children
 ```
 
 ### Export
-
 ```http
 GET /api/profiles/{id}/export/{fmt}
-# fmt ∈ { json | csv | xml | docx | pdf | latex | tex | html | portfolio }
-# Returns file download with correct Content-Disposition header
+# fmt ∈ { json | csv | xml | docx | pdf | latex | html | portfolio }
 ```
 
 ### AI Analysis
-
 ```http
-POST /api/profiles/{id}/analyze          # Returns score, strengths, weaknesses, suggestions, ats_keywords
-GET  /api/profiles/{id}/score            # Same as analyze (GET shortcut)
+POST /api/profiles/{id}/analyze          # score, strengths, weaknesses, ats_keywords
 POST /api/profiles/{id}/cover-letter     # body: { job_title, company, extra_notes }
-GET  /api/profiles/{id}/cover-letters    # List saved cover letters
-DELETE /api/profiles/{id}/cover-letters/{cl_id}
+GET  /api/profiles/{id}/cover-letters    # list saved
 POST /api/profiles/{id}/roadmap          # body: { plan_type, target_role, years_horizon }
-GET  /api/profiles/{id}/roadmaps         # List saved roadmaps
-DELETE /api/profiles/{id}/roadmaps/{plan_id}
+GET  /api/profiles/{id}/roadmaps         # list saved
 ```
 
 ### Jobs
-
 ```http
-GET /api/profiles/{id}/jobs?limit=20     # Live search Remotive + Adzuna, returns scored JobMatch list
+GET /api/profiles/{id}/jobs?limit=20     # Remotive + Adzuna · scored by skill overlap
 ```
 
-### Logs & Settings
-
+### Settings & Logs
 ```http
-GET    /api/logs?limit=100   # Activity log entries
-DELETE /api/logs             # Clear all logs
-GET    /api/settings         # Current AI provider config (keys masked)
-PUT    /api/settings         # Update provider, model, api_key
+GET    /api/settings    # AI config (keys masked)
+PUT    /api/settings    # Update provider / model / api_key
+GET    /api/logs        # Activity log
+DELETE /api/logs        # Clear all
 ```
 
 ---
 
-## 🗂️ Data Model
+## 🗄️ Data Model
 
 ```
 Profile
-  ├── ContactLink[]      label, url
-  ├── Skill[]            name, category, years
+  ├── ContactLink[]       label, url
+  ├── Skill[]             name, category, years
   ├── Experience[]
   │     └── ExperienceBullet[]   text
-  ├── Project[]          name, description, link, tech (JSON array)
-  ├── Education[]        institution, degree, field, start, end
-  ├── Certification[]    name, issuer, date
-  ├── CoverLetter[]      job_title, company, content
-  └── CareerPlan[]       plan_type, content
+  ├── Project[]           name, description, link, tech[]
+  ├── Education[]         institution, degree, field, start, end
+  ├── Certification[]     name, issuer, date
+  ├── CoverLetter[]       job_title, company, content
+  └── CareerPlan[]        plan_type, content
 
-Settings              ai_provider, ai_model, api_key (per-provider)
-ActivityLog           action, detail, profile_id, created_at
-JobMatch              title, company, location, url, description, source, match_score
+Settings      ai_provider · ai_model · api_key (masked on GET)
+ActivityLog   action · detail · profile_id · created_at
+JobMatch      title · company · location · url · source · match_score
 ```
-
-All profile-linked tables use cascade-delete so removing a profile cleans up every child record.
 
 ---
 
@@ -260,19 +300,21 @@ All profile-linked tables use cascade-delete so removing a profile cleans up eve
 
 ### Backend
 | Library | Purpose |
-|---------|---------|
+|---|---|
 | FastAPI | REST API framework |
-| SQLModel | ORM (built on SQLAlchemy 2 + Pydantic) |
-| SQLite | Local database (zero-config) |
+| SQLModel | ORM (SQLAlchemy 2 + Pydantic) |
+| SQLite | Zero-config local database |
 | pdfplumber | PDF text extraction |
 | python-docx | DOCX read/write |
 | ReportLab | Styled PDF generation |
+| openai | OpenAI + OpenRouter client |
+| anthropic | Anthropic Claude client |
 
 ### Frontend
 | Library | Purpose |
-|---------|---------|
+|---|---|
 | React 18 | UI framework |
-| TypeScript | Type safety |
+| TypeScript 5 | Type safety |
 | Vite | Build tool |
 | Tailwind CSS 3 | Utility-first styling |
 | Axios | HTTP client |
@@ -282,54 +324,31 @@ All profile-linked tables use cascade-delete so removing a profile cleans up eve
 ## 🌿 Branches
 
 | Branch | Purpose |
-|--------|---------|
+|---|---|
 | `main` | Stable releases |
-| `develop` | Active development |
+| `develop` | Active feature development |
+| `deploy/cloud` | Cloud deployment configs (Railway · Render · Fly.io) |
 
 ---
 
-## 💡 Dev Note
+## 🗺️ Roadmap
 
-> This project was **entirely built by [Claude Code](https://claude.ai/code)** — Anthropic's agentic coding CLI — using a test-driven, subagent-driven development workflow. Every file, test, fix, and architectural decision was driven through Claude Code with zero manual code written.
->
-> Special love and gratitude to the teams behind **Claude Fable** and **Claude Mythos** — the models pushing the frontier of what AI-assisted engineering can be. This project is a testament to what's possible when great models meet great tooling.
->
-> Built with ❤️ using Claude Code · Slice 2 complete — full AI-powered career platform.
-
----
-
-## 🛠️ Tech Stack (added in Slice 2)
-
-### Backend additions
-| Library | Purpose |
-|---------|---------|
-| openai | OpenAI + OpenRouter API client |
-| anthropic | Anthropic Claude API client |
-
-### New API endpoints
-15 REST endpoints total across import, profiles, export, analysis, jobs, logs, settings.
-
----
-
-## 📋 Roadmap (Slice 3+)
-
-- [x] ~~AI analysis — score resume, suggest improvements (OpenAI / Anthropic / OpenRouter)~~ ✅ Done
-- [x] ~~Cover letter generator~~ ✅ Done
-- [x] ~~Career roadmap & growth plan generator~~ ✅ Done
-- [x] ~~Live job matching (Remotive + Adzuna)~~ ✅ Done
-- [x] ~~LaTeX export~~ ✅ Done
-- [x] ~~Portfolio HTML page generator~~ ✅ Done
-- [x] ~~Activity logs~~ ✅ Done
-- [ ] Multi-profile management UI (switch between profiles)
-- [ ] LinkedIn / Indeed job matching (OAuth)
-- [ ] AI interview prep (mock Q&A)
+- [x] AI resume analysis — score, ATS keywords, suggestions ✅
+- [x] Cover letter generator ✅
+- [x] Career roadmap & growth plan ✅
+- [x] Live job matching (Remotive + Adzuna) ✅
+- [x] LaTeX + HTML portfolio export ✅
+- [x] Activity logs ✅
+- [ ] Multi-profile management UI
+- [ ] AI interview prep — mock Q&A against your resume
+- [ ] LinkedIn / Indeed OAuth job matching
 - [ ] Salary benchmarking
 
 ---
 
 ## 📝 Changelog
 
-See the [Changelogs.md](Changelogs.md) file for the complete history of changes and updates.
+See [Changelogs.md](Changelogs.md) for complete history.
 
 ---
 
@@ -340,5 +359,11 @@ MIT © [Haseeb Mir](https://github.com/haseeb-heaven)
 ---
 
 <div align="center">
-  <sub>Made with ❤️ by <a href="https://github.com/haseeb-heaven">Haseeb Mir</a> · Built with <a href="https://claude.ai/code">Claude Code</a></sub>
+  <sub>
+    Made with ❤️ by <a href="https://github.com/haseeb-heaven">Haseeb Mir</a>
+    &nbsp;·&nbsp;
+    Built entirely with <a href="https://claude.ai/code">Claude Code</a>
+    &nbsp;·&nbsp;
+    <a href="DEPLOYMENT.md">🚀 Deploy Guide</a>
+  </sub>
 </div>

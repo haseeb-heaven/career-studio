@@ -147,10 +147,11 @@ def _fetch_adzuna(query: str, limit: int, app_id: str, app_key: str) -> list[dic
         return []
     try:
         encoded = urllib.parse.quote(query)
+        # Use what_and for multi-keyword and avoid query params that cause 400
         url = (
             f"https://api.adzuna.com/v1/api/jobs/us/search/1"
             f"?app_id={app_id}&app_key={app_key}"
-            f"&results_per_page={limit}&what={encoded}"
+            f"&results_per_page={limit}&what_and={encoded}"
         )
         req = urllib.request.Request(
             url,

@@ -27,6 +27,25 @@ def _friendly_api_error(e: Exception, provider: str) -> str:
     return f"{provider} API error: {msg}"
 
 
+def _friendly_api_error(e: Exception, provider: str) -> str:
+    """Return a human-readable error message for common API errors."""
+    msg = str(e)
+    if "401" in msg or "User not found" in msg or "Incorrect API key" in msg:
+        return (
+            f"{provider} API key is invalid or not found (401). "
+            "Please set a valid API key in the Settings tab or .env file. "
+            "Alternatively, use Ollama for local AI or switch to OpenRouter (free models available)."
+        )
+    if "429" in msg or "insufficient_quota" in msg or "exceeded your current quota" in msg:
+        return (
+            f"{provider} API quota exceeded (429). "
+            "Please check your billing at platform.openai.com or switch to OpenRouter/Anthropic."
+        )
+    if "403" in msg:
+        return f"{provider} access forbidden (403). Check your API key permissions."
+    return f"{provider} API error: {msg}"
+
+
 def _load_settings() -> Settings:
     with Session(engine) as s:
         cfg = s.exec(select(Settings)).first()
@@ -168,18 +187,59 @@ def list_ollama_models(base_url: str) -> list[str]:
 # ---------- External AI ----------
 
 def _call_openai(api_key: str, model: str, system: str, user: str) -> str:
-    litellm_model = f"openai/{model}" if not model.startswith("openai/") else model
-    return _call_litellm(litellm_model, api_key, system, user, "OpenAI")
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise RuntimeError(
+            "openai package not installed. Run: pip install openai"
+        )
+    try:
+        client = OpenAI(api_key=api_key)
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+        )
+        return resp.choices[0].message.content or ""
+    except Exception as e:
+        raise RuntimeError(_friendly_api_error(e, "OpenAI")) from e
 
 
 def _call_anthropic(api_key: str, model: str, system: str, user: str) -> str:
-    litellm_model = f"anthropic/{model}" if not model.startswith("anthropic/") else model
-    return _call_litellm(litellm_model, api_key, system, user, "Anthropic")
+    try:
+        import anthropic
+    except ImportError:
+        raise RuntimeError(
+            "anthropic package not installed. Run: pip install anthropic"
+        )
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model=model,
+            max_tokens=4096,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        return resp.content[0].text if resp.content else ""
+    except Exception as e:
+        raise RuntimeError(_friendly_api_error(e, "Anthropic")) from e
 
 
 def _call_openrouter(api_key: str, model: str, system: str, user: str) -> str:
-    litellm_model = f"openrouter/{model}" if not model.startswith("openrouter/") else model
-    return _call_litellm(litellm_model, api_key, system, user, "OpenRouter")
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise RuntimeError(
+            "openai package not installed. Run: pip install openai"
+        )
+    try:
+        client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+        )
+        return resp.choices[0].message.content or ""
+    except Exception as e:
+        raise RuntimeError(_friendly_api_error(e, "OpenRouter")) from e
 
 
 # Valid model name prefixes per provider (to reject junk values like 'openrouter/free')
@@ -196,10 +256,8 @@ def _valid_model(model: str, provider: str) -> str:
         if provider == "openrouter":
             return _OPENROUTER_DEFAULT
         return _OPENAI_DEFAULT
-    # OpenRouter models always have a '/' like 'meta-llama/...' or 'google/...'
     if provider == "openrouter" and "/" not in model:
         return _OPENROUTER_DEFAULT
-    # Reject obviously wrong values (shorter than 3 chars, or containing spaces)
     if len(model) < 3 or (" " in model and "/" not in model):
         if provider == "anthropic":
             return _ANTHROPIC_DEFAULT

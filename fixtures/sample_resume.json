@@ -1,0 +1,47 @@
+{
+  "full_name": "Haseeb Mir",
+  "email": "haseeb@example.com",
+  "phone": "+1-555-0100",
+  "location": "San Francisco, CA",
+  "summary": "Experienced software engineer with 6+ years building web applications, APIs, and developer tools. Skilled in JavaScript, TypeScript, React, Node.js.",
+  "skills": [
+    {"name": "JavaScript", "category": "Programming", "years": 6},
+    {"name": "TypeScript", "category": "Programming", "years": 4},
+    {"name": "React", "category": "Frontend", "years": 5},
+    {"name": "Node.js", "category": "Backend", "years": 5},
+    {"name": "Python", "category": "Programming", "years": 3}
+  ],
+  "experience": [
+    {
+      "company": "AI Career Studio",
+      "role": "Senior Software Engineer",
+      "start": "2023-01",
+      "end": "",
+      "location": "Remote",
+      "bullets": [
+        "Developed frontend components for resume upload, parsing, and editor UI.",
+        "Implemented local processing flows and export formats (JSON, PDF, DOCX)."
+      ]
+    },
+    {
+      "company": "ExampleCorp",
+      "role": "Software Engineer",
+      "start": "2020-03",
+      "end": "2022-12",
+      "location": "San Francisco, CA",
+      "bullets": [
+        "Built web applications and RESTful APIs, improved performance and UX."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "State University",
+      "degree": "B.S.",
+      "field": "Computer Science",
+      "start": "2016",
+      "end": "2020"
+    }
+  ],
+  "certifications": []
+}

@@ -9,7 +9,8 @@ from db import engine
 from models import Profile, JobMatch, Settings, User
 from services import activity
 from logger import get_logger
-from routers.auth_utils import get_current_user
+from typing import Optional
+from routers.auth_utils import get_current_user, get_current_user_optional
 from routers.profile_router import _check_ownership
 from security_crypto import decrypt_key
 
@@ -317,13 +318,16 @@ def search_jobs(
     job_title: str = Query(default=""),
     location: str = Query(default=""),
     portal: str = Query(default="all"),
-    user: User = Depends(get_current_user),
+    user: Optional[User] = Depends(get_current_user_optional),
 ):
     with Session(engine) as s:
         p = s.get(Profile, profile_id)
         if not p:
             raise HTTPException(status_code=404, detail="Profile not found")
-        _check_ownership(s, p, user)
+        if user:
+            _check_ownership(s, p, user)
+        elif p.user_id is not None:
+            raise HTTPException(status_code=403, detail="Forbidden")
         s.refresh(p)
         skill_names = [sk.name for sk in (p.skills or [])]
 

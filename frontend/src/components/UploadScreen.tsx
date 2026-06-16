@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import type { DragEvent } from "react";
 import type { AuthUser } from "../types";
 import { importFile, listProfiles, deleteProfile } from "../api";
+import { useToast } from "./Toast";
 
 interface Props {
   onImported: (profileId: number, warnings: string[]) => void;
@@ -21,6 +22,7 @@ const FEATURES = [
 ];
 
 export default function UploadScreen({ onImported, authUser, onLogout }: Props) {
+  const { toast } = useToast();
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ export default function UploadScreen({ onImported, authUser, onLogout }: Props) 
     setLoading(true);
     try {
       const result = await importFile(file);
+      toast("success", "Resume imported", "Profile created successfully");
       onImported(result.profile_id, result.warnings);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail

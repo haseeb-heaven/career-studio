@@ -43,3 +43,22 @@ tests/fixtures/*
 
 # Docs superpowers
 docs/superpowers/
+
+# Local dev / test scripts (not for repo)
+run_backend_8003.py
+backend/test_app.py
+backend/test_db.py
+backend/test_import.py
+backend/test_sqlmodel.py
+
+# Local log files
+*.log
+trace.log
+test_server*.log
+test_sqlmodel*.log
+
+# TestSprite temp/runtime files
+testsprite_tests/tmp/execution.lock
+testsprite_tests/tmp/mcp.log
+testsprite_tests/tmp/test_results.json
+testsprite_tests/testsprite-mcp-test-report.html

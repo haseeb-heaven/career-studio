@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Profile } from "../../types";
 import { patchProfile } from "../../api";
+import { useToast } from "../Toast";
 
 interface Props {
   profile: Profile;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function SummaryTab({ profile, onChange }: Props) {
+  const { toast } = useToast();
   const [text, setText] = useState(profile.summary ?? "");
   const [availability, setAvailability] = useState(profile.availability ?? "");
   const [compensation, setCompensation] = useState(profile.compensation ?? "");
@@ -18,6 +20,7 @@ export default function SummaryTab({ profile, onChange }: Props) {
     try {
       await patchProfile(profile.id, { summary: text, availability, compensation });
       onChange({ ...profile, summary: text, availability, compensation });
+      toast("success", "Summary saved", "");
     } finally {
       setSaving(false);
     }

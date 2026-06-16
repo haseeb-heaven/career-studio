@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Profile } from "../../types";
 import { patchProfile } from "../../api";
+import { useToast } from "../Toast";
 
 interface Props {
   profile: Profile;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function ContactTab({ profile, onChange }: Props) {
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [local, setLocal] = useState({
     full_name: profile.full_name,
@@ -36,6 +38,7 @@ export default function ContactTab({ profile, onChange }: Props) {
     try {
       await patchProfile(profile.id, local);
       onChange({ ...profile, ...local });
+      toast("success", "Contact saved", "");
     } finally {
       setSaving(false);
     }

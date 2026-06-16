@@ -8,7 +8,8 @@ from models import (
 )
 from services.activity import log_activity
 from logger import get_logger
-from routers.auth_utils import get_current_user
+from typing import Optional
+from routers.auth_utils import get_current_user, get_current_user_optional
 from routers.profile_router import _check_ownership
 import json
 
@@ -23,15 +24,23 @@ def _profile_or_404(session: Session, profile_id: int) -> Profile:
     return p
 
 
+def _assert_access(session: Session, p: Profile, user: Optional[User]) -> None:
+    """Allow authenticated users (with ownership claim) or guests on unclaimed profiles."""
+    if user:
+        _check_ownership(session, p, user)
+    elif p.user_id is not None:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 # ──────────────────────────────────────────────
 # SKILLS
 # ──────────────────────────────────────────────
 
 @router.post("/{profile_id}/skills", status_code=201)
-def add_skill(profile_id: int, body: dict, user: User = Depends(get_current_user)):
+def add_skill(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         skill = Skill(
             profile_id=profile_id,
             name=body.get("name", ""),
@@ -46,10 +55,10 @@ def add_skill(profile_id: int, body: dict, user: User = Depends(get_current_user
 
 
 @router.patch("/{profile_id}/skills/{skill_id}")
-def update_skill(profile_id: int, skill_id: int, body: dict, user: User = Depends(get_current_user)):
+def update_skill(profile_id: int, skill_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         skill = s.get(Skill, skill_id)
         if not skill or skill.profile_id != profile_id:
             raise HTTPException(404, "Skill not found")
@@ -66,10 +75,10 @@ def update_skill(profile_id: int, skill_id: int, body: dict, user: User = Depend
 
 
 @router.delete("/{profile_id}/skills/{skill_id}", status_code=204)
-def delete_skill(profile_id: int, skill_id: int, user: User = Depends(get_current_user)):
+def delete_skill(profile_id: int, skill_id: int, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         skill = s.get(Skill, skill_id)
         if not skill or skill.profile_id != profile_id:
             raise HTTPException(404, "Skill not found")
@@ -90,10 +99,10 @@ def _exp_dict(e: Experience) -> dict:
 
 
 @router.post("/{profile_id}/experience", status_code=201)
-def add_experience(profile_id: int, body: dict, user: User = Depends(get_current_user)):
+def add_experience(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         exp = Experience(
             profile_id=profile_id,
             company=body.get("company", ""),
@@ -113,10 +122,10 @@ def add_experience(profile_id: int, body: dict, user: User = Depends(get_current
 
 
 @router.patch("/{profile_id}/experience/{exp_id}")
-def update_experience(profile_id: int, exp_id: int, body: dict, user: User = Depends(get_current_user)):
+def update_experience(profile_id: int, exp_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         exp = s.get(Experience, exp_id)
         if not exp or exp.profile_id != profile_id:
             raise HTTPException(404, "Experience not found")
@@ -130,10 +139,10 @@ def update_experience(profile_id: int, exp_id: int, body: dict, user: User = Dep
 
 
 @router.delete("/{profile_id}/experience/{exp_id}", status_code=204)
-def delete_experience(profile_id: int, exp_id: int, user: User = Depends(get_current_user)):
+def delete_experience(profile_id: int, exp_id: int, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         exp = s.get(Experience, exp_id)
         if not exp or exp.profile_id != profile_id:
             raise HTTPException(404, "Experience not found")
@@ -148,10 +157,10 @@ def delete_experience(profile_id: int, exp_id: int, user: User = Depends(get_cur
 # ──────────────────────────────────────────────
 
 @router.post("/{profile_id}/experience/{exp_id}/bullets", status_code=201)
-def add_bullet(profile_id: int, exp_id: int, body: dict, user: User = Depends(get_current_user)):
+def add_bullet(profile_id: int, exp_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         exp = s.get(Experience, exp_id)
         if not exp or exp.profile_id != profile_id:
             raise HTTPException(404, "Experience not found")
@@ -163,10 +172,10 @@ def add_bullet(profile_id: int, exp_id: int, body: dict, user: User = Depends(ge
 
 
 @router.patch("/{profile_id}/experience/{exp_id}/bullets/{bullet_id}")
-def update_bullet(profile_id: int, exp_id: int, bullet_id: int, body: dict, user: User = Depends(get_current_user)):
+def update_bullet(profile_id: int, exp_id: int, bullet_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         bullet = s.get(ExperienceBullet, bullet_id)
         if not bullet or bullet.experience_id != exp_id:
             raise HTTPException(404, "Bullet not found")
@@ -178,10 +187,10 @@ def update_bullet(profile_id: int, exp_id: int, bullet_id: int, body: dict, user
 
 
 @router.delete("/{profile_id}/experience/{exp_id}/bullets/{bullet_id}", status_code=204)
-def delete_bullet(profile_id: int, exp_id: int, bullet_id: int, user: User = Depends(get_current_user)):
+def delete_bullet(profile_id: int, exp_id: int, bullet_id: int, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         bullet = s.get(ExperienceBullet, bullet_id)
         if not bullet or bullet.experience_id != exp_id:
             raise HTTPException(404, "Bullet not found")
@@ -201,10 +210,10 @@ def _proj_dict(p: Project) -> dict:
 
 
 @router.post("/{profile_id}/projects", status_code=201)
-def add_project(profile_id: int, body: dict, user: User = Depends(get_current_user)):
+def add_project(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         proj = Project(
             profile_id=profile_id,
             name=body.get("name", ""),
@@ -220,10 +229,10 @@ def add_project(profile_id: int, body: dict, user: User = Depends(get_current_us
 
 
 @router.patch("/{profile_id}/projects/{proj_id}")
-def update_project(profile_id: int, proj_id: int, body: dict, user: User = Depends(get_current_user)):
+def update_project(profile_id: int, proj_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         proj = s.get(Project, proj_id)
         if not proj or proj.profile_id != profile_id:
             raise HTTPException(404, "Project not found")
@@ -239,10 +248,10 @@ def update_project(profile_id: int, proj_id: int, body: dict, user: User = Depen
 
 
 @router.delete("/{profile_id}/projects/{proj_id}", status_code=204)
-def delete_project(profile_id: int, proj_id: int, user: User = Depends(get_current_user)):
+def delete_project(profile_id: int, proj_id: int, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         proj = s.get(Project, proj_id)
         if not proj or proj.profile_id != profile_id:
             raise HTTPException(404, "Project not found")
@@ -262,10 +271,10 @@ def _edu_dict(ed: Education) -> dict:
 
 
 @router.post("/{profile_id}/education", status_code=201)
-def add_education(profile_id: int, body: dict, user: User = Depends(get_current_user)):
+def add_education(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         ed = Education(
             profile_id=profile_id,
             institution=body.get("institution", ""),
@@ -282,10 +291,10 @@ def add_education(profile_id: int, body: dict, user: User = Depends(get_current_
 
 
 @router.patch("/{profile_id}/education/{edu_id}")
-def update_education(profile_id: int, edu_id: int, body: dict, user: User = Depends(get_current_user)):
+def update_education(profile_id: int, edu_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         ed = s.get(Education, edu_id)
         if not ed or ed.profile_id != profile_id:
             raise HTTPException(404, "Education not found")
@@ -299,10 +308,10 @@ def update_education(profile_id: int, edu_id: int, body: dict, user: User = Depe
 
 
 @router.delete("/{profile_id}/education/{edu_id}", status_code=204)
-def delete_education(profile_id: int, edu_id: int, user: User = Depends(get_current_user)):
+def delete_education(profile_id: int, edu_id: int, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         ed = s.get(Education, edu_id)
         if not ed or ed.profile_id != profile_id:
             raise HTTPException(404, "Education not found")
@@ -319,10 +328,10 @@ def _cert_dict(c: Certification) -> dict:
 
 
 @router.post("/{profile_id}/certifications", status_code=201)
-def add_certification(profile_id: int, body: dict, user: User = Depends(get_current_user)):
+def add_certification(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         cert = Certification(
             profile_id=profile_id,
             name=body.get("name", ""),
@@ -337,10 +346,10 @@ def add_certification(profile_id: int, body: dict, user: User = Depends(get_curr
 
 
 @router.patch("/{profile_id}/certifications/{cert_id}")
-def update_certification(profile_id: int, cert_id: int, body: dict, user: User = Depends(get_current_user)):
+def update_certification(profile_id: int, cert_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         cert = s.get(Certification, cert_id)
         if not cert or cert.profile_id != profile_id:
             raise HTTPException(404, "Certification not found")
@@ -354,10 +363,10 @@ def update_certification(profile_id: int, cert_id: int, body: dict, user: User =
 
 
 @router.delete("/{profile_id}/certifications/{cert_id}", status_code=204)
-def delete_certification(profile_id: int, cert_id: int, user: User = Depends(get_current_user)):
+def delete_certification(profile_id: int, cert_id: int, user: Optional[User] = Depends(get_current_user_optional)):
     with Session(engine) as s:
         p = _profile_or_404(s, profile_id)
-        _check_ownership(s, p, user)
+        _assert_access(s, p, user)
         cert = s.get(Certification, cert_id)
         if not cert or cert.profile_id != profile_id:
             raise HTTPException(404, "Certification not found")

@@ -1,13 +1,14 @@
 import db
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
+from typing import Optional
 from models import (
     Profile, Skill, Experience, ExperienceBullet,
     Project, Education, Certification, ContactLink, User,
 )
 from logger import get_logger
 from services.activity import log_activity
-from routers.auth_utils import get_current_user
+from routers.auth_utils import get_current_user, get_current_user_optional
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -44,11 +45,14 @@ def list_profiles(user: User = Depends(get_current_user)):
 
 
 @router.get("/{profile_id}")
-def get_profile(profile_id: int, user: User = Depends(get_current_user)):
+def get_profile(profile_id: int, user: Optional[User] = Depends(get_current_user_optional)):
     logger.info(f"GET profile {profile_id}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
-        _check_ownership(session, p, user)
+        if user:
+            _check_ownership(session, p, user)
+        elif p.user_id is not None:
+            raise HTTPException(status_code=403, detail="Forbidden")
         skills = list(p.skills or [])
         experience = list(p.experience or [])
         projects = list(p.projects or [])
@@ -99,12 +103,16 @@ def get_profile(profile_id: int, user: User = Depends(get_current_user)):
 
 
 @router.patch("/{profile_id}")
-def patch_profile(profile_id: int, body: dict, user: User = Depends(get_current_user)):
+def patch_profile(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
     ALLOWED = {"full_name", "email", "phone", "location", "summary", "availability", "compensation"}
     logger.info(f"PATCH profile {profile_id}: {list(body.keys())}")
     with Session(db.engine) as session:
         p = _get_or_404(session, profile_id)
-        _check_ownership(session, p, user)
+        if user:
+            _check_ownership(session, p, user)
+        elif p.user_id is not None:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        # else: unclaimed profile + no auth → allow edit
         for k, v in body.items():
             if k in ALLOWED:
                 setattr(p, k, v)

@@ -145,6 +145,10 @@ class Settings(SQLModel, table=True):
     linkedin_api_key: str = Field(default="")
     indeed_api_key: str = Field(default="")
     glassdoor_api_key: str = Field(default="")
+    findwork_api_key: str = Field(default="")
+    jooble_api_key: str = Field(default="")
+    reed_api_key: str = Field(default="")
+    usajobs_api_key: str = Field(default="")
     # Local AI (Ollama)
     use_local_ai: bool = Field(default=False)
     ollama_base_url: str = Field(default="http://localhost:11434")
@@ -199,6 +203,8 @@ class JobMatch(SQLModel, table=True):
     location: str = Field(default="")
     url: str = Field(default="")
     description: str = Field(default="")
-    source: str = Field(default="")      # adzuna | remotive | github | etc
+    source: str = Field(default="")      # adzuna | remotive | himalayas | etc
     match_score: float = Field(default=0.0)
+    salary: Optional[str] = Field(default=None)
+    is_deep_link: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

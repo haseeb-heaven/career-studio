@@ -1,7 +1,7 @@
 """CRUD endpoints for profile sub-sections: skills, experience, bullets, projects, education, certifications."""
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
-from db import engine
+import db
 from models import (
     Profile, Skill, Experience, ExperienceBullet,
     Project, Education, Certification, User,
@@ -38,7 +38,7 @@ def _assert_access(session: Session, p: Profile, user: Optional[User]) -> None:
 
 @router.post("/{profile_id}/skills", status_code=201)
 def add_skill(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         skill = Skill(
@@ -56,7 +56,7 @@ def add_skill(profile_id: int, body: dict, user: Optional[User] = Depends(get_cu
 
 @router.patch("/{profile_id}/skills/{skill_id}")
 def update_skill(profile_id: int, skill_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         skill = s.get(Skill, skill_id)
@@ -76,7 +76,7 @@ def update_skill(profile_id: int, skill_id: int, body: dict, user: Optional[User
 
 @router.delete("/{profile_id}/skills/{skill_id}", status_code=204)
 def delete_skill(profile_id: int, skill_id: int, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         skill = s.get(Skill, skill_id)
@@ -100,7 +100,7 @@ def _exp_dict(e: Experience) -> dict:
 
 @router.post("/{profile_id}/experience", status_code=201)
 def add_experience(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         exp = Experience(
@@ -123,7 +123,7 @@ def add_experience(profile_id: int, body: dict, user: Optional[User] = Depends(g
 
 @router.patch("/{profile_id}/experience/{exp_id}")
 def update_experience(profile_id: int, exp_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         exp = s.get(Experience, exp_id)
@@ -140,7 +140,7 @@ def update_experience(profile_id: int, exp_id: int, body: dict, user: Optional[U
 
 @router.delete("/{profile_id}/experience/{exp_id}", status_code=204)
 def delete_experience(profile_id: int, exp_id: int, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         exp = s.get(Experience, exp_id)
@@ -158,7 +158,7 @@ def delete_experience(profile_id: int, exp_id: int, user: Optional[User] = Depen
 
 @router.post("/{profile_id}/experience/{exp_id}/bullets", status_code=201)
 def add_bullet(profile_id: int, exp_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         exp = s.get(Experience, exp_id)
@@ -173,7 +173,7 @@ def add_bullet(profile_id: int, exp_id: int, body: dict, user: Optional[User] = 
 
 @router.patch("/{profile_id}/experience/{exp_id}/bullets/{bullet_id}")
 def update_bullet(profile_id: int, exp_id: int, bullet_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         bullet = s.get(ExperienceBullet, bullet_id)
@@ -188,7 +188,7 @@ def update_bullet(profile_id: int, exp_id: int, bullet_id: int, body: dict, user
 
 @router.delete("/{profile_id}/experience/{exp_id}/bullets/{bullet_id}", status_code=204)
 def delete_bullet(profile_id: int, exp_id: int, bullet_id: int, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         bullet = s.get(ExperienceBullet, bullet_id)
@@ -211,7 +211,7 @@ def _proj_dict(p: Project) -> dict:
 
 @router.post("/{profile_id}/projects", status_code=201)
 def add_project(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         proj = Project(
@@ -230,7 +230,7 @@ def add_project(profile_id: int, body: dict, user: Optional[User] = Depends(get_
 
 @router.patch("/{profile_id}/projects/{proj_id}")
 def update_project(profile_id: int, proj_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         proj = s.get(Project, proj_id)
@@ -249,7 +249,7 @@ def update_project(profile_id: int, proj_id: int, body: dict, user: Optional[Use
 
 @router.delete("/{profile_id}/projects/{proj_id}", status_code=204)
 def delete_project(profile_id: int, proj_id: int, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         proj = s.get(Project, proj_id)
@@ -272,7 +272,7 @@ def _edu_dict(ed: Education) -> dict:
 
 @router.post("/{profile_id}/education", status_code=201)
 def add_education(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         ed = Education(
@@ -292,7 +292,7 @@ def add_education(profile_id: int, body: dict, user: Optional[User] = Depends(ge
 
 @router.patch("/{profile_id}/education/{edu_id}")
 def update_education(profile_id: int, edu_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         ed = s.get(Education, edu_id)
@@ -309,7 +309,7 @@ def update_education(profile_id: int, edu_id: int, body: dict, user: Optional[Us
 
 @router.delete("/{profile_id}/education/{edu_id}", status_code=204)
 def delete_education(profile_id: int, edu_id: int, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         ed = s.get(Education, edu_id)
@@ -324,17 +324,24 @@ def delete_education(profile_id: int, edu_id: int, user: Optional[User] = Depend
 # ──────────────────────────────────────────────
 
 def _cert_dict(c: Certification) -> dict:
-    return {"id": c.id, "name": c.name, "issuer": c.issuer, "date": c.date}
+    return {
+        "id": c.id,
+        "cert_id": c.cert_id,
+        "name": c.name,
+        "issuer": c.issuer,
+        "date": c.date,
+    }
 
 
 @router.post("/{profile_id}/certifications", status_code=201)
 def add_certification(profile_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         cert = Certification(
             profile_id=profile_id,
             name=body.get("name", ""),
+            cert_id=body.get("cert_id", "") or "",
             issuer=body.get("issuer", ""),
             date=body.get("date", ""),
         )
@@ -347,13 +354,13 @@ def add_certification(profile_id: int, body: dict, user: Optional[User] = Depend
 
 @router.patch("/{profile_id}/certifications/{cert_id}")
 def update_certification(profile_id: int, cert_id: int, body: dict, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         cert = s.get(Certification, cert_id)
         if not cert or cert.profile_id != profile_id:
             raise HTTPException(404, "Certification not found")
-        for field in ("name", "issuer", "date"):
+        for field in ("name", "cert_id", "issuer", "date"):
             if field in body:
                 setattr(cert, field, body[field])
         s.add(cert)
@@ -364,7 +371,7 @@ def update_certification(profile_id: int, cert_id: int, body: dict, user: Option
 
 @router.delete("/{profile_id}/certifications/{cert_id}", status_code=204)
 def delete_certification(profile_id: int, cert_id: int, user: Optional[User] = Depends(get_current_user_optional)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _profile_or_404(s, profile_id)
         _assert_access(s, p, user)
         cert = s.get(Certification, cert_id)

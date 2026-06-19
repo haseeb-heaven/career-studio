@@ -76,21 +76,29 @@ interface Props {
   onBack: () => void;
   authUser?: AuthUser | null;
   onLogout?: () => void;
+  prefetchedProfile?: Profile | null;
 }
 
-export default function ProfileEditor({ profileId, importWarnings = [], onBack, authUser, onLogout }: Props) {
-  const [profile, setProfile] = useState<Profile | null>(null);
+export default function ProfileEditor({ profileId, importWarnings = [], onBack, authUser, onLogout, prefetchedProfile }: Props) {
+  const [profile, setProfile] = useState<Profile | null>(prefetchedProfile ?? null);
   const [activeTab, setActiveTab] = useState<TabName>("Contact");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!prefetchedProfile);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [warningsDismissed, setWarningsDismissed] = useState(false);
 
   useEffect(() => {
+    if (prefetchedProfile) {
+      setProfile(prefetchedProfile);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
     setLoading(true);
     getProfile(profileId)
-      .then(setProfile)
-      .finally(() => setLoading(false));
-  }, [profileId]);
+      .then((p) => { if (!cancelled) setProfile(p); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [profileId, prefetchedProfile]);
 
   if (loading) {
     return (

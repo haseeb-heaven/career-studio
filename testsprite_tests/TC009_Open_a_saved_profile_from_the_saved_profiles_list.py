@@ -40,46 +40,68 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Sign in using the login form by entering username 'haseeb-heaven' and password '123456', then click the 'Sign In' button.
+        # -> navigate
+        await page.goto("http://localhost:5173/?_reload=1")
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass
+        
+        # -> Fill the username field with 'haseeb-heaven', fill the password field with '123456', then click the 'Sign In' button to log in and reveal the main app UI.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Sign in using the login form by entering username 'haseeb-heaven' and password '123456', then click the 'Sign In' button.
+        # -> Fill the username field with 'haseeb-heaven', fill the password field with '123456', then click the 'Sign In' button to log in and reveal the main app UI.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Sign in using the login form by entering username 'haseeb-heaven' and password '123456', then click the 'Sign In' button.
+        # -> Fill the username field with 'haseeb-heaven', fill the password field with '123456', then click the 'Sign In' button to log in and reveal the main app UI.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Click the 'Continue as guest (no account)' link/button to enter the app without signing in and try to access the Saved Profiles list.
-        # Continue as guest (no account) button
-        elem = page.get_by_role('button', name='Continue as guest (no account)', exact=True)
+        # -> Sign in using the 'Sign In' form by entering username 'haseeb91' and password '123456', then submit and verify the main app UI (Saved Profiles list) appears.
+        # Enter username text field
+        elem = page.get_by_placeholder('Enter username', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("haseeb91")
+        
+        # -> Sign in using the 'Sign In' form by entering username 'haseeb91' and password '123456', then submit and verify the main app UI (Saved Profiles list) appears.
+        # Password password field
+        elem = page.get_by_placeholder('Password', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("123456")
+        
+        # -> Sign in using the 'Sign In' form by entering username 'haseeb91' and password '123456', then submit and verify the main app UI (Saved Profiles list) appears.
+        # Sign In button
+        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Open the saved profiles list by clicking the 'Open Saved Profile' button in the top-right of the page.
+        # -> Click the 'Open Saved Profile' button in the app header to open the saved profiles list.
         # 📂 Open Saved Profile button
         elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Click the '📂 Open Saved Profile' button to open the saved profiles list and verify a list or modal of saved profiles appears.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Click the 'Open Saved Profile' button in the top-right of the page to open the saved profiles list and verify a list or modal appears.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
+        # -> Click the 'Open →' button on the first profile card (visible label: 'Open →') to load that profile into the editor.
+        # Open → button
+        elem = page.get_by_text('haseebmir.hm@gmail.com · Profile #1', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Open →', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the selected profile is loaded in the editor
-        assert False, "Expected: Verify the selected profile is loaded in the editor (could not be verified on the page)"
+        
+        # --> Verify the selected profile is loaded in the editor
+        # Assert: Editor Full Name field is populated with 'Haseeb Mir'.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/div[1]/input").nth(0)).to_have_value("Haseeb Mir", timeout=15000), "Editor Full Name field is populated with 'Haseeb Mir'."
+        # Assert: Editor Email field is populated with 'haseebmir.hm@gmail.com'.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/div[2]/input").nth(0)).to_have_value("haseebmir.hm@gmail.com", timeout=15000), "Editor Email field is populated with 'haseebmir.hm@gmail.com'."
+        # Assert: Editor Phone field is populated with '+91-9315839785'.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/div[3]/input").nth(0)).to_have_value("+91-9315839785", timeout=15000), "Editor Phone field is populated with '+91-9315839785'."
+        # Assert: Editor Location field is populated with 'Mumbai, India'.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/div[4]/input").nth(0)).to_have_value("Mumbai, India", timeout=15000), "Editor Location field is populated with 'Mumbai, India'."
         await asyncio.sleep(5)
 
     finally:

@@ -4,9 +4,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from typing import Optional
+from sqlalchemy.exc import IntegrityError
 
 import db
-from models import User
+from models import User, Settings
 from routers.auth_utils import pwd_context, make_token, get_current_user_optional
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 class RegisterBody(BaseModel):
     username: str
     password: str
-    email: str = ""
+    email: Optional[str] = None
 
 
 class TokenOut(BaseModel):
@@ -42,14 +43,23 @@ def register(body: RegisterBody, session: Session = Depends(db.get_session_dep))
     existing = session.exec(select(User).where(User.username == username)).first()
     if existing:
         raise HTTPException(400, "Username already taken")
+    email = (body.email or "").strip()
+    if email and session.exec(select(User).where(User.email == email)).first():
+        raise HTTPException(400, "Email already taken")
     user = User(
         username=username,
-        email=body.email.strip(),
+        email=email,
         password_hash=pwd_context.hash(body.password),
     )
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    try:
+        session.commit()
+        session.refresh(user)
+        session.add(Settings(user_id=user.id))
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(400, "Username or email already taken")
     return TokenOut(
         access_token=make_token(user.id, user.username),
         user_id=user.id,
@@ -100,7 +110,8 @@ def forgot_password(body: ForgotPasswordBody, session: Session = Depends(db.get_
     # For now, always return the reset URL in development mode
     is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
     return {
-        "message": "Reset link ready — check uvicorn logs or use the dev_reset_url below" if not is_production else "Reset link sent to registered email address",
+        "message": ("Reset link sent — check uvicorn logs or use the dev_reset_url below" if not is_production
+                    else "Reset link sent to registered email address"),
         "dev_reset_url": None if is_production else reset_url,
     }
 

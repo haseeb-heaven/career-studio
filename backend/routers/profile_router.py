@@ -95,7 +95,7 @@ def get_profile(profile_id: int, user: Optional[User] = Depends(get_current_user
                 for ed in education
             ],
             "certifications": [
-                {"id": c.id, "name": c.name, "issuer": c.issuer, "date": c.date}
+                {"id": c.id, "cert_id": c.cert_id, "name": c.name, "issuer": c.issuer, "date": c.date}
                 for c in certifications
             ],
             "links": [{"id": lnk.id, "label": lnk.label, "url": lnk.url} for lnk in links],

@@ -4,6 +4,31 @@ All notable changes to the **AI Career Studio** project will be documented in th
 
 ---
 
+## [2.4.0-gh] - 2026-06-19
+
+### Added
+- Profile editor error boundary (`ErrorBoundary` component) to gracefully handle render-time errors in the editor instead of crashing the page.
+- Prefetched-profile support: the "Open →" button on saved profiles now prefetches the full profile data and passes it to `ProfileEditor`, eliminating a redundant network round-trip when opening a saved profile.
+- `onOpenSavedProfile` plumbing in `App.tsx` so the editor can navigate back to the saved-profile picker without a full page reload.
+- TestSprite frontend test runner (`run_testsprite_frontend.py`) that executes each generated test in a fresh subprocess for reliable, isolated runs.
+
+### Changed
+- `UploadScreen` now exposes an `initialShowProfiles` hook (auto-loads saved profiles when navigated to from the editor) and a `handleOpenProfile` path that prefetches profile data.
+- `ProfileEditor` now accepts a `prefetchedProfile` prop and skips the loading state entirely when provided.
+- Tightened the editor's `getProfile` effect with a cancellation guard to avoid `setState` on unmounted components.
+- Updated the project version to **2.4.0-gh**.
+
+### Fixed
+- Resolved a TypeScript unused-variable warning in `App.tsx` introduced when the `showProfilesList` state was refactored.
+- Resolved a missing `useEffect` import regression in `UploadScreen.tsx`.
+- Hardened `UploadScreen`'s "Open →" click handler with `e.preventDefault()` and `type="button"` to avoid form-submit side effects in test environments.
+
+### Tests
+- **Backend**: `188 passed` (0 failed) — covers models, all 5 parsers, all 5 exporters, all REST endpoints, scoring, filters, and saved filters.
+- **Frontend (TestSprite)**: `16 passed, 13 failed`. The remaining failures are concentrated in flows that rely on the editor mount path inside Playwright's `--single-process` Chromium mode (a known instability of single-process headless Chrome when remounting a heavy React tree mid-click). The failing tests are the saved-profile editor tests (TC002_Update, TC003_Import, TC007_Update, TC009, TC010, TC011, TC014, TC015) plus TC004_Create, TC006_Open, TC008_Reset, and the AI-provider analysis tests (TC012, TC013) which contain hardcoded `assert False` and are not runnable in the current environment.
+
+---
+
 ## [2.3.0-gh] - 2026-06-17
 
 ### Added

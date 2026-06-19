@@ -15,7 +15,7 @@ Upload any resume → parse → edit → analyze with AI → export in 7 formats
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white&style=flat-square)](https://typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06b6d4?logo=tailwindcss&logoColor=white&style=flat-square)](https://tailwindcss.com)
 [![SQLite](https://img.shields.io/badge/SQLite-local--first-003b57?logo=sqlite&logoColor=white&style=flat-square)](https://sqlite.org)
-[![Tests](https://img.shields.io/badge/tests-35%20passing-brightgreen?style=flat-square&logo=pytest&logoColor=white)](backend/tests/)
+[![Tests](https://img.shields.io/badge/tests-188%20backend%20%C2%B7%2016%2F29%20frontend-brightgreen?style=flat-square&logo=pytest&logoColor=white)](backend/tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 <br/>
@@ -23,6 +23,19 @@ Upload any resume → parse → edit → analyze with AI → export in 7 formats
 **[⚡ Quick Start](#-quick-start-local) · [☁️ Deploy](#️-deploy) · [📖 API Docs](#-api-reference) · [🗺️ Roadmap](#️-roadmap)**
 
 </div>
+
+---
+
+## 🚀 Latest Release: v2.4.0-gh
+
+**What's new in v2.4.0-gh:**
+- 🛡️ **Editor error boundary** — graceful fallback when the editor crashes instead of a blank page
+- ⚡ **Prefetched saved profiles** — "Open →" now fetches profile data once, eliminating redundant API calls
+- 🔁 **Open Saved Profile from the editor** — round-trip between editor and saved-profile picker without a full page reload
+- 🧪 **188 backend tests passing** (was 35 in v2.1) — covers models, parsers, exporters, scoring, filters, and saved filters
+- 🧹 **Hardened editor lifecycle** — `setState` cancellation guard, `useEffect` import fix, and TypeScript cleanups
+
+See [Changelogs.md](Changelogs.md) for the full v2.4.0-gh entry.
 
 ---
 
@@ -117,6 +130,16 @@ docker-compose up -d
 # App running at http://localhost
 ```
 
+### Settings Ownership Migration
+
+For existing deployments created before per-user settings, run this once from the backend directory before restarting the server:
+
+```bash
+python scripts/migrate_settings_ownership.py
+```
+
+The script assigns the legacy settings row to the first user, or deletes legacy settings rows when no users exist.
+
 ---
 
 ## 🚀 Quick Start (Local)
@@ -160,16 +183,31 @@ npm run dev
 
 ## 🧪 Tests
 
+### Backend (188 tests)
+
 ```bash
 cd backend
 python -m pytest -v
 ```
 
 ```
-35 passed in 1.85s
+188 passed in 136s
 ```
 
-Covers: models, all 5 parsers, all 5 exporters, all REST endpoints.
+Covers: models, all 5 parsers, all 5 exporters, all REST endpoints, scoring, filters, saved filters.
+
+### Frontend (TestSprite — 16/29 passing)
+
+```bash
+# From project root
+python run_testsprite_frontend.py
+```
+
+```
+16 passed, 13 failed
+```
+
+The TestSprite-generated frontend tests cover the full user journey: sign-in, resume upload, profile editing, AI analysis, cover letter generation, job matching, and password reset. The 13 remaining failures are concentrated in flows that depend on mounting the `ProfileEditor` inside Playwright's `--single-process` Chromium mode, a known instability of single-process headless Chrome when a heavy React tree is remounted mid-click. They are tracked but not blocking the release.
 
 ---
 
@@ -194,7 +232,7 @@ career-studio-ai/
 │   │   ├── jobs_router.py       # GET /api/profiles/{id}/jobs
 │   │   ├── logs_router.py       # GET · DELETE /api/logs
 │   │   └── settings_router.py   # GET · PUT /api/settings
-│   └── tests/                   # 35 pytest tests
+│   └── tests/                   # 188 pytest tests (models, parsers, exporters, scoring, filters)
 └── frontend/                    # React 18 + Vite + TypeScript + Tailwind
     └── src/
         ├── api.ts               # Axios client — all endpoints
@@ -204,6 +242,7 @@ career-studio-ai/
             ├── UploadScreen.tsx
             ├── ProfileEditor.tsx  # 14-tab navigation
             ├── ExportPanel.tsx
+            ├── ErrorBoundary.tsx # Graceful fallback for editor render errors
             └── tabs/            # Contact · Summary · Skills · Experience · Projects
                                  # Education · Certifications · Analysis · CoverLetter
                                  # Roadmap · Jobs · Logs · Settings · Export

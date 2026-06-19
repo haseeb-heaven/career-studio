@@ -40,42 +40,107 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Click the 'Forgot Password?' button on the login screen to open the password reset flow.
+        # -> Reload the frontend by navigating to the site root (http://localhost:5173) and wait for the login / Create Account UI to appear.
+        await page.goto("http://localhost:5173")
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass
+        
+        # -> Click the 'Create Account' tab to open the registration form.
+        # Create Account button
+        elem = page.get_by_role('button', name='Create Account', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> input
+        # Enter username text field
+        elem = page.get_by_placeholder('Enter username', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("tc008-reset-user")
+        
+        # -> input
+        # you@example.com email field
+        elem = page.get_by_placeholder('you@example.com', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("tc008-reset-user@example.com")
+        
+        # -> input
+        # Password password field
+        elem = page.get_by_placeholder('Password', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("OldPass123")
+        
+        # -> click
+        # Create Account button
+        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Create Account', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the 'Sign Out' button to sign out of the newly created account and return to the login screen.
+        # Sign Out button
+        elem = page.get_by_role('button', name='Sign Out', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the 'Forgot Password?' button on the login screen to open the password reset form.
         # Forgot Password? button
         elem = page.get_by_role('button', name='Forgot Password?', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Fill the username field with 'haseeb-heaven' and click the 'Send Reset Link' button to request a password reset.
+        # -> Fill the Username field with 'tc008-reset-user' and click the 'Send Reset Link' button on the Reset Password page.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("haseeb-heaven")
+        await elem.fill("tc008-reset-user")
         
-        # -> Fill the username field with 'haseeb-heaven' and click the 'Send Reset Link' button to request a password reset.
+        # -> Fill the Username field with 'tc008-reset-user' and click the 'Send Reset Link' button on the Reset Password page.
         # Send Reset Link button
         elem = page.get_by_role('button', name='Send Reset Link', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Click the 'Click here to reset your password →' link in the green success message to open the Set New Password view.
+        # -> Click the 'Click here to reset your password →' link in the success message to open the Set New Password view.
         # Click here to reset your password → link
         elem = page.get_by_role('link', name='Click here to reset your password →', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Fill the 'Password' field with the new password 'NewPassword123' and click the 'Reset Password' button to submit the new password.
+        # -> Fill 'NewPassword123' into the 'New Password' field and click the 'Reset Password' button to submit the new password.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("NewPassword123")
         
-        # -> Fill the 'Password' field with the new password 'NewPassword123' and click the 'Reset Password' button to submit the new password.
+        # -> Fill 'NewPassword123' into the 'New Password' field and click the 'Reset Password' button to submit the new password.
         # Reset Password button
         elem = page.get_by_role('button', name='Reset Password', exact=True)
         await elem.click(timeout=10000)
         
-        # --> Test passed — verified by AI agent
-        frame = context.pages[-1]
-        current_url = await frame.evaluate("() => window.location.href")
-        assert current_url is not None, "Test completed successfully"
+        # -> Attempt to sign in using the 'Sign In' form with username 'tc008-reset-user' and password 'NewPassword123' to verify the password reset took effect.
+        # Enter username text field
+        elem = page.get_by_placeholder('Enter username', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("tc008-reset-user")
+        
+        # -> Attempt to sign in using the 'Sign In' form with username 'tc008-reset-user' and password 'NewPassword123' to verify the password reset took effect.
+        # Password password field
+        elem = page.get_by_placeholder('Password', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("NewPassword123")
+        
+        # -> Attempt to sign in using the 'Sign In' form with username 'tc008-reset-user' and password 'NewPassword123' to verify the password reset took effect.
+        # Sign In button
+        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
+        await elem.click(timeout=10000)
+        
+        # --> Assertions to verify final state
+        
+        # --> Verify a success confirmation is visible
+        await page.locator("xpath=/html/body/div[1]/div[1]/header/div[2]/div/button").nth(0).scroll_into_view_if_needed()
+        # Assert: The Sign Out button is visible, indicating the reset/sign-in succeeded.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/header/div[2]/div/button").nth(0)).to_be_visible(timeout=15000), "The Sign Out button is visible, indicating the reset/sign-in succeeded."
+        current_url = await page.evaluate("() => window.location.href")
+        # Assert: page loaded with a URL (final outcome verified by the AI judge during the run)
+        assert current_url, 'Page should have loaded with a URL'
+        current_url = await page.evaluate("() => window.location.href")
+        # Assert: page loaded with a URL (final outcome verified by the AI judge during the run)
+        assert current_url, 'Page should have loaded with a URL'
         await asyncio.sleep(5)
 
     finally:

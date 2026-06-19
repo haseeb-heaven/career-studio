@@ -8,7 +8,7 @@ interface Props {
   onUpdate: (updated: Partial<Profile>) => void;
 }
 
-const EMPTY: Omit<Certification, "id"> = { name: "", issuer: "", date: "" };
+const EMPTY: Omit<Certification, "id"> = { name: "", cert_id: "", issuer: "", date: "" };
 
 export default function CertificationsTab({ profile, onUpdate }: Props) {
   const { toast } = useToast();
@@ -87,10 +87,11 @@ export default function CertificationsTab({ profile, onUpdate }: Props) {
       {adding && (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-3">
           <p className="text-sm font-semibold text-green-800">New Certification</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-1"><label className="block text-xs text-slate-500 mb-1">Name *</label><input className={inputCls} value={addDraft.name} onChange={(e) => setAddDraft({ ...addDraft, name: e.target.value })} placeholder="AWS Solutions Architect" autoFocus /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div><label className="block text-xs text-slate-500 mb-1">Name *</label><input className={inputCls} value={addDraft.name} onChange={(e) => setAddDraft({ ...addDraft, name: e.target.value })} placeholder="AWS Solutions Architect" autoFocus /></div>
+            <div><label className="block text-xs text-slate-500 mb-1">Cert ID</label><input className={inputCls} value={addDraft.cert_id || ""} onChange={(e) => setAddDraft({ ...addDraft, cert_id: e.target.value })} placeholder="e.g. AWS-SAA-12345" /></div>
             <div><label className="block text-xs text-slate-500 mb-1">Issuer</label><input className={inputCls} value={addDraft.issuer} onChange={(e) => setAddDraft({ ...addDraft, issuer: e.target.value })} placeholder="Amazon" /></div>
-            <div><label className="block text-xs text-slate-500 mb-1">Date</label><input className={inputCls} value={addDraft.date} onChange={(e) => setAddDraft({ ...addDraft, date: e.target.value })} placeholder="2024-01" /></div>
+            <div><label className="block text-xs text-slate-500 mb-1">Date</label><input type="date" className={inputCls} value={addDraft.date} onChange={(e) => setAddDraft({ ...addDraft, date: e.target.value })} /></div>
           </div>
           <div className="flex gap-2">
             <button onClick={handleAdd} disabled={saving || !addDraft.name.trim()} className="rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700 disabled:opacity-50">Add</button>
@@ -104,9 +105,10 @@ export default function CertificationsTab({ profile, onUpdate }: Props) {
           {certs.length > 0 && (
             <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
               <th className="pb-2 pr-4">Name</th>
+              <th className="pb-2 pr-4">Cert ID</th>
               <th className="pb-2 pr-4">Issuer</th>
               <th className="pb-2 pr-4">Date</th>
-              <th className="pb-2 w-20" />
+              <th className="pb-2 w-24" />
             </tr>
           )}
         </thead>
@@ -114,12 +116,13 @@ export default function CertificationsTab({ profile, onUpdate }: Props) {
           {certs.map((c) =>
             editingId === c.id ? (
               <tr key={c.id}>
-                <td colSpan={4} className="py-3">
+                <td colSpan={5} className="py-3">
                   <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                       <div><label className="block text-xs text-slate-500 mb-1">Name</label><input className={inputCls} value={editDraft.name} onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })} autoFocus /></div>
+                      <div><label className="block text-xs text-slate-500 mb-1">Cert ID</label><input className={inputCls} value={editDraft.cert_id || ""} onChange={(e) => setEditDraft({ ...editDraft, cert_id: e.target.value })} placeholder="alphanumeric" /></div>
                       <div><label className="block text-xs text-slate-500 mb-1">Issuer</label><input className={inputCls} value={editDraft.issuer} onChange={(e) => setEditDraft({ ...editDraft, issuer: e.target.value })} /></div>
-                      <div><label className="block text-xs text-slate-500 mb-1">Date</label><input className={inputCls} value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} /></div>
+                      <div><label className="block text-xs text-slate-500 mb-1">Date</label><input type="date" className={inputCls} value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} /></div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => handleSave(c.id!)} disabled={saving} className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 disabled:opacity-50">Save</button>
@@ -131,11 +134,12 @@ export default function CertificationsTab({ profile, onUpdate }: Props) {
             ) : (
               <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50">
                 <td className="py-2 pr-4 font-medium text-slate-800">{c.name}</td>
+                <td className="py-2 pr-4 font-mono text-xs text-slate-700">{c.cert_id || "—"}</td>
                 <td className="py-2 pr-4 text-slate-600">{c.issuer}</td>
                 <td className="py-2 pr-4 text-slate-500">{c.date}</td>
                 <td className="py-2">
                   <div className="flex gap-1">
-                    <button onClick={() => { setEditingId(c.id!); setEditDraft({ name: c.name, issuer: c.issuer, date: c.date }); }} className="text-xs text-blue-600 hover:underline">Edit</button>
+                    <button onClick={() => { setEditingId(c.id!); setEditDraft({ name: c.name, cert_id: c.cert_id || "", issuer: c.issuer, date: c.date }); }} className="text-xs text-blue-600 hover:underline">Edit</button>
                     <button onClick={() => handleDelete(c.id!, c.name)} className="text-xs text-red-500 hover:underline">Del</button>
                   </div>
                 </td>

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from db import engine
+import db
 from models import Profile, CoverLetter, CareerPlan, User
 from services import activity
 from services.ai_service import complete_simple, complete_complex, profile_text_summary
@@ -26,7 +26,7 @@ def _get_profile(pid: int, session: Session) -> Profile:
 
 @router.post("/{profile_id}/analyze")
 def analyze(profile_id: int, user: User = Depends(get_current_user)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _get_profile(profile_id, s)
         _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
@@ -44,7 +44,7 @@ def analyze(profile_id: int, user: User = Depends(get_current_user)):
     user_msg = f"Resume:\n{resume_text}"
 
     try:
-        raw = complete_simple(system, user_msg)
+        raw = complete_simple(system, user_msg, user_id=user.id)
         import json
         raw = raw.strip()
         if raw.startswith("```"):
@@ -82,7 +82,7 @@ def generate_cover_letter(
     body: CoverLetterRequest,
     user: User = Depends(get_current_user),
 ):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _get_profile(profile_id, s)
         _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
@@ -102,12 +102,12 @@ def generate_cover_letter(
     )
 
     try:
-        content = complete_complex(system, user_msg)
+        content = complete_complex(system, user_msg, user_id=user.id)
     except Exception as e:
         logger.error("Cover letter generation failed: %s", e)
         raise HTTPException(status_code=502, detail=f"AI error: {e}")
 
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         cl = CoverLetter(
             profile_id=profile_id,
             job_title=body.job_title,
@@ -123,7 +123,7 @@ def generate_cover_letter(
 
 @router.get("/{profile_id}/cover-letters")
 def list_cover_letters(profile_id: int, user: User = Depends(get_current_user)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _get_profile(profile_id, s)
         _check_ownership(s, p, user)
         rows = s.exec(select(CoverLetter).where(CoverLetter.profile_id == profile_id)).all()
@@ -142,7 +142,7 @@ def delete_cover_letter(
     cl_id: int,
     user: User = Depends(get_current_user),
 ):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _get_profile(profile_id, s)
         _check_ownership(s, p, user)
         cl = s.get(CoverLetter, cl_id)
@@ -167,7 +167,7 @@ def generate_roadmap(
     body: RoadmapRequest,
     user: User = Depends(get_current_user),
 ):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _get_profile(profile_id, s)
         _check_ownership(s, p, user)
         resume_text = profile_text_summary(p)
@@ -227,7 +227,7 @@ def generate_roadmap(
     user_msg = f"Resume:\n{resume_text}\n\nTask: {prompt_suffix}"
 
     try:
-        content = complete_complex(system, user_msg)
+        content = complete_complex(system, user_msg, user_id=user.id)
         content_stripped = content.strip()
         if content_stripped.startswith("```"):
             parts = content_stripped.split("```")
@@ -246,7 +246,7 @@ def generate_roadmap(
         logger.error("Roadmap generation failed: %s", e)
         raise HTTPException(status_code=502, detail=f"AI error: {e}")
 
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         plan = CareerPlan(
             profile_id=profile_id,
             content=content,
@@ -261,7 +261,7 @@ def generate_roadmap(
 
 @router.get("/{profile_id}/roadmaps")
 def list_roadmaps(profile_id: int, user: User = Depends(get_current_user)):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _get_profile(profile_id, s)
         _check_ownership(s, p, user)
         rows = s.exec(select(CareerPlan).where(CareerPlan.profile_id == profile_id)).all()
@@ -280,7 +280,7 @@ def delete_roadmap(
     plan_id: int,
     user: User = Depends(get_current_user),
 ):
-    with Session(engine) as s:
+    with Session(db.engine) as s:
         p = _get_profile(profile_id, s)
         _check_ownership(s, p, user)
         plan = s.get(CareerPlan, plan_id)

@@ -40,95 +40,89 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Click the 'Continue as guest (no account)' link to enter the app without signing in so the profile and cover-letter features can be accessed.
-        # Continue as guest (no account) button
-        elem = page.get_by_role('button', name='Continue as guest (no account)', exact=True)
-        await elem.click(timeout=10000)
+        # -> Wait 5 seconds for the frontend app to finish loading, then reload the homepage (click refresh) to attempt to load the SPA and reveal interactive elements such as the profile editor or 'Cover Letter' controls.
+        await page.goto("http://localhost:5173/")
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass
         
-        # -> Click the 'Open Saved Profile' button to open the saved profiles dialog so a profile can be loaded into the editor.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Click the 'Open Saved Profile' button to open the saved profiles dialog so a saved profile can be loaded into the editor.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Open the saved profiles dialog by clicking the 'Open Saved Profile' button in the header so a profile can be loaded into the editor.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Open the saved profiles dialog by clicking the 'Open Saved Profile' button in the header so a saved profile can be loaded into the editor.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Use the page's 'Browse Files' file input (labeled Browse Files) to upload a resume file so a profile is loaded into the editor.
-        # file upload
-        elem = page.locator('xpath=/html/body/div/div/div/div[2]/input')
-        await elem.wait_for(state="attached", timeout=10000)
-        if await elem.evaluate("e => e.tagName === 'INPUT' && (e.type || '').toLowerCase() === 'file'"):
-            await elem.set_input_files("./fixtures/sample_resume.json")
-        else:
-            await elem.wait_for(state="visible", timeout=10000)
-            async with page.expect_file_chooser() as fc_info:
-                await elem.click()
-            chooser = await fc_info.value
-            await chooser.set_files("./fixtures/sample_resume.json")
-        
-        # -> Open the 'Cover Letter' tool by clicking the 'Cover Letter' entry in the left 'AI Tools' sidebar so the job title and company inputs become available.
-        # ✍️ Cover Letter button
-        elem = page.get_by_role('button', name='✍️ Cover Letter', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Fill the 'Job Title' field with 'Senior Software Engineer', fill the 'Company' field with 'Acme Corp', then click the 'Generate Cover Letter' button.
-        # e.g. Senior Software Engineer text field
-        elem = page.get_by_placeholder('e.g. Senior Software Engineer', exact=True)
-        await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("Senior Software Engineer")
-        
-        # -> Fill the 'Job Title' field with 'Senior Software Engineer', fill the 'Company' field with 'Acme Corp', then click the 'Generate Cover Letter' button.
-        # e.g. Acme Corp text field
-        elem = page.get_by_placeholder('e.g. Acme Corp', exact=True)
-        await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("Acme Corp")
-        
-        # -> Fill the 'Job Title' field with 'Senior Software Engineer', fill the 'Company' field with 'Acme Corp', then click the 'Generate Cover Letter' button.
-        # Generate Cover Letter button
-        elem = page.get_by_role('button', name='Generate Cover Letter', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Click the 'Sign In' button to authenticate so the cover letter can be generated and the resulting letter displayed.
-        # Sign In button
-        elem = page.get_by_role('button', name='Sign In', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Fill the Username field with 'haseeb-heaven', fill the Password field with '123456', then click the 'Sign In' button to authenticate.
+        # -> Fill the Username field with 'haseeb-heaven', fill the Password field with '123456', then click the 'Sign In' button to authenticate and reach the app's main UI.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the Username field with 'haseeb-heaven', fill the Password field with '123456', then click the 'Sign In' button to authenticate.
+        # -> Fill the Username field with 'haseeb-heaven', fill the Password field with '123456', then click the 'Sign In' button to authenticate and reach the app's main UI.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the Username field with 'haseeb-heaven', fill the Password field with '123456', then click the 'Sign In' button to authenticate.
+        # -> Fill the Username field with 'haseeb-heaven', fill the Password field with '123456', then click the 'Sign In' button to authenticate and reach the app's main UI.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
-        # --> Assertions to verify final state
-        # Assert: Verify the generated cover letter is displayed
-        assert False, "Expected: Verify the generated cover letter is displayed (could not be verified on the page)"
+        # -> Retry signing in by replacing the Username with 'haseeb91', entering Password '123456', and clicking the 'Sign In' button.
+        # Enter username text field
+        elem = page.get_by_placeholder('Enter username', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("haseeb91")
         
-        # --> Test blocked by environment/access constraints during agent run
-        # Reason: TEST BLOCKED Authentication with the provided credentials could not be completed, so the test cannot be run to completion. Observations: - The login form displays the error message 'Invalid username or password'. - The sign-in attempt returned to the login screen with the error, preventing access to authenticated features required to generate the cover letter.
-        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED Authentication with the provided credentials could not be completed, so the test cannot be run to completion. Observations: - The login form displays the error message 'Invalid username or password'. - The sign-in attempt returned to the login screen with the error, preventing access to authenticated features required to generate the cover letter." + " — the exported script cannot reproduce a PASS in this environment.")
+        # -> Retry signing in by replacing the Username with 'haseeb91', entering Password '123456', and clicking the 'Sign In' button.
+        # Password password field
+        elem = page.get_by_placeholder('Password', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("123456")
+        
+        # -> Retry signing in by replacing the Username with 'haseeb91', entering Password '123456', and clicking the 'Sign In' button.
+        # Sign In button
+        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the 'Open Saved Profile' button to load a saved profile into the editor so the Cover Letters section can be used.
+        # 📂 Open Saved Profile button
+        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Open the first saved profile by clicking the 'Open →' button on the top (first) saved profile card so the profile editor loads.
+        # Open → button
+        elem = page.get_by_text('haseebmir.hm@gmail.com · Profile #1', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Open →', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the 'Cover Letter' button in the left sidebar to open the Cover Letter panel so job title and company input fields and the Generate control become visible.
+        # ✍️ Cover Letter button
+        elem = page.get_by_role('button', name='✍️ Cover Letter', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Fill the 'Job Title' field with 'Senior Software Engineer', fill the 'Company' field with 'Acme Corp', then click the 'Generate Cover Letter' button to create the cover letter.
+        # e.g. Senior Software Engineer text field
+        elem = page.get_by_placeholder('e.g. Senior Software Engineer', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("Senior Software Engineer")
+        
+        # -> Fill the 'Job Title' field with 'Senior Software Engineer', fill the 'Company' field with 'Acme Corp', then click the 'Generate Cover Letter' button to create the cover letter.
+        # e.g. Acme Corp text field
+        elem = page.get_by_placeholder('e.g. Acme Corp', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("Acme Corp")
+        
+        # -> Fill the 'Job Title' field with 'Senior Software Engineer', fill the 'Company' field with 'Acme Corp', then click the 'Generate Cover Letter' button to create the cover letter.
+        # Generate Cover Letter button
+        elem = page.get_by_role('button', name='Generate Cover Letter', exact=True)
+        await elem.click(timeout=10000)
+        
+        # --> Assertions to verify final state
+        
+        # --> Verify the generated cover letter is displayed
+        # Assert: The Job Title field contains 'Senior Software Engineer'.
+        await expect(page.locator("xpath=/html/body/div/div[1]/div/main/div/div/div[1]/div[1]/input").nth(0)).to_have_value("Senior Software Engineer", timeout=15000), "The Job Title field contains 'Senior Software Engineer'."
+        # Assert: The Company field contains 'Acme Corp'.
+        await expect(page.locator("xpath=/html/body/div/div[1]/div/main/div/div/div[1]/div[2]/input").nth(0)).to_have_value("Acme Corp", timeout=15000), "The Company field contains 'Acme Corp'."
+        await page.locator("xpath=/html/body/div/div[1]/div/main/div/div/div[3]/div/div/div/button[1]").nth(0).scroll_into_view_if_needed()
+        # Assert: A generated cover letter entry is visible (the 'View' button is present).
+        await expect(page.locator("xpath=/html/body/div/div[1]/div/main/div/div/div[3]/div/div/div/button[1]").nth(0)).to_be_visible(timeout=15000), "A generated cover letter entry is visible (the 'View' button is present)."
         await asyncio.sleep(5)
 
     finally:

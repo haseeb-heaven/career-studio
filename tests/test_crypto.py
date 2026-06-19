@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
-from crypto import _is_encrypted, encrypt_key, decrypt_key
+from security_crypto import _is_encrypted, encrypt_key, decrypt_key
 
 
 def test_is_encrypted_false_for_plain_text():

@@ -9,7 +9,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 def _get_auth_headers(client, username: str = "testuser", password: str = "password123") -> dict:
     """Register (or login if already exists) and return auth headers."""
-    resp = client.post("/api/auth/register", json={"username": username, "password": password})
+    resp = client.post(
+        "/api/auth/register",
+        json={"username": username, "password": password, "email": f"{username}@test.local"},
+    )
     if resp.status_code == 400:  # already registered
         resp = client.post("/api/auth/login", data={"username": username, "password": password})
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}

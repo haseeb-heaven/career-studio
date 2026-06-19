@@ -62,7 +62,10 @@ def client_fixture():
 
 
 def _smoke_auth_headers(client) -> dict:
-    resp = client.post("/api/auth/register", json={"username": "smoke_test_user", "password": "password123"})
+    resp = client.post(
+        "/api/auth/register",
+        json={"username": "smoke_test_user", "password": "password123", "email": "smoke_test_user@test.local"},
+    )
     if resp.status_code == 400:
         resp = client.post("/api/auth/login", data={"username": "smoke_test_user", "password": "password123"})
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
@@ -411,41 +414,41 @@ class TestJobMatching:
 # ── Settings API tests ───────────────────────────────────────────────────
 
 class TestSettingsAPI:
-    def test_get_returns_expected_keys(self, client):
-        resp = client.get("/api/settings")
+    def test_get_returns_expected_keys(self, client, auth_headers):
+        resp = client.get("/api/settings", headers=auth_headers)
         assert resp.status_code == 200
         for k in ["ai_provider", "ai_model", "api_key", "use_local_ai", "ollama_base_url", "ollama_model"]:
             assert k in resp.json()
 
-    def test_update_provider_and_model(self, client):
+    def test_update_provider_and_model(self, client, auth_headers):
         resp = client.put("/api/settings", json={
             "ai_provider": "openrouter",
             "ai_model": "meta-llama/llama-3.1-8b-instruct:free",
-        })
+        }, headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["ok"] is True
 
-    def test_unknown_keys_ignored(self, client):
-        resp = client.put("/api/settings", json={"hack_field": "bad", "ai_provider": "openai"})
+    def test_unknown_keys_ignored(self, client, auth_headers):
+        resp = client.put("/api/settings", json={"hack_field": "bad", "ai_provider": "openai"}, headers=auth_headers)
         assert resp.status_code == 200
 
-    def test_api_key_masked_after_save(self, client):
-        client.put("/api/settings", json={"api_key": "sk-real-secret-key-123456"})
-        resp = client.get("/api/settings")
+    def test_api_key_masked_after_save(self, client, auth_headers):
+        client.put("/api/settings", json={"api_key": "sk-real-secret-key-123456"}, headers=auth_headers)
+        resp = client.get("/api/settings", headers=auth_headers)
         assert resp.json()["api_key"] == "***"
 
-    def test_openrouter_key_masked(self, client):
-        client.put("/api/settings", json={"openrouter_api_key": "sk-or-myrealkey"})
-        resp = client.get("/api/settings")
+    def test_openrouter_key_masked(self, client, auth_headers):
+        client.put("/api/settings", json={"openrouter_api_key": "sk-or-myrealkey"}, headers=auth_headers)
+        resp = client.get("/api/settings", headers=auth_headers)
         assert resp.json()["openrouter_api_key"] == "***"
 
-    def test_update_local_ai_settings(self, client):
+    def test_update_local_ai_settings(self, client, auth_headers):
         resp = client.put("/api/settings", json={
             "use_local_ai": True,
             "ollama_base_url": "http://localhost:11434",
             "ollama_model": "mistral:7b",
             "local_for_simple": True,
-        })
+        }, headers=auth_headers)
         assert resp.status_code == 200
 
 
@@ -468,7 +471,7 @@ class TestPdfHeuristic:
             "Education",
             "B.Sc Computer Science - MIT | 2013 - 2017",
         ]
-        p = _heuristic_parse(lines)
+        p = _heuristic_parse([], [], "\n".join(lines))
         assert "Alice" in p.full_name
         assert "alice@example.com" in p.email
         assert len(p.skills) >= 3
@@ -477,7 +480,7 @@ class TestPdfHeuristic:
     def test_extracts_pipe_separated_skills(self):
         from parsers.pdf_parser import _heuristic_parse
         lines = ["Jane", "Skills", "Go | Rust | Kubernetes | Terraform | AWS"]
-        p = _heuristic_parse(lines)
+        p = _heuristic_parse([], [], "\n".join(lines))
         names = [s.name for s in p.skills]
         assert "Go" in names
         assert "Rust" in names
@@ -485,19 +488,19 @@ class TestPdfHeuristic:
     def test_deduplicates_skills(self):
         from parsers.pdf_parser import _heuristic_parse
         lines = ["Bob", "Skills", "Python, python, PYTHON"]
-        p = _heuristic_parse(lines)
+        p = _heuristic_parse([], [], "\n".join(lines))
         names_lower = [s.name.lower() for s in p.skills]
         assert names_lower.count("python") == 1
 
     def test_fallback_name_missing(self):
         from parsers.pdf_parser import _heuristic_parse
         lines = ["john@company.com", "Skills", "Java, Spring"]
-        p = _heuristic_parse(lines)
+        p = _heuristic_parse([], [], "\n".join(lines))
         # Should not crash; name may be empty
         assert isinstance(p.full_name, str)
 
-    @patch("parsers.pdf_parser._ai_parse", return_value=None)
+    @patch("parsers.pdf_parser._ai_refine", return_value=None)
     def test_ai_none_falls_back_gracefully(self, mock_ai):
-        from parsers.pdf_parser import _ai_parse
-        result = _ai_parse("any text")
+        from parsers.pdf_parser import _ai_refine
+        result = _ai_refine("any text")
         assert result is None  # confirming mock works

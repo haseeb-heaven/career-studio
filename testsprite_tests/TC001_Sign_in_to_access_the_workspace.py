@@ -40,30 +40,39 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Enter username' field with 'haseeb-heaven', fill the 'Password' field with '123456', then click the 'Sign In' button to submit the form.
+        # -> Open the application's Login (sign-in) page so the authentication form (Email/Username and Password fields and Sign in button) can be located and filled.
+        await page.goto("http://localhost:5173/login")
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass
+        
+        # -> Fill the 'Enter username' field with 'haseeb91', fill the 'Password' field with '123456', then click the 'Sign In' button to submit the form.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("haseeb-heaven")
+        await elem.fill("haseeb91")
         
-        # -> Fill the 'Enter username' field with 'haseeb-heaven', fill the 'Password' field with '123456', then click the 'Sign In' button to submit the form.
+        # -> Fill the 'Enter username' field with 'haseeb91', fill the 'Password' field with '123456', then click the 'Sign In' button to submit the form.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the 'Enter username' field with 'haseeb-heaven', fill the 'Password' field with '123456', then click the 'Sign In' button to submit the form.
+        # -> Fill the 'Enter username' field with 'haseeb91', fill the 'Password' field with '123456', then click the 'Sign In' button to submit the form.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
         
-        # --> Test blocked by environment/access constraints during agent run
-        # Reason: TEST BLOCKED The test could not be run — the provided credentials were rejected by the application, so the authenticated workspace could not be reached. Observations: - The page shows a visible error message: 'Invalid username or password'. - The UI remained on the sign-in view and no authenticated workspace or dashboard appeared.
-        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED The test could not be run \u2014 the provided credentials were rejected by the application, so the authenticated workspace could not be reached. Observations: - The page shows a visible error message: 'Invalid username or password'. - The UI remained on the sign-in view and no authenticated workspace or dashboard appeared." + " — the exported script cannot reproduce a PASS in this environment.")
+        # --> Verify the authenticated workspace is displayed
+        # Assert: The 'Sign Out' button is visible in the header.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/header/div[2]/div/button").nth(0)).to_have_text("Sign Out", timeout=15000), "The 'Sign Out' button is visible in the header."
+        # Assert: The '📂 Open Saved Profile' button is visible.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/header/div[2]/button").nth(0)).to_have_text("\ud83d\udcc2 Open Saved Profile", timeout=15000), "The '\ud83d\udcc2 Open Saved Profile' button is visible."
+        # Assert: The resume upload prompt 'Drag & drop your resume here' is visible.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/div[2]/p[1]").nth(0)).to_have_text("Drag & drop your resume here", timeout=15000), "The resume upload prompt 'Drag & drop your resume here' is visible."
         await asyncio.sleep(5)
 
     finally:

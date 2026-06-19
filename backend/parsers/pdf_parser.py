@@ -40,6 +40,22 @@ class TierResult:
 
 # ── Tier 1: pdfplumber ────────────────────────────────────────────────────────
 
+def _words_to_lines(words: list[dict]) -> str:
+    """Group words by their 'top' coordinate into separate lines."""
+    if not words:
+        return ""
+    from collections import defaultdict
+    line_buckets: dict[int, list[dict]] = defaultdict(list)
+    for wd in words:
+        bucket = round(wd.get("top", 0))
+        line_buckets[bucket].append(wd)
+    lines = []
+    for top in sorted(line_buckets.keys()):
+        ws = sorted(line_buckets[top], key=lambda x: x.get("x0", 0))
+        lines.append(" ".join(w["text"] for w in ws))
+    return "\n".join(lines)
+
+
 def _extract_tier1(data: bytes) -> TierResult:
     words_all: list[dict] = []
     tables_all: list[list] = []
@@ -52,7 +68,7 @@ def _extract_tier1(data: bytes) -> TierResult:
                 w = page.extract_words(extra_attrs=["size", "fontname"]) or []
                 words_all.extend(w)
                 tables_all.extend(page.extract_tables() or [])
-                page_text = " ".join(wd["text"] for wd in w)
+                page_text = _words_to_lines(w)
                 pages_text.append(page_text)
                 page_chars.append(len(page_text))
     except Exception as exc:
@@ -99,7 +115,7 @@ def _extract_tier2(data: bytes) -> TierResult:
                                 "fontname": span["font"],
                             })
             words_all.extend(page_words)
-            page_text = " ".join(w["text"] for w in page_words)
+            page_text = _words_to_lines(page_words)
             pages_text.append(page_text)
             page_chars.append(len(page_text))
         doc.close()
@@ -525,10 +541,10 @@ def _heuristic_parse(words: list[dict], tables: list[list], text: str) -> Profil
                 current_exp.company = clean
                 exp_needs_company = False
 
-            elif len(clean.split()) <= 10 and not _looks_like_date_line(clean):
+            elif len(clean.split()) <= 8 and not _looks_like_date_line(clean):
                 # New role / job title
                 role, company, start, end = clean, "", "", ""
-                for sep in (" — ", " – ", " | ", " @ "):
+                for sep in (" — ", " – ", " - ", " | ", " @ "):
                     if sep in clean:
                         parts = clean.split(sep, 1)
                         role = parts[0].strip()

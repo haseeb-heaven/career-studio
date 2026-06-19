@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { generateRoadmap, listRoadmaps, deleteRoadmap } from "../../api";
 import type { RoadmapResult } from "../../api";
 import { useToast } from "../Toast";
@@ -20,6 +20,39 @@ function safeExternalUrl(raw?: string): string {
   }
 }
 
+/**
+ * Try to extract a JSON object from AI text. AI responses often wrap JSON
+ * in ```json ... ``` fences, or have a leading sentence before the JSON.
+ * Returns the parsed object or null when no JSON can be located.
+ */
+function extractJsonObject(raw: string): any {
+  const text = (raw ?? "").trim();
+  if (!text) return null;
+  // Direct parse
+  try {
+    const direct = JSON.parse(text);
+    if (direct && typeof direct === "object") return direct;
+  } catch {}
+  // Strip ```json ... ``` fences
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fence) {
+    try {
+      const inside = JSON.parse(fence[1].trim());
+      if (inside && typeof inside === "object") return inside;
+    } catch {}
+  }
+  // Find the first { ... last } substring and parse it
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first !== -1 && last !== -1 && last > first) {
+    try {
+      const obj = JSON.parse(text.slice(first, last + 1));
+      if (obj && typeof obj === "object") return obj;
+    } catch {}
+  }
+  return null;
+}
+
 interface VisualPlanProps {
   plan: RoadmapResult;
   emoji: string;
@@ -27,12 +60,7 @@ interface VisualPlanProps {
 }
 
 function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
-  let data: any = null;
-  try {
-    data = JSON.parse(plan.content);
-  } catch (e) {
-    // Content is not JSON, render as fallback text
-  }
+  const data = extractJsonObject(plan.content);
 
   if (!data) {
     return (
@@ -248,6 +276,24 @@ export default function RoadmapTab({ profileId }: Props) {
       .finally(() => setLoadingHistory(false));
   }, [profileId]);
 
+  // History and current view are filtered by the selected plan type so
+  // switching tabs shows the right plan immediately (no stale display).
+  const filteredHistory = useMemo(
+    () => history.filter((p) => p.plan_type === planType),
+    [history, planType],
+  );
+  const currentForType = current && current.plan_type === planType ? current : null;
+
+  function handleTabChange(next: string) {
+    if (next === planType) return;
+    setPlanType(next);
+    setError("");
+    // Pick the most recent plan of the new type from history so the UI
+    // immediately shows the right thing instead of the stale plan.
+    const nextMostRecent = history.find((p) => p.plan_type === next);
+    setCurrent(nextMostRecent ?? null);
+  }
+
   async function generate() {
     setGenerating(true);
     setError("");
@@ -282,7 +328,7 @@ export default function RoadmapTab({ profileId }: Props) {
         {PLAN_TYPES.map(({ value, label, emoji }) => (
           <button
             key={value}
-            onClick={() => setPlanType(value)}
+            onClick={() => handleTabChange(value)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
               planType === value
                 ? "bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-950/45"
@@ -342,19 +388,30 @@ export default function RoadmapTab({ profileId }: Props) {
         </div>
       )}
 
-      {current && (
+      {currentForType ? (
         <VisualPlan
-          plan={current}
-          emoji={PLAN_TYPES.find((t) => t.value === current.plan_type)?.emoji || "🧭"}
-          label={PLAN_TYPES.find((t) => t.value === current.plan_type)?.label || "Plan"}
+          plan={currentForType}
+          emoji={PLAN_TYPES.find((t) => t.value === currentForType.plan_type)?.emoji || "🧭"}
+          label={PLAN_TYPES.find((t) => t.value === currentForType.plan_type)?.label || "Plan"}
         />
+      ) : !generating && (
+        <div className="rounded-xl border border-dashed border-slate-700/60 bg-slate-800/20 p-6 text-center">
+          <p className="text-sm text-slate-300">
+            No <span className="text-blue-400 font-semibold">{PLAN_TYPES.find((t) => t.value === planType)?.label}</span> yet.
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Set the target role + years horizon above and click <span className="text-slate-300 font-semibold">Generate Plan</span>.
+          </p>
+        </div>
       )}
 
-      {!loadingHistory && history.length > 0 && (
+      {!loadingHistory && filteredHistory.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-400">Previous Plans</h3>
+          <h3 className="text-sm font-semibold text-slate-400">
+            Previous {PLAN_TYPES.find((t) => t.value === planType)?.label} Plans
+          </h3>
           <div className="space-y-2">
-            {history.map((plan) => (
+            {filteredHistory.map((plan) => (
               <div key={plan.id} className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-4 flex items-center justify-between hover:border-slate-600 transition-colors">
                 <div>
                   <span className="text-sm font-semibold text-slate-200 capitalize flex items-center gap-1.5">

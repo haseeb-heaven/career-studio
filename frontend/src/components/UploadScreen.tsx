@@ -1,11 +1,11 @@
 import { useState, useRef } from "react";
 import type { DragEvent } from "react";
-import type { AuthUser } from "../types";
-import { importFile, listProfiles, deleteProfile } from "../api";
+import type { AuthUser, Profile } from "../types";
+import { importFile, listProfiles, deleteProfile, getProfile } from "../api";
 import { useToast } from "./Toast";
 
 interface Props {
-  onImported: (profileId: number, warnings: string[]) => void;
+  onImported: (profileId: number, warnings: string[], prefetchedProfile?: Profile | null) => void;
   authUser?: AuthUser | null;
   onLogout?: () => void;
 }
@@ -60,6 +60,15 @@ export default function UploadScreen({ onImported, authUser, onLogout }: Props) 
       setProfiles(list);
     } finally {
       setLoadingProfiles(false);
+    }
+  }
+
+  async function handleOpenProfile(id: number) {
+    try {
+      const full = await getProfile(id);
+      onImported(id, [], full);
+    } catch {
+      onImported(id, [], null);
     }
   }
 
@@ -132,7 +141,7 @@ export default function UploadScreen({ onImported, authUser, onLogout }: Props) 
                     </div>
                     <div className="flex gap-3">
                       <button
-                        onClick={() => onImported(p.id, [])}
+                        onClick={() => handleOpenProfile(p.id)}
                         className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
                       >
                         Open →

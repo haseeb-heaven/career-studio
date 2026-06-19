@@ -1,7 +1,7 @@
 import os
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
-from db import engine
+import db
 from models import Settings, User
 from services.ai_service import ollama_available, list_ollama_models
 from security_crypto import encrypt_key, _KEY_FIELDS
@@ -33,10 +33,10 @@ def _migrate_encrypt_existing_keys(session: Session, cfg: Settings) -> None:
         session.refresh(cfg)
 
 
-def _get_or_create(session: Session) -> Settings:
-    s = session.exec(select(Settings)).first()
+def _get_or_create(session: Session, user_id: int) -> Settings:
+    s = session.exec(select(Settings).where(Settings.user_id == user_id)).first()
     if not s:
-        s = Settings()
+        s = Settings(user_id=user_id)
         session.add(s)
         session.commit()
         session.refresh(s)
@@ -46,9 +46,8 @@ def _get_or_create(session: Session) -> Settings:
 def run_startup_migration() -> None:
     """Run once at startup: encrypt any plain-text API keys already in the DB.
     Must not be called on every request — idempotent but incurs a write per boot."""
-    with Session(engine) as session:
-        cfg = session.exec(select(Settings)).first()
-        if cfg:
+    with Session(db.engine) as session:
+        for cfg in session.exec(select(Settings)).all():
             _migrate_encrypt_existing_keys(session, cfg)
 
 
@@ -59,8 +58,8 @@ def _key_status(db_val: str, env_var: str) -> str:
 
 @router.get("")
 def get_settings(user: User = Depends(get_current_user)):
-    with Session(engine) as s:
-        cfg = _get_or_create(s)
+    with Session(db.engine) as s:
+        cfg = _get_or_create(s, user.id)
         return {
             "ai_provider": cfg.ai_provider,
             "ai_model": cfg.ai_model,
@@ -81,8 +80,8 @@ def get_settings(user: User = Depends(get_current_user)):
 
 @router.put("")
 def update_settings(body: dict, user: User = Depends(get_current_user)):
-    with Session(engine) as session:
-        cfg = _get_or_create(session)
+    with Session(db.engine) as session:
+        cfg = _get_or_create(session, user.id)
         for k, v in body.items():
             if k in ALLOWED:
                 if k in _KEY_FIELDS and v == "***":

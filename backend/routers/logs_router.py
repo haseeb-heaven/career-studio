@@ -2,7 +2,7 @@ from pathlib import Path
 from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
-from db import engine
+import db
 from models import ActivityLog
 from logger import get_logger
 
@@ -40,7 +40,7 @@ ACTION_SEVERITY = {
 
 @router.get("")
 def get_logs(limit: int = Query(default=200, le=1000), action: str | None = None):
-    with Session(engine) as session:
+    with Session(db.engine) as session:
         q = select(ActivityLog).order_by(ActivityLog.id.desc())
         if action:
             q = q.where(ActivityLog.action == action)
@@ -63,7 +63,7 @@ def get_logs(limit: int = Query(default=200, le=1000), action: str | None = None
 @router.get("/stats")
 def log_stats():
     """Return counts per action type."""
-    with Session(engine) as session:
+    with Session(db.engine) as session:
         rows = session.exec(select(ActivityLog)).all()
         counts: dict[str, int] = {}
         for r in rows:
@@ -85,7 +85,7 @@ def download_log_file():
 
 @router.delete("")
 def clear_logs():
-    with Session(engine) as session:
+    with Session(db.engine) as session:
         logs = session.exec(select(ActivityLog)).all()
         for l in logs:
             session.delete(l)

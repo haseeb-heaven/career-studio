@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from sqlmodel import Session
 from models import ActivityLog
-from db import engine
+import db
 from logger import get_logger
 
 log = get_logger("activity")
@@ -35,7 +35,7 @@ def log_activity(
     getattr(log, level, log.info)(msg)
 
     try:
-        with Session(engine) as s:
+        with Session(db.engine) as s:
             s.add(ActivityLog(
                 action=action,
                 detail=detail,

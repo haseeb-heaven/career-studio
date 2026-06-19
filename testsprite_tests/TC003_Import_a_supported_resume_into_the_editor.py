@@ -40,49 +40,83 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill 'haseeb-heaven' into the Username field, fill '123456' into the Password field, and click the 'Sign In' button to log in.
+        # -> Click the 'Continue as guest (no account)' link to enter the application main UI where the resume upload control is expected to appear.
+        # Continue as guest (no account) button
+        elem = page.get_by_role('button', name='Continue as guest (no account)', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the 'Open Saved Profile' button to check for alternate import or upload options in the UI (look for any import/upload controls or different upload flows).
+        # 📂 Open Saved Profile button
+        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Open the 'Open Saved Profile' dialog by clicking the '📂 Open Saved Profile' button to look for alternate import or upload options (saved profiles, import from local, or different upload flows).
+        # 📂 Open Saved Profile button
+        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the 'Sign In' button to open the authentication UI so the provided credentials can be entered and the upload retried from an authenticated session.
+        # Sign In button
+        elem = page.get_by_role('button', name='Sign In', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Fill the username field with 'haseeb-heaven', fill the password field with '123456', then click the 'Sign In' button to authenticate.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill 'haseeb-heaven' into the Username field, fill '123456' into the Password field, and click the 'Sign In' button to log in.
+        # -> Fill the username field with 'haseeb-heaven', fill the password field with '123456', then click the 'Sign In' button to authenticate.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill 'haseeb-heaven' into the Username field, fill '123456' into the Password field, and click the 'Sign In' button to log in.
+        # -> Fill the username field with 'haseeb-heaven', fill the password field with '123456', then click the 'Sign In' button to authenticate.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Create a synthetic PDF file named 'sample_resume.pdf' and upload it using the 'Browse Files' file input shown in the 'Drag & drop your resume here' area.
+        # -> Fill the 'Username' field with 'haseeb91', fill the 'Password' field with '123456', then click the 'Sign In' button to authenticate.
+        # Enter username text field
+        elem = page.get_by_placeholder('Enter username', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("haseeb91")
+        
+        # -> Fill the 'Username' field with 'haseeb91', fill the 'Password' field with '123456', then click the 'Sign In' button to authenticate.
+        # Password password field
+        elem = page.get_by_placeholder('Password', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("123456")
+        
+        # -> Fill the 'Username' field with 'haseeb91', fill the 'Password' field with '123456', then click the 'Sign In' button to authenticate.
+        # Sign In button
+        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Final action — this is where the agent failed
+        # Error observed by agent: File path D:\\Code\\career-studio-ai\\testsprite_tests\\fixtures\\sample_resume.pdf is not available. To fix: The user must add this file path to the available_file_paths parameter when creating the A
         # file upload
         elem = page.locator('xpath=/html/body/div/div/div/div[2]/input')
         await elem.wait_for(state="attached", timeout=10000)
         if await elem.evaluate("e => e.tagName === 'INPUT' && (e.type || '').toLowerCase() === 'file'"):
-            await elem.set_input_files("./fixtures/sample_resume.pdf")
+            await elem.set_input_files("./fixtures/D:\\\\Code\\\\career-studio-ai\\\\testsprite_tests\\\\fixtures\\\\sample_resume.pdf")
         else:
             await elem.wait_for(state="visible", timeout=10000)
             async with page.expect_file_chooser() as fc_info:
                 await elem.click()
             chooser = await fc_info.value
-            await chooser.set_files("./fixtures/sample_resume.pdf")
+            await chooser.set_files("./fixtures/D:\\\\Code\\\\career-studio-ai\\\\testsprite_tests\\\\fixtures\\\\sample_resume.pdf")
         
         # --> Assertions to verify final state
+        # Assert: Verify a loading indicator is displayed while the file is parsed
+        assert False, "Expected: Verify a loading indicator is displayed while the file is parsed (could not be verified on the page)"
+        # Assert: Verify the editor opens with the imported profile
+        assert False, "Expected: Verify the editor opens with the imported profile (could not be verified on the page)"
         
-        # --> Verify the editor opens with the imported profile
-        # Assert: The Full Name field contains the imported name 'Sample Resume'.
-        await expect(page.locator("xpath=/html/body/div/div[1]/div/main/div/div/div[1]/input").nth(0)).to_have_value("Sample Resume", timeout=15000), "The Full Name field contains the imported name 'Sample Resume'."
-        # Assert: The Email field contains the imported email 'test@example.com'.
-        await expect(page.locator("xpath=/html/body/div/div[1]/div/main/div/div/div[2]/input").nth(0)).to_have_value("test@example.com", timeout=15000), "The Email field contains the imported email 'test@example.com'."
-        await page.locator("xpath=/html/body/div/div[1]/aside/nav/div[4]/div/button[2]").nth(0).scroll_into_view_if_needed()
-        # Assert: The Settings entry is visible in the sidebar, indicating a profile is loaded.
-        await expect(page.locator("xpath=/html/body/div/div[1]/aside/nav/div[4]/div/button[2]").nth(0)).to_be_visible(timeout=15000), "The Settings entry is visible in the sidebar, indicating a profile is loaded."
-        current_url = await page.evaluate("() => window.location.href")
-        # Assert: page loaded with a URL (final outcome verified by the AI judge during the run)
-        assert current_url, 'Page should have loaded with a URL'
+        # --> Test blocked by environment/access constraints during agent run
+        # Reason: TEST BLOCKED The upload and import flow could not be completed because the test runner prevented attaching the local resume file to the browser. The application UI and controls needed for the test were present and functional (file input in the Drag & drop area, accepted types include .pdf), and user authentication succeeded (signed in as haseeb91). However, the resume file at D:\Code\career-stu...
+        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED The upload and import flow could not be completed because the test runner prevented attaching the local resume file to the browser. The application UI and controls needed for the test were present and functional (file input in the Drag & drop area, accepted types include .pdf), and user authentication succeeded (signed in as haseeb91). However, the resume file at D:\\Code\\career-stu..." + " — the exported script cannot reproduce a PASS in this environment.")
         await asyncio.sleep(5)
 
     finally:

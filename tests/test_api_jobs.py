@@ -9,7 +9,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 
 def _get_auth_headers(client, username: str = "jobs_test_user") -> dict:
-    resp = client.post("/api/auth/register", json={"username": username, "password": "password123"})
+    resp = client.post(
+        "/api/auth/register",
+        json={"username": username, "password": "password123", "email": f"{username}@test.local"},
+    )
     if resp.status_code == 400:
         resp = client.post("/api/auth/login", data={"username": username, "password": "password123"})
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
@@ -384,6 +387,303 @@ class TestNewJobSourcesUnit:
         with patch("routers.jobs_router.urllib.request.urlopen", side_effect=Exception("error")), \
              patch("routers.jobs_router.urllib.request.Request"):
             assert _fetch_jooble("Python", 5, "key") == []
+
+
+# ── Issue #1 — additional Tier 2 sources ─────────────────────────────────────
+
+class TestReedAndUsajobsUnit:
+    def _mock_urlopen(self, body: bytes):
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = body
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        return mock_resp
+
+    def test_reed_skips_without_key(self):
+        from routers.jobs_router import _fetch_reed
+        assert _fetch_reed("Python", 5, "") == []
+
+    def test_reed_returns_jobs_with_salary(self):
+        from routers.jobs_router import _fetch_reed
+        body = json.dumps({
+            "results": [{
+                "jobTitle": "Python Developer",
+                "employerName": "ReedCo",
+                "locationName": "London",
+                "jobUrl": "https://reed.co.uk/job/1",
+                "jobDescription": "Python role",
+                "minimumSalary": "40000",
+                "maximumSalary": "60000",
+                "datePosted": "2026-06-10",
+            }]
+        }).encode()
+        with patch("routers.jobs_router.urllib.request.urlopen", return_value=self._mock_urlopen(body)), \
+             patch("routers.jobs_router.urllib.request.Request"):
+            jobs = _fetch_reed("Python", 5, "test-key")
+        assert len(jobs) == 1
+        assert jobs[0]["source"] == "reed"
+        assert jobs[0]["salary"] == "£40,000-£60,000"
+        assert jobs[0]["date_posted"] == "2026-06-10"
+        assert jobs[0]["is_deep_link"] is False
+
+    def test_reed_handles_failure(self):
+        from routers.jobs_router import _fetch_reed
+        with patch("routers.jobs_router.urllib.request.urlopen", side_effect=Exception("error")), \
+             patch("routers.jobs_router.urllib.request.Request"):
+            assert _fetch_reed("Python", 5, "key") == []
+
+    def test_usajobs_skips_without_key(self):
+        from routers.jobs_router import _fetch_usajobs
+        assert _fetch_usajobs("Python", 5, "") == []
+
+    def test_usajobs_returns_jobs_with_salary(self):
+        from routers.jobs_router import _fetch_usajobs
+        body = json.dumps({
+            "SearchResult": {
+                "SearchResultItems": [{
+                    "MatchedObjectDescriptor": {
+                        "PositionTitle": "Software Engineer",
+                        "OrganizationName": "US Air Force",
+                        "PositionLocation": [{"LocationName": "Washington, DC"}],
+                        "PositionURI": "https://usajobs.gov/job/1",
+                        "QualificationSummary": "Develop software",
+                        "PositionRemuneration": [{"MinimumRange": "80000", "MaximumRange": "120000"}],
+                        "PublicationStartDate": "2026-06-12",
+                    }
+                }]
+            }
+        }).encode()
+        with patch("routers.jobs_router.urllib.request.urlopen", return_value=self._mock_urlopen(body)), \
+             patch("routers.jobs_router.urllib.request.Request"):
+            jobs = _fetch_usajobs("Python", 5, "test-key")
+        assert len(jobs) == 1
+        assert jobs[0]["source"] == "usajobs"
+        assert jobs[0]["salary"] == "$80,000-$120,000"
+        assert jobs[0]["is_deep_link"] is False
+
+    def test_usajobs_handles_failure(self):
+        from routers.jobs_router import _fetch_usajobs
+        with patch("routers.jobs_router.urllib.request.urlopen", side_effect=Exception("error")), \
+             patch("routers.jobs_router.urllib.request.Request"):
+            assert _fetch_usajobs("Python", 5, "key") == []
+
+
+class TestExternalSearchLinks:
+    """Issue #1 — pre-filled deep-link search URLs."""
+
+    def test_external_search_returns_four_portals(self, client):
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_user_v1", "password": "password123", "email": "ext_user_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_user_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+
+        data = json.dumps({
+            "full_name": "Jane",
+            "skills": [{"name": "Python", "years": 5}, {"name": "FastAPI", "years": 3}],
+            "experience": [{"company": "X", "role": "Senior Engineer", "start": "2020"}],
+            "location": "Remote",
+        }).encode()
+        imp = client.post(
+            "/api/import", files={"file": ("p.json", data, "application/json")}, headers=h
+        )
+        pid = imp.json()["profile_id"]
+
+        resp = client.get(f"/api/profiles/{pid}/external-search", headers=h)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "links" in body
+        assert len(body["links"]) == 4
+        portals = {link["portal"] for link in body["links"]}
+        assert {"linkedin", "indeed", "glassdoor", "google_jobs"} == portals
+        for link in body["links"]:
+            assert link["url"].startswith("https://")
+            assert "label" in link
+            assert "icon" in link
+        # The keywords should reference the role + skills
+        assert "Senior" in body["keywords"] or "Engineer" in body["keywords"]
+
+    def test_external_search_uses_session_keyword_override(self, client):
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_ovr_v1", "password": "password123", "email": "ext_ovr_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_ovr_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+
+        data = json.dumps({
+            "full_name": "Jane",
+            "skills": [{"name": "Python", "years": 5}],
+            "experience": [{"company": "X", "role": "Engineer", "start": "2020"}],
+            "location": "Remote",
+        }).encode()
+        imp = client.post(
+            "/api/import", files={"file": ("p.json", data, "application/json")}, headers=h
+        )
+        pid = imp.json()["profile_id"]
+
+        resp = client.get(
+            f"/api/profiles/{pid}/external-search?keywords=Node+Backend&location=Berlin",
+            headers=h,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["keywords"] == "Node Backend"
+        assert body["location"] == "Berlin"
+        for link in body["links"]:
+            assert "Node" in link["url"] or "Node" in body["keywords"]
+            assert "Berlin" in link["url"]
+
+    def test_external_search_google_jobs_url_is_simple(self, client):
+        """Google Jobs URL must use a format that works in modern Chrome —
+        no deprecated `ibp=htl;jobs` parameter that the browser ignores."""
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_gj_v1", "password": "password123", "email": "ext_gj_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_gj_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+
+        data = json.dumps({
+            "full_name": "Jane",
+            "skills": [{"name": "Python", "years": 5}],
+            "experience": [{"company": "X", "role": "Engineer", "start": "2020"}],
+            "location": "Remote",
+        }).encode()
+        imp = client.post(
+            "/api/import", files={"file": ("p.json", data, "application/json")}, headers=h
+        )
+        pid = imp.json()["profile_id"]
+
+        resp = client.get(f"/api/profiles/{pid}/external-search", headers=h).json()
+        google = next((l for l in resp["links"] if l["portal"] == "google_jobs"), None)
+        assert google is not None
+        url = google["url"]
+        # Must use simple search URL with query and +jobs
+        assert url.startswith("https://www.google.com/search?")
+        assert "jobs" in url
+        # Uses the official ibp=htl;jobs parameter (URL-encoded as %3B)
+        # to switch the result set to the Jobs vertical.
+        assert "ibp=htl%3Bjobs" in url
+
+    def test_external_search_accepts_experience_level(self, client):
+        """LinkedIn f_E parameter is set from the experience_level query arg."""
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_exp_v1", "password": "password123", "email": "ext_exp_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_exp_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", json.dumps({"full_name": "X", "skills": [{"name": "Python"}]}).encode())},
+            headers=h,
+        )
+        pid = imp.json()["profile_id"]
+        r = client.get(
+            f"/api/profiles/{pid}/external-search?experience_level=mid-senior", headers=h
+        ).json()
+        li = next(l for l in r["links"] if l["portal"] == "linkedin")
+        assert "f_E=4" in li["url"]  # mid-senior = 4 in LinkedIn's code
+
+    def test_external_search_accepts_work_type(self, client):
+        """LinkedIn f_WT parameter is set from the work_type query arg."""
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_wt_v1", "password": "password123", "email": "ext_wt_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_wt_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", json.dumps({"full_name": "X", "skills": [{"name": "Python"}]}).encode())},
+            headers=h,
+        )
+        pid = imp.json()["profile_id"]
+        r = client.get(
+            f"/api/profiles/{pid}/external-search?work_type=remote", headers=h
+        ).json()
+        li = next(l for l in r["links"] if l["portal"] == "linkedin")
+        assert "f_WT=2" in li["url"]  # remote = 2 in LinkedIn's code
+        # Glassdoor should also receive the remote work-type hint
+        gd = next(l for l in r["links"] if l["portal"] == "glassdoor")
+        assert "remoteWorkType=1" in gd["url"]
+
+    def test_external_search_accepts_salary_currency(self, client):
+        """LinkedIn f_C parameter reflects the requested currency code."""
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_cur_v1", "password": "password123", "email": "ext_cur_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_cur_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", json.dumps({"full_name": "X", "skills": [{"name": "Python"}]}).encode())},
+            headers=h,
+        )
+        pid = imp.json()["profile_id"]
+        r = client.get(
+            f"/api/profiles/{pid}/external-search?salary_min=100000&salary_currency=INR",
+            headers=h,
+        ).json()
+        assert r["currency"] == "INR"
+        li = next(l for l in r["links"] if l["portal"] == "linkedin")
+        assert "f_C=INR" in li["url"]
+        assert "f_SB2=100000" in li["url"]
+
+    def test_external_search_defaults_currency_to_usd(self, client):
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_cur2_v1", "password": "password123", "email": "ext_cur2_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_cur2_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", json.dumps({"full_name": "X", "skills": [{"name": "Python"}]}).encode())},
+            headers=h,
+        )
+        pid = imp.json()["profile_id"]
+        r = client.get(f"/api/profiles/{pid}/external-search", headers=h).json()
+        assert r["currency"] == "USD"
+
+    def test_external_search_time_posted_forwards_to_linkedin(self, client):
+        """LinkedIn f_TPR reflects the time_posted query arg."""
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_tp_v1", "password": "password123", "email": "ext_tp_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_tp_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", json.dumps({"full_name": "X", "skills": [{"name": "Python"}]}).encode())},
+            headers=h,
+        )
+        pid = imp.json()["profile_id"]
+        r = client.get(
+            f"/api/profiles/{pid}/external-search?time_posted=last_24h", headers=h
+        ).json()
+        li = next(l for l in r["links"] if l["portal"] == "linkedin")
+        assert "f_TPR=r86400" in li["url"]
 
 
 class TestDeepLinks:

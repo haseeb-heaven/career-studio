@@ -40,30 +40,37 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Click the 'Create Account' button to switch the UI to the registration/create-account view so the email and other registration fields become visible.
+        # -> Wait up to a few seconds for the frontend SPA to finish loading; if the page remains blank, reload the frontend root page and re-check for the 'Create account' / 'Sign up' controls.
+        await page.goto("http://localhost:5173")
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass
+        
+        # -> Click the 'Create Account' button to switch to the create-account view and reveal the signup fields.
         # Create Account button
         elem = page.get_by_role('button', name='Create Account', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Fill the username field with a unique test username, fill the email field with a valid test email, fill the password with a valid password, then click the 'Create Account' button to submit the registration form.
+        # -> Fill the Username, Email, and Password fields on the visible signup card and click the 'Create Account' button to submit the form.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("testuser-20260616-1001")
+        await elem.fill("testuser-20260618-1")
         
-        # -> Fill the username field with a unique test username, fill the email field with a valid test email, fill the password with a valid password, then click the 'Create Account' button to submit the registration form.
+        # -> Fill the Username, Email, and Password fields on the visible signup card and click the 'Create Account' button to submit the form.
         # you@example.com email field
         elem = page.get_by_placeholder('you@example.com', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("testuser-20260616-1001@example.com")
+        await elem.fill("testuser-20260618-1@example.com")
         
-        # -> Fill the username field with a unique test username, fill the email field with a valid test email, fill the password with a valid password, then click the 'Create Account' button to submit the registration form.
+        # -> Fill the Username, Email, and Password fields on the visible signup card and click the 'Create Account' button to submit the form.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("123456")
+        await elem.fill("Password123")
         
-        # -> Fill the username field with a unique test username, fill the email field with a valid test email, fill the password with a valid password, then click the 'Create Account' button to submit the registration form.
+        # -> Fill the Username, Email, and Password fields on the visible signup card and click the 'Create Account' button to submit the form.
         # Create Account button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Create Account', exact=True)
         await elem.click(timeout=10000)
@@ -71,9 +78,11 @@ async def run_test():
         # --> Assertions to verify final state
         
         # --> Verify a success confirmation is visible
-        await page.locator("xpath=/html/body/div[1]/div[1]/header/div[2]/div/button").nth(0).scroll_into_view_if_needed()
-        # Assert: The 'Sign Out' button is visible, indicating the account was created and the user is signed in.
-        await expect(page.locator("xpath=/html/body/div[1]/div[1]/header/div[2]/div/button").nth(0)).to_be_visible(timeout=15000), "The 'Sign Out' button is visible, indicating the account was created and the user is signed in."
+        # Assert: The created username 'testuser-20260618-1' is visible on the page.
+        await expect(page.locator("xpath=/html/body/div").nth(0)).to_contain_text("testuser-20260618-1", timeout=15000), "The created username 'testuser-20260618-1' is visible on the page."
+        await page.locator("xpath=/html/body/div/div[1]/header/div[2]/div/button").nth(0).scroll_into_view_if_needed()
+        # Assert: The 'Sign Out' button is visible, indicating a signed-in state.
+        await expect(page.locator("xpath=/html/body/div/div[1]/header/div[2]/div/button").nth(0)).to_be_visible(timeout=15000), "The 'Sign Out' button is visible, indicating a signed-in state."
         await asyncio.sleep(5)
 
     finally:

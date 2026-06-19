@@ -149,7 +149,10 @@ class TestOpenRouter:
 
 def _get_ai_auth_headers(client, username: str = "ai_routing_user", password: str = "password123") -> dict:
     """Register (or login if already exists) and return auth headers."""
-    resp = client.post("/api/auth/register", json={"username": username, "password": password})
+    resp = client.post(
+        "/api/auth/register",
+        json={"username": username, "password": password, "email": f"{username}@test.local"},
+    )
     if resp.status_code == 400:  # already registered
         resp = client.post("/api/auth/login", data={"username": username, "password": password})
     if resp.status_code not in (200, 201):

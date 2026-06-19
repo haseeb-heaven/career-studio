@@ -40,76 +40,86 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Click the 'Continue as guest (no account)' link to enter the app as a guest and access the profile editor.
-        # Continue as guest (no account) button
-        elem = page.get_by_role('button', name='Continue as guest (no account)', exact=True)
+        # -> Reload the application root page to allow the SPA to finish loading (refresh the page at http://localhost:5173).
+        await page.goto("http://localhost:5173/")
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass
+        
+        # -> Enter username 'haseeb-heaven' into the Username field, enter password '123456' into the Password field, then click the 'Sign In' button to log in and load the profile editor.
+        # Enter username text field
+        elem = page.get_by_placeholder('Enter username', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("haseeb-heaven")
+        
+        # -> Enter username 'haseeb-heaven' into the Username field, enter password '123456' into the Password field, then click the 'Sign In' button to log in and load the profile editor.
+        # Password password field
+        elem = page.get_by_placeholder('Password', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("123456")
+        
+        # -> Enter username 'haseeb-heaven' into the Username field, enter password '123456' into the Password field, then click the 'Sign In' button to log in and load the profile editor.
+        # Sign In button
+        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Click the 'Open Saved Profile' button to open the profile loader or profile editor.
+        # -> Fill the Username field with 'haseeb91', fill the Password field with '123456', and click the 'Sign In' button to log in and load the profile editor.
+        # Enter username text field
+        elem = page.get_by_placeholder('Enter username', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("haseeb91")
+        
+        # -> Fill the Username field with 'haseeb91', fill the Password field with '123456', and click the 'Sign In' button to log in and load the profile editor.
+        # Password password field
+        elem = page.get_by_placeholder('Password', exact=True)
+        await elem.wait_for(state="visible", timeout=10000)
+        await elem.fill("123456")
+        
+        # -> Fill the Username field with 'haseeb91', fill the Password field with '123456', and click the 'Sign In' button to log in and load the profile editor.
+        # Sign In button
+        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the 'Open Saved Profile' button to load a saved profile into the profile editor so the Skills section can be opened.
         # 📂 Open Saved Profile button
         elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Click the '📂 Open Saved Profile' button to open the profile loader or profile editor.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
+        # -> Click the 'Open →' button on the first saved profile card to load that profile into the profile editor.
+        # Open → button
+        elem = page.get_by_text('haseebmir.hm@gmail.com · Profile #1', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Open →', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Click the '📂 Open Saved Profile' button to open the profile loader or profile editor so the profile can be loaded and edited.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Click the '📂 Open Saved Profile' button to open the profile loader or trigger the file picker so a saved profile can be loaded.
-        # 📂 Open Saved Profile button
-        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
-        await elem.click(timeout=10000)
-        
-        # -> Scroll down the landing page to reveal more navigation or controls (for example a 'Create New Profile' or profile editor link) that allow opening the profile editor or accessing the Skills section.
-        await page.mouse.wheel(0, 300)
-        
-        # -> Upload a minimal profile file using the 'Drag & drop your resume here / click to browse files' area to load the profile editor.
-        # file upload
-        elem = page.locator('xpath=/html/body/div/div/div/div[2]/input')
-        await elem.wait_for(state="attached", timeout=10000)
-        if await elem.evaluate("e => e.tagName === 'INPUT' && (e.type || '').toLowerCase() === 'file'"):
-            await elem.set_input_files("./fixtures/test_profile.json")
-        else:
-            await elem.wait_for(state="visible", timeout=10000)
-            async with page.expect_file_chooser() as fc_info:
-                await elem.click()
-            chooser = await fc_info.value
-            await chooser.set_files("./fixtures/test_profile.json")
-        
-        # -> Open the 'Skills' section in the profile editor by clicking the 'Skills' item in the left navigation.
+        # -> Click the 'Skills' button in the left sidebar to open the Skills section of the profile editor.
         # ⚡ Skills button
         elem = page.get_by_role('button', name='⚡ Skills', exact=True)
         await elem.click(timeout=10000)
         
-        # -> click
+        # -> Open the 'Add Skill' dialog by clicking the '+ Add Skill' button on the Skills page so the fields for Name, Category, and Years can be filled.
         # + Add Skill button
         elem = page.get_by_role('button', name='+ Add Skill', exact=True)
         await elem.click(timeout=10000)
         
-        # -> Fill the 'Skill name' field with 'Automated Testing' (then fill Category and Years and click the 'Add' button to add the skill).
+        # -> Fill the Skill name field with 'JavaScript', fill the Category field with 'Programming', set Years to '3', then click the 'Add' button to add the skill.
         # Skill name text field
         elem = page.get_by_placeholder('Skill name', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("Automated Testing")
+        await elem.fill("JavaScript")
         
-        # -> Fill the 'Skill name' field with 'Automated Testing' (then fill Category and Years and click the 'Add' button to add the skill).
+        # -> Fill the Skill name field with 'JavaScript', fill the Category field with 'Programming', set Years to '3', then click the 'Add' button to add the skill.
         # Category text field
         elem = page.get_by_placeholder('Category', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("Quality Assurance")
+        await elem.fill("Programming")
         
-        # -> Fill the 'Skill name' field with 'Automated Testing' (then fill Category and Years and click the 'Add' button to add the skill).
+        # -> Fill the Skill name field with 'JavaScript', fill the Category field with 'Programming', set Years to '3', then click the 'Add' button to add the skill.
         # 0 number field
         elem = page.get_by_placeholder('0', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("3")
         
-        # -> Fill the 'Skill name' field with 'Automated Testing' (then fill Category and Years and click the 'Add' button to add the skill).
+        # -> Fill the Skill name field with 'JavaScript', fill the Category field with 'Programming', set Years to '3', then click the 'Add' button to add the skill.
         # Add button
         elem = page.get_by_role('button', name='Add', exact=True)
         await elem.click(timeout=10000)
@@ -117,12 +127,12 @@ async def run_test():
         # --> Assertions to verify final state
         
         # --> Verify the new skill appears in the skills list
-        # Assert: The skills list shows the new skill name 'Automated Testing'.
-        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/table/tbody/tr/td[1]").nth(0)).to_have_text("Automated Testing", timeout=15000), "The skills list shows the new skill name 'Automated Testing'."
-        # Assert: The skills list shows the category 'Quality Assurance' for the new skill.
-        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/table/tbody/tr/td[2]").nth(0)).to_have_text("Quality Assurance", timeout=15000), "The skills list shows the category 'Quality Assurance' for the new skill."
-        # Assert: The skills list shows '3' years for the new skill.
-        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/table/tbody/tr/td[3]").nth(0)).to_have_text("3", timeout=15000), "The skills list shows '3' years for the new skill."
+        # Assert: The skills list shows the new skill name 'JavaScript'.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/table/tbody/tr/td[1]").nth(0)).to_have_text("JavaScript", timeout=15000), "The skills list shows the new skill name 'JavaScript'."
+        # Assert: The skills list shows the category 'Programming' for the new skill.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/table/tbody/tr/td[2]").nth(0)).to_have_text("Programming", timeout=15000), "The skills list shows the category 'Programming' for the new skill."
+        # Assert: The skills list shows '3' years of experience for the new skill.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/main/div/div/table/tbody/tr/td[3]").nth(0)).to_have_text("3", timeout=15000), "The skills list shows '3' years of experience for the new skill."
         await asyncio.sleep(5)
 
     finally:

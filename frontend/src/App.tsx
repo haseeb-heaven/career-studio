@@ -4,7 +4,9 @@ import UploadScreen from "./components/UploadScreen";
 import ProfileEditor from "./components/ProfileEditor";
 import LoginScreen from "./components/LoginScreen";
 import { ToastProvider } from "./components/Toast";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { setAuthToken, verifyToken } from "./api";
+import type { Profile } from "./types";
 
 type Screen = "login" | "upload" | "editor";
 
@@ -14,6 +16,7 @@ export default function App() {
   const [profileId, setProfileId] = useState<number | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [authChecked, setAuthChecked] = useState(false);
+  const [prefetchedProfile, setPrefetchedProfile] = useState<Profile | null>(null);
 
   // Restore session from localStorage on mount
   useEffect(() => {
@@ -58,9 +61,10 @@ export default function App() {
     setScreen("login");
   }
 
-  function handleImported(id: number, w: string[]) {
+  function handleImported(id: number, w: string[], prefetched?: Profile | null) {
     setProfileId(id);
     setWarnings(w);
+    setPrefetchedProfile(prefetched ?? null);
     setScreen("editor");
   }
 
@@ -83,17 +87,21 @@ export default function App() {
           onLogout={handleLogout}
         />
       ) : (
-        <ProfileEditor
-          profileId={profileId!}
-          importWarnings={warnings}
-          authUser={authUser}
-          onLogout={handleLogout}
-          onBack={() => {
-            setScreen("upload");
-            setWarnings([]);
-            setProfileId(null);
-          }}
-        />
+        <ErrorBoundary>
+          <ProfileEditor
+            profileId={profileId!}
+            importWarnings={warnings}
+            authUser={authUser}
+            onLogout={handleLogout}
+            prefetchedProfile={prefetchedProfile}
+            onBack={() => {
+              setScreen("upload");
+              setWarnings([]);
+              setProfileId(null);
+              setPrefetchedProfile(null);
+            }}
+          />
+        </ErrorBoundary>
       )}
     </ToastProvider>
   );

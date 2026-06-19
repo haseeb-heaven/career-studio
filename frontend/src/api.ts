@@ -210,21 +210,150 @@ export interface JobMatch {
   description: string;
   source: string;
   match_score: number;
+  salary?: string | null;
+  is_deep_link: boolean;
+  date_posted?: string;
+  job_type?: string;
+  industry?: string;
+  is_remote?: boolean;
+  is_expired?: boolean;
+  salary_min?: number;
+  salary_max?: number;
+  match_breakdown?: Record<string, number>;
+  matched_skills?: string[];
+  missing_skills?: string[];
+}
+
+export interface JobsSearchResult {
+  query: string;
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+  jobs: JobMatch[];
+}
+
+export interface JobSearchOptions {
+  limit?: number;
+  offset?: number;
+  jobTitle?: string;
+  location?: string;
+  portal?: string;
+  minYears?: number;
+  maxYears?: number;
+  datePosted?: "any" | "last_24h" | "last_7d" | "last_30d";
+  minMatchScore?: number;
+  jobType?: string;
+  minSalary?: number;
+  maxSalary?: number;
+  industries?: string;
+  sort?: "best_match" | "recent" | "salary" | "location";
+}
+
+export interface SavedFilter {
+  id: number;
+  name: string;
+  filters: Record<string, string | number>;
+  sort: string;
+  created_at: string;
+}
+
+export interface ExternalSearchLink {
+  portal: string;
+  label: string;
+  url: string;
+  icon: string;
 }
 
 export async function searchJobs(
-  profileId: number, 
-  limit = 20,
+  profileId: number,
+  options: JobSearchOptions | number = {},
   jobTitle = "",
   location = "",
-  portal = "all"
-): Promise<{ query: string; jobs: JobMatch[] }> {
+  portal = "all",
+): Promise<JobsSearchResult> {
+  // Backwards-compatible overload: searchJobs(pid, limit, jobTitle, location, portal)
+  let opts: JobSearchOptions;
+  if (typeof options === "number") {
+    opts = { limit: options, jobTitle, location, portal };
+  } else {
+    opts = options;
+  }
   const params = new URLSearchParams();
-  params.append("limit", String(limit));
-  if (jobTitle) params.append("job_title", jobTitle);
+  if (opts.limit !== undefined) params.append("limit", String(opts.limit));
+  if (opts.offset !== undefined) params.append("offset", String(opts.offset));
+  if (opts.jobTitle) params.append("job_title", opts.jobTitle);
+  if (opts.location) params.append("location", opts.location);
+  if (opts.portal) params.append("portal", opts.portal);
+  if (opts.minYears !== undefined && opts.minYears > 0) params.append("min_years", String(opts.minYears));
+  if (opts.maxYears !== undefined && opts.maxYears < 50) params.append("max_years", String(opts.maxYears));
+  if (opts.datePosted && opts.datePosted !== "any") params.append("date_posted", opts.datePosted);
+  if (opts.minMatchScore !== undefined && opts.minMatchScore > 0) params.append("min_match_score", String(opts.minMatchScore));
+  if (opts.jobType) params.append("job_type", opts.jobType);
+  if (opts.minSalary !== undefined && opts.minSalary > 0) params.append("min_salary", String(opts.minSalary));
+  if (opts.maxSalary !== undefined && opts.maxSalary > 0) params.append("max_salary", String(opts.maxSalary));
+  if (opts.industries) params.append("industries", opts.industries);
+  if (opts.sort) params.append("sort", opts.sort);
+  const res = await axios.get<JobsSearchResult>(`${BASE}/profiles/${profileId}/jobs?${params.toString()}`);
+  return res.data;
+}
+
+export async function listSavedFilters(profileId: number): Promise<SavedFilter[]> {
+  const res = await axios.get<SavedFilter[]>(`${BASE}/profiles/${profileId}/saved-filters`);
+  return res.data;
+}
+
+export async function createSavedFilter(
+  profileId: number,
+  name: string,
+  filters: Record<string, string | number>,
+  sort = "best_match",
+): Promise<SavedFilter> {
+  const res = await axios.post<SavedFilter>(
+    `${BASE}/profiles/${profileId}/saved-filters`,
+    { name, filters, sort },
+  );
+  return res.data;
+}
+
+export async function deleteSavedFilter(profileId: number, sfId: number): Promise<void> {
+  await axios.delete(`${BASE}/profiles/${profileId}/saved-filters/${sfId}`);
+}
+
+export async function updateSavedFilter(
+  profileId: number,
+  sfId: number,
+  body: { name?: string; filters?: Record<string, string | number>; sort?: string },
+): Promise<SavedFilter> {
+  const res = await axios.patch<SavedFilter>(
+    `${BASE}/profiles/${profileId}/saved-filters/${sfId}`,
+    body,
+  );
+  return res.data;
+}
+
+export async function getExternalSearchLinks(
+  profileId: number,
+  keywords = "",
+  location = "",
+  experienceLevel = "",
+  workType = "",
+  timePosted = "",
+  salaryMin = 0,
+  salaryCurrency = "USD",
+): Promise<{ keywords: string; location: string; currency: string; links: ExternalSearchLink[] }> {
+  const params = new URLSearchParams();
+  if (keywords) params.append("keywords", keywords);
   if (location) params.append("location", location);
-  if (portal) params.append("portal", portal);
-  const res = await axios.get(`${BASE}/profiles/${profileId}/jobs?${params.toString()}`);
+  if (experienceLevel) params.append("experience_level", experienceLevel);
+  if (workType) params.append("work_type", workType);
+  if (timePosted) params.append("time_posted", timePosted);
+  if (salaryMin > 0) params.append("salary_min", String(salaryMin));
+  if (salaryCurrency) params.append("salary_currency", salaryCurrency);
+  const qs = params.toString();
+  const res = await axios.get(
+    `${BASE}/profiles/${profileId}/external-search${qs ? `?${qs}` : ""}`,
+  );
   return res.data;
 }
 

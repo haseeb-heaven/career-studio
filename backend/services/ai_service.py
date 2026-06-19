@@ -3,7 +3,7 @@ import json
 import os
 import urllib.request
 from sqlmodel import Session, select
-from db import engine
+import db
 from models import Settings
 from security_crypto import decrypt_key, _KEY_FIELDS
 
@@ -46,11 +46,14 @@ def _friendly_api_error(e: Exception, provider: str) -> str:
     return f"{provider} API error: {msg}"
 
 
-def _load_settings() -> Settings:
-    with Session(engine) as s:
-        cfg = s.exec(select(Settings)).first()
+def _load_settings(user_id: int | None = None) -> Settings:
+    with Session(db.engine) as s:
+        query = select(Settings)
+        if user_id is not None:
+            query = query.where(Settings.user_id == user_id)
+        cfg = s.exec(query).first()
         if not cfg:
-            cfg = Settings()
+            cfg = Settings(user_id=user_id)
             s.add(cfg)
             s.commit()
             s.refresh(cfg)
@@ -290,9 +293,9 @@ def _call_external(cfg: Settings, system: str, user: str) -> str:
 # ---------- Public interface ----------
 
 # Task complexity: "simple" = quick summaries / keyword extraction; "complex" = cover letters, roadmaps, full analysis
-def complete(system: str, user: str, complexity: str = "complex") -> str:
+def complete(system: str, user: str, complexity: str = "complex", user_id: int | None = None) -> str:
     """Route to local or external AI based on settings and task complexity."""
-    cfg = _load_settings()
+    cfg = _load_settings(user_id)
 
     if cfg.use_local_ai:
         ollama_up = ollama_available(cfg.ollama_base_url)
@@ -309,12 +312,12 @@ def complete(system: str, user: str, complexity: str = "complex") -> str:
     return _call_external(cfg, system, user)
 
 
-def complete_simple(system: str, user: str) -> str:
-    return complete(system, user, complexity="simple")
+def complete_simple(system: str, user: str, user_id: int | None = None) -> str:
+    return complete(system, user, complexity="simple", user_id=user_id)
 
 
-def complete_complex(system: str, user: str) -> str:
-    return complete(system, user, complexity="complex")
+def complete_complex(system: str, user: str, user_id: int | None = None) -> str:
+    return complete(system, user, complexity="complex", user_id=user_id)
 
 
 def profile_text_summary(profile) -> str:

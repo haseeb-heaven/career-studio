@@ -1,14 +1,20 @@
-"""Job matching — multi-source job board integration with parallel fetching."""
+"""Job matching — multi-source job board integration with parallel fetching.
+
+Issue #7: profile-aware weighted match scoring, advanced filters, sort,
+pagination, missing-skill gap, saved filter presets.
+"""
 import asyncio
 import json
 import re
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Query, Depends
+from pydantic import BaseModel
 from sqlmodel import Session, select
-from db import engine
-from models import Profile, JobMatch, Settings, User
+import db
+from models import Profile, JobMatch, Settings, User, SavedFilter
 from services import activity
 from logger import get_logger
 from typing import Optional
@@ -83,6 +89,8 @@ def _fetch_remotive(query: str, limit: int) -> list[dict]:
                 "source": "remotive",
                 "salary": None,
                 "is_deep_link": False,
+                "date_posted": (j.get("publication_date") or "")[:10],
+                "job_type": j.get("job_type", "") or "",
             }
             for j in data.get("jobs", [])
         ]
@@ -367,6 +375,90 @@ def _fetch_jooble(query: str, limit: int, api_key: str) -> list[dict]:
         return []
 
 
+def _fetch_reed(query: str, limit: int, api_key: str) -> list[dict]:
+    """Reed.co.uk API — UK-focused job board, free dev key required."""
+    if not api_key:
+        return []
+    try:
+        encoded = urllib.parse.quote(query)
+        url = f"https://www.reed.co.uk/api/1.0/search?keywords={encoded}&resultsToTake={limit}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization": f"Basic {api_key}",
+                "User-Agent": _BROWSER_UA,
+            },
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read())
+        jobs = []
+        for j in data.get("results", [])[:limit]:
+            sal_min = int(j.get("minimumSalary") or 0)
+            sal_max = int(j.get("maximumSalary") or 0)
+            salary = None
+            if sal_min and sal_max:
+                salary = f"£{sal_min:,}-£{sal_max:,}"
+            elif sal_min:
+                salary = f"£{sal_min:,}+"
+            jobs.append({
+                "title": j.get("jobTitle", ""),
+                "company": j.get("employerName", ""),
+                "location": j.get("locationName", "UK") or "UK",
+                "url": j.get("jobUrl", ""),
+                "description": (j.get("jobDescription", "") or "")[:500],
+                "source": "reed",
+                "salary": salary,
+                "is_deep_link": False,
+                "date_posted": (j.get("datePosted") or "")[:10],
+            })
+        return jobs
+    except Exception as e:
+        logger.warning("Reed fetch failed: %s", e)
+        return []
+
+
+def _fetch_usajobs(query: str, limit: int, api_key: str) -> list[dict]:
+    """USAJOBS API — US federal government jobs, free key required."""
+    if not api_key:
+        return []
+    try:
+        encoded = urllib.parse.quote(query)
+        url = f"https://data.usajobs.gov/api/search?Keyword={encoded}&ResultsPerPage={limit}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization-Key": api_key,
+                "User-Agent": "career-studio-ai/1.0",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read())
+        jobs = []
+        for j in data.get("SearchResult", {}).get("SearchResultItems", [])[:limit]:
+            pd = j.get("MatchedObjectDescriptor", {})
+            sal_min = int(pd.get("PositionRemuneration", [{}])[0].get("MinimumRange", "0") or 0)
+            sal_max = int(pd.get("PositionRemuneration", [{}])[0].get("MaximumRange", "0") or 0)
+            salary = None
+            if sal_min and sal_max:
+                salary = f"${sal_min:,}-${sal_max:,}"
+            locations = [loc.get("LocationName", "") for loc in pd.get("PositionLocation", [])]
+            jobs.append({
+                "title": pd.get("PositionTitle", ""),
+                "company": pd.get("OrganizationName", "US Federal Government"),
+                "location": ", ".join(filter(None, locations)) or "US",
+                "url": pd.get("PositionURI", ""),
+                "description": (pd.get("QualificationSummary", "") or "")[:500],
+                "source": "usajobs",
+                "salary": salary,
+                "is_deep_link": False,
+                "date_posted": (pd.get("PublicationStartDate") or "")[:10],
+            })
+        return jobs
+    except Exception as e:
+        logger.warning("USAJOBS fetch failed: %s", e)
+        return []
+
+
 # ── Tier 3 deep links (open browser, no data fetched) ────────────────────────
 
 def _fetch_linkedin_guest(query: str, location: str, limit: int) -> list[dict]:
@@ -517,27 +609,281 @@ def _fetch_google_jobs(query: str, location: str) -> list[dict]:
     }]
 
 
-# ── Scoring & deduplication ───────────────────────────────────────────────────
+# ── Scoring engine (Issue #7 — weighted 6-factor) ────────────────────────────
+
+_REQUIRED_YEARS_RE = re.compile(
+    r"(\d+)\+?\s*(?:years?|yrs?)\s+(?:of\s+)?experience", re.IGNORECASE
+)
+_DEGREE_KEYWORDS = (
+    "bachelor", "master", "phd", "doctorate",
+    "bs", "ms", "b.sc", "m.sc", "degree",
+)
+_CERT_KEYWORDS = (
+    "aws", "gcp", "azure", "kubernetes", "cka", "ckad",
+    "pmp", "scrum", "cissp", "terraform", "certified",
+)
+
+# A small, opinionated vocabulary used to surface "missing skills" from the
+# job description. This is intentionally a short list to keep false positives
+# low — a longer list makes the gap analysis noisy. Single-word tokens are
+# matched with word boundaries to avoid substring false positives (e.g. "go"
+# inside "google").
+_JOB_SKILL_VOCAB = (
+    # Languages
+    "python", "java", "javascript", "typescript", "golang", "rust", "ruby", "php",
+    "swift", "kotlin", "scala", "perl", "matlab", "c++", "c#", "r lang",
+    # Frontend
+    "react", "vue", "angular", "svelte", "next.js", "nuxt", "redux",
+    "html", "css", "sass", "tailwind", "webpack", "vite",
+    "frontend", "front-end", "front end",
+    # Backend / runtimes
+    "node", "nodejs", "node.js", "express", "expressjs", "fastapi", "django",
+    "flask", "spring", "spring boot", "springboot", "rails", "laravel",
+    "nestjs", "graphql", "grpc", ".net", "dotnet",
+    "backend", "back-end", "back end", "fullstack", "full-stack", "full stack",
+    # Databases
+    "postgresql", "postgres", "mysql", "mongodb", "redis", "elasticsearch",
+    "dynamodb", "kafka", "rabbitmq", "sqlite", "cassandra", "clickhouse",
+    "nosql", "sql",
+    # DevOps / cloud
+    "docker", "kubernetes", "k8s", "terraform", "ansible", "jenkins",
+    "github actions", "helm", "prometheus", "grafana", "datadog",
+    "aws", "gcp", "azure", "cloudfront", "lambda", "ec2", "rds",
+    "ci/cd", "devops",
+    # Data / ML
+    "machine learning", "deep learning", "nlp", "computer vision",
+    "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy", "spark",
+    "hadoop", "airflow", "dbt", "snowflake", "bigquery", "redshift",
+    "data science", "data engineering", "data analyst",
+    # Tools / practices
+    "git", "agile", "scrum", "kanban", "jira",
+    "microservices", "rest api", "restful", "soap",
+    "linux", "bash", "powershell", "unix",
+    "tdd", "ci/cd",
+    # Design
+    "figma", "sketch", "adobe xd",
+    # Testing
+    "jest", "pytest", "junit", "selenium", "cypress", "playwright",
+    # Roles / domains
+    "devops", "sre", "qa", "etl", "api", "saas", "b2b", "b2c",
+    "microservice", "monolith", "serverless", "edge",
+    "security", "owasp", "penetration testing",
+    "android", "ios", "mobile", "react native", "flutter",
+)
+
+
+def _contains_token(haystack_l: str, token: str) -> bool:
+    """Word-boundary-aware substring check. Multi-word tokens use plain substring
+    matching because the word-boundary check is too strict for phrases like
+    'machine learning' inside 'state-of-the-art machine learning pipelines'."""
+    if " " in token or "." in token or "/" in token or "-" in token:
+        return token in haystack_l
+    pattern = r"(?<![a-z0-9])" + re.escape(token) + r"(?![a-z0-9])"
+    return re.search(pattern, haystack_l) is not None
+
+_WEIGHTS = {
+    "skills": 0.40,
+    "years": 0.20,
+    "education": 0.15,
+    "location": 0.10,
+    "certifications": 0.10,
+    "title": 0.05,
+}
+
+
+def _parse_required_years(text: str) -> int:
+    if not text:
+        return 0
+    m = _REQUIRED_YEARS_RE.search(text)
+    return int(m.group(1)) if m else 0
+
+
+def _profile_years(profile: Profile) -> int:
+    """Total years across all skill records. Best-effort heuristic."""
+    if not profile or not getattr(profile, "skills", None):
+        return 0
+    return int(round(sum(float(s.years or 0) for s in profile.skills)))
+
+
+def _skills_factor(profile: Profile, haystack: str) -> tuple[float, list[str], list[str]]:
+    skills = [s.name for s in (profile.skills or []) if s.name]
+    haystack_l = (haystack or "").lower()
+    if not skills:
+        return 50.0, [], []
+    matched: list[str] = []
+    missing_user_skills: list[str] = []
+    for s in skills:
+        if s.lower() in haystack_l:
+            matched.append(s)
+        else:
+            missing_user_skills.append(s)
+    score = (len(matched) / max(len(skills), 1)) * 100
+    # Identify "missing" — job-required skills not in the profile. We do this
+    # by extracting known skill tokens from the job description via the
+    # JOB_SKILL_VOCAB list and reporting the ones the user doesn't have.
+    profile_lc = {s.lower() for s in skills}
+    seen: set[str] = set()
+    missing_job_skills: list[str] = []
+    for token in _JOB_SKILL_VOCAB:
+        if token in profile_lc:
+            continue
+        if token in seen:
+            continue
+        if _contains_token(haystack_l, token):
+            missing_job_skills.append(token)
+            seen.add(token)
+    return score, matched, missing_job_skills
+
+
+def _years_factor(profile: Profile, required: int) -> float:
+    if required <= 0:
+        return 100.0
+    have = _profile_years(profile)
+    if have <= 0:
+        return 30.0
+    return min(have / required, 1.0) * 100
+
+
+def _education_factor(profile: Profile, desc: str) -> float:
+    desc_l = (desc or "").lower()
+    job_requires_degree = any(k in desc_l for k in _DEGREE_KEYWORDS)
+    has_degree = bool(profile.education and any(
+        (e.degree or e.field) for e in profile.education
+    ))
+    if job_requires_degree and has_degree:
+        return 100.0
+    if job_requires_degree and not has_degree:
+        return 40.0
+    return 100.0
+
+
+def _location_factor(profile: Profile, job: dict) -> float:
+    if job.get("is_remote") or job.get("job_type") == "remote":
+        return 100.0
+    if not profile or not (profile.location or "").strip():
+        return 50.0
+    profile_tokens = {t.lower() for t in re.split(r"[,\s]+", profile.location) if t}
+    job_loc = (job.get("location") or "").lower()
+    if any(t in job_loc for t in profile_tokens if len(t) > 2):
+        return 100.0
+    return 60.0
+
+
+def _certifications_factor(profile: Profile, desc: str) -> float:
+    certs = [c.name for c in (profile.certifications or []) if c.name]
+    desc_l = (desc or "").lower()
+    job_mentions_cert = any(k in desc_l for k in _CERT_KEYWORDS)
+    if not certs:
+        return 30.0 if job_mentions_cert else 80.0
+    matched = sum(1 for c in certs if c.lower() in desc_l)
+    return (matched / len(certs)) * 100
+
+
+def _title_factor(profile: Profile, job_title: str) -> float:
+    roles = [e.role for e in (profile.experience or []) if e.role]
+    if not roles or not job_title:
+        return 0.0
+    role_tokens = {t.lower() for t in re.split(r"\W+", roles[0]) if len(t) > 2}
+    title_tokens = {t.lower() for t in re.split(r"\W+", job_title) if len(t) > 2}
+    if not role_tokens or not title_tokens:
+        return 0.0
+    overlap = role_tokens & title_tokens
+    return (len(overlap) / max(len(role_tokens), 1)) * 100
+
+
+def _profile_match_score(profile: Profile, job: dict) -> dict:
+    """Weighted 6-factor match score. Returns score, breakdown, matched, missing."""
+    title = (job.get("title") or "")
+    desc = (job.get("description") or "")
+    haystack = f"{title}\n{desc}"
+    required_years = _parse_required_years(desc)
+
+    skills_score, matched, missing = _skills_factor(profile, haystack)
+    factors = {
+        "skills": skills_score,
+        "years": _years_factor(profile, required_years),
+        "education": _education_factor(profile, desc),
+        "location": _location_factor(profile, job),
+        "certifications": _certifications_factor(profile, desc),
+        "title": _title_factor(profile, title),
+    }
+    score = sum(_WEIGHTS[k] * factors[k] for k in _WEIGHTS)
+    return {
+        "score": round(min(100.0, max(0.0, score)), 1),
+        "breakdown": {k: round(v, 1) for k, v in factors.items()},
+        "matched": matched,
+        "missing": missing,
+    }
+
+
+# ── Backwards-compatible simple scorer (kept for legacy callers/tests) ────────
 
 def _match_score(job_title: str, job_desc: str, skill_names: list[str], query: str) -> float:
-    """Score 0–100 based on how well job matches the profile skills and query."""
+    """Legacy flat scorer: 50% title overlap + 50% skills in description."""
     if not skill_names and not query:
         return 0.0
-
     score = 0.0
-    title_lower = job_title.lower()
-    desc_lower = job_desc.lower()
-
-    query_words = [w for w in query.lower().split() if len(w) > 2]
+    title_lower = (job_title or "").lower()
+    desc_lower = (job_desc or "").lower()
+    query_words = [w for w in (query or "").lower().split() if len(w) > 2]
     title_hits = sum(1 for w in query_words if w in title_lower)
     if query_words:
         score += (title_hits / len(query_words)) * 50
-
     if skill_names:
         skill_hits = sum(1 for s in skill_names if s.lower() in desc_lower)
         score += (skill_hits / len(skill_names)) * 50
-
     return round(min(100.0, score), 1)
+
+
+# ── Helpers for new fields ────────────────────────────────────────────────────
+
+def _extract_date_posted(j: dict) -> str:
+    raw = j.get("date_posted") or j.get("publication_date") or ""
+    return str(raw)[:10] if raw else ""
+
+
+def _extract_job_type(j: dict) -> str:
+    raw = (j.get("job_type") or "").lower().strip()
+    if raw in ("full_time", "full-time", "full time"):
+        return "full-time"
+    if raw in ("part_time", "part-time", "part time"):
+        return "part-time"
+    if "contract" in raw:
+        return "contract"
+    if "remote" in raw:
+        return "remote"
+    if "hybrid" in raw:
+        return "hybrid"
+    return ""
+
+
+def _is_remote_job(j: dict) -> bool:
+    if j.get("is_remote") is True:
+        return True
+    if (j.get("job_type") or "").lower() == "remote":
+        return True
+    loc = (j.get("location") or "").lower()
+    return "remote" in loc or "anywhere" in loc
+
+
+def _parse_salary_range(salary_str: str) -> tuple[int, int]:
+    """Best-effort: extract min/max from "$120k-$150k", "$120,000", etc."""
+    if not salary_str:
+        return 0, 0
+    nums = re.findall(r"(\d[\d,]*(?:\.\d+)?)\s*([kKmM]?)", str(salary_str))
+    parsed = []
+    for n, suffix in nums:
+        v = float(n.replace(",", ""))
+        if suffix.lower() == "k":
+            v *= 1000
+        elif suffix.lower() == "m":
+            v *= 1_000_000
+        parsed.append(int(v))
+    if not parsed:
+        return 0, 0
+    if len(parsed) == 1:
+        return parsed[0], parsed[0]
+    return min(parsed[0], parsed[1]), max(parsed[0], parsed[1])
 
 
 def _deduplicate(jobs: list[dict]) -> list[dict]:
@@ -558,20 +904,43 @@ _SUPPORTED_PORTALS = {
     "all", "arbeitnow", "remoteok", "remotive",
     "himalayas", "themuse", "jobicy", "weworkremotely",
     "linkedin", "indeed", "glassdoor", "google_jobs",
-    "adzuna", "findwork", "jooble",
+    "adzuna", "findwork", "jooble", "reed", "usajobs",
 }
+
+
+def _date_cutoff(date_posted: str) -> str:
+    """Return ISO date string for 'last 24h', 'last 7d', 'last 30d' cutoff."""
+    now = datetime.now(timezone.utc)
+    if date_posted == "last_24h":
+        return (now - timedelta(hours=24)).date().isoformat()
+    if date_posted == "last_7d":
+        return (now - timedelta(days=7)).date().isoformat()
+    if date_posted == "last_30d":
+        return (now - timedelta(days=30)).date().isoformat()
+    return ""
 
 
 @router.get("/{profile_id}/jobs")
 async def search_jobs(
     profile_id: int,
-    limit: int = Query(default=20, ge=1, le=50),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     job_title: str = Query(default=""),
     location: str = Query(default=""),
     portal: str = Query(default="all"),
+    min_years: int = Query(default=0, ge=0, le=50),
+    max_years: int = Query(default=50, ge=0, le=50),
+    date_posted: str = Query(default="any"),
+    min_match_score: float = Query(default=0.0, ge=0.0, le=100.0),
+    job_type: str = Query(default=""),
+    min_salary: int = Query(default=0, ge=0),
+    max_salary: int = Query(default=0, ge=0),
+    industries: str = Query(default=""),
+    sort: str = Query(default="best_match"),
     user: Optional[User] = Depends(get_current_user_optional),
 ):
-    with Session(engine) as s:
+    # ---- 1. Load profile, build query, get API keys ----
+    with Session(db.engine) as s:
         p = s.get(Profile, profile_id)
         if not p:
             raise HTTPException(status_code=404, detail="Profile not found")
@@ -580,8 +949,6 @@ async def search_jobs(
         elif p.user_id is not None:
             raise HTTPException(status_code=403, detail="Forbidden")
         s.refresh(p)
-        skill_names = [sk.name for sk in (p.skills or [])]
-
         query = job_title.strip() if job_title.strip() else _build_keywords(p)
         search_loc = location.strip() if location.strip() else (p.location or "Remote")
 
@@ -593,8 +960,13 @@ async def search_jobs(
         glassdoor_key = decrypt_key(cfg.glassdoor_api_key or "")
         findwork_key = decrypt_key(cfg.findwork_api_key or "")
         jooble_key = decrypt_key(cfg.jooble_api_key or "")
+        reed_key = decrypt_key(cfg.reed_api_key or "")
+        usajobs_key = decrypt_key(cfg.usajobs_api_key or "")
 
-    logger.info("Job search for profile %d: query=%r, location=%r, portal=%r", profile_id, query, search_loc, portal)
+    logger.info(
+        "Job search for profile %d: query=%r, location=%r, portal=%r, sort=%r",
+        profile_id, query, search_loc, portal, sort,
+    )
 
     p_lower = portal.lower().strip()
     if p_lower not in _SUPPORTED_PORTALS:
@@ -603,7 +975,10 @@ async def search_jobs(
             detail=f"Unsupported portal '{portal}'. Supported: {', '.join(sorted(_SUPPORTED_PORTALS))}"
         )
 
-    # Build list of coroutines to run concurrently
+    if sort not in ("best_match", "recent", "salary", "location"):
+        raise HTTPException(status_code=400, detail=f"Unsupported sort '{sort}'")
+
+    # ---- 2. Fetch from sources in parallel ----
     tasks: list = []
     if p_lower in ("all", "remotive"):
         tasks.append(asyncio.to_thread(_fetch_remotive, query, limit))
@@ -639,6 +1014,14 @@ async def search_jobs(
         tasks.append(asyncio.to_thread(_fetch_jooble, query, limit, jooble_key))
     elif p_lower == "jooble":
         tasks.append(asyncio.to_thread(_fetch_jooble, query, limit, jooble_key))
+    if reed_key and p_lower in ("all", "reed"):
+        tasks.append(asyncio.to_thread(_fetch_reed, query, limit, reed_key))
+    elif p_lower == "reed":
+        tasks.append(asyncio.to_thread(_fetch_reed, query, limit, reed_key))
+    if usajobs_key and p_lower in ("all", "usajobs"):
+        tasks.append(asyncio.to_thread(_fetch_usajobs, query, limit, usajobs_key))
+    elif p_lower == "usajobs":
+        tasks.append(asyncio.to_thread(_fetch_usajobs, query, limit, usajobs_key))
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -649,16 +1032,85 @@ async def search_jobs(
             continue
         all_jobs.extend(result)
 
-    all_jobs = _deduplicate(all_jobs)[:limit]
+    all_jobs = _deduplicate(all_jobs)
 
-    with Session(engine) as s:
+    # ---- 2b. Strict query + location filtering ----
+    # External sources are fuzzy: Remotive's free-text search will return
+    # loosely-related jobs (e.g. searching "Backend Developer" can return
+    # "Frontend Web Developer" because the description shares generic
+    # keywords like "Developer"). To honour the user's intent we
+    # post-filter results:
+    #   * Job title: ALL of the user's query tokens (split on whitespace)
+    #     must appear in either the job's title or description. This
+    #     means "Backend Developer" excludes a "Frontend Web Developer"
+    #     job (the "Backend" token is missing) but keeps a "Senior Backend
+    #     Developer" job (both tokens present).
+    #   * Location: at least one of the user's location tokens must
+    #     appear in the job's location field. Jobs with empty location
+    #     are kept (don't hide untagged jobs).
+    if job_title and job_title.strip():
+        title_keywords = [
+            t.lower() for t in re.split(r"[\s,/]+", job_title.strip())
+            if len(t) > 1
+        ]
+        if title_keywords:
+            def _matches_query(j: dict) -> bool:
+                title_l = (j.get("title") or "").lower()
+                desc_l = (j.get("description") or "").lower()
+                return all(
+                    kw in title_l or kw in desc_l for kw in title_keywords
+                )
+            before = len(all_jobs)
+            all_jobs = [j for j in all_jobs if _matches_query(j)]
+            logger.info(
+                "Strict title filter '%s' kept %d / %d jobs",
+                job_title, len(all_jobs), before,
+            )
+    if location and location.strip():
+        loc_tokens = [
+            t.lower() for t in re.split(r"[\s,/]+", location.strip())
+            if len(t) > 2
+        ]
+        if loc_tokens:
+            def _matches_loc(j: dict) -> bool:
+                jl = (j.get("location") or "").lower()
+                if not jl:
+                    return True  # untagged → keep
+                return any(tok in jl for tok in loc_tokens)
+            before = len(all_jobs)
+            all_jobs = [j for j in all_jobs if _matches_loc(j)]
+            logger.info(
+                "Strict location filter '%s' kept %d / %d jobs",
+                location, len(all_jobs), before,
+            )
+
+    # ---- 3. Score & persist all fetched jobs ----
+    # Profile must remain attached so the scoring engine can read its
+    # relationships (skills, experience, education, certifications). We do
+    # the whole scoring + persistence inside one session block.
+    with Session(db.engine) as s:
+        # Re-attach the profile inside this new session
+        p = s.get(Profile, profile_id)
+        s.refresh(p)
+
         old = s.exec(select(JobMatch).where(JobMatch.profile_id == profile_id)).all()
         for o in old:
             s.delete(o)
         s.commit()
 
         for j in all_jobs:
-            score = _match_score(j["title"], j["description"], skill_names, query)
+            result = _profile_match_score(p, j)
+            j["_score"] = result["score"]
+            j["_breakdown"] = json.dumps(result["breakdown"])
+            j["_matched"] = json.dumps(result["matched"])
+            j["_missing"] = json.dumps(result["missing"])
+            if not j.get("date_posted"):
+                j["date_posted"] = _extract_date_posted(j)
+            if not j.get("job_type"):
+                j["job_type"] = _extract_job_type(j)
+            if not j.get("is_remote"):
+                j["is_remote"] = _is_remote_job(j)
+            sal_min, sal_max = _parse_salary_range(j.get("salary") or "")
             s.add(JobMatch(
                 profile_id=profile_id,
                 title=j["title"],
@@ -667,17 +1119,101 @@ async def search_jobs(
                 url=j["url"],
                 description=j["description"],
                 source=j["source"],
-                match_score=score,
+                match_score=j["_score"],
                 salary=j.get("salary"),
                 is_deep_link=j.get("is_deep_link", False),
+                date_posted=j.get("date_posted", ""),
+                job_type=j.get("job_type", ""),
+                industry=j.get("industry", ""),
+                is_remote=j.get("is_remote", False),
+                salary_min=sal_min,
+                salary_max=sal_max,
+                match_breakdown=j["_breakdown"],
+                matched_skills=j["_matched"],
+                missing_skills=j["_missing"],
             ))
         s.commit()
 
-        results_db = s.exec(
-            select(JobMatch)
-            .where(JobMatch.profile_id == profile_id)
-            .order_by(JobMatch.match_score.desc())
-        ).all()
+    # ---- 4. Apply filters / sort / pagination in SQLModel ----
+    # Treat blank / 0 salary bounds as "no filter" — the frontend sends
+    # 0 for empty inputs. Negative or absurd values are clamped to 0 here.
+    min_salary = max(0, int(min_salary or 0))
+    max_salary = max(0, int(max_salary or 0))
+    min_years = max(0, int(min_years or 0))
+    max_years = min(50, max(0, int(max_years or 50)))
+    min_match_score = max(0.0, min(100.0, float(min_match_score or 0)))
+
+    job_type_set = {t.strip() for t in (job_type or "").split(",") if t.strip()}
+    industry_set = {t.strip() for t in (industries or "").split(",") if t.strip()}
+    cutoff = _date_cutoff(date_posted) if date_posted != "any" else ""
+
+    with Session(db.engine) as s:
+        stmt = select(JobMatch).where(JobMatch.profile_id == profile_id)
+        if min_match_score > 0:
+            stmt = stmt.where(JobMatch.match_score >= min_match_score)
+        # Multi-select filters: keep a job if (a) it has an empty field
+        # (we don't know its actual type/industry so we don't drop it)
+        # OR (b) its field matches one of the user-selected values.
+        # This avoids hiding jobs because the upstream API didn't tag them.
+        if job_type_set:
+            stmt = stmt.where(
+                (JobMatch.job_type == "") | (JobMatch.job_type.in_(job_type_set))
+            )
+        if industry_set:
+            stmt = stmt.where(
+                (JobMatch.industry == "") | (JobMatch.industry.in_(industry_set))
+            )
+        # Salary: if no salary info, keep the job. Otherwise require the
+        # stated range to overlap [min_salary, max_salary].
+        if min_salary > 0 and max_salary > 0 and min_salary > max_salary:
+            min_salary, max_salary = max_salary, min_salary
+        if min_salary > 0:
+            stmt = stmt.where(
+                (JobMatch.salary_max == 0) | (JobMatch.salary_max >= min_salary)
+            )
+        if max_salary > 0:
+            stmt = stmt.where(
+                (JobMatch.salary_min == 0) | (JobMatch.salary_min <= max_salary)
+            )
+        if cutoff:
+            stmt = stmt.where(
+                (JobMatch.date_posted == "") | (JobMatch.date_posted >= cutoff)
+            )
+        # Years filter: exclude jobs whose description mentions a years
+        # requirement BELOW min_years (too junior) or ABOVE max_years (too
+        # senior). Jobs with no years mention are kept — better to over-show
+        # than to silently drop postings the upstream API didn't tag.
+        if min_years > 0 or max_years < 50:
+            from sqlalchemy import or_
+            exclude_clauses = []
+            # Exclude "N+ years" / "N years" / "N yrs" for N below min_years
+            for n in range(1, max(1, min_years)):
+                exclude_clauses.append(
+                    JobMatch.description.contains(f"{n}+ years")
+                    | JobMatch.description.contains(f"{n} years")
+                    | JobMatch.description.contains(f"{n} yrs")
+                )
+            # Exclude years above max_years
+            if max_years < 50:
+                for n in range(max_years + 1, 51):
+                    exclude_clauses.append(
+                        JobMatch.description.contains(f"{n}+ years")
+                        | JobMatch.description.contains(f"{n} years")
+                        | JobMatch.description.contains(f"{n} yrs")
+                    )
+            if exclude_clauses:
+                stmt = stmt.where(~or_(*exclude_clauses))
+
+        if sort == "recent":
+            stmt = stmt.order_by(JobMatch.date_posted.desc(), JobMatch.match_score.desc())
+        elif sort == "salary":
+            stmt = stmt.order_by(JobMatch.salary_max.desc(), JobMatch.match_score.desc())
+        else:  # best_match (default)
+            stmt = stmt.order_by(JobMatch.match_score.desc(), JobMatch.created_at.desc())
+
+        all_rows = s.exec(stmt).all()
+        total = len(all_rows)
+        rows = all_rows[offset : offset + limit]
 
         saved = [
             {
@@ -685,9 +1221,357 @@ async def search_jobs(
                 "location": r.location, "url": r.url, "description": r.description,
                 "source": r.source, "match_score": r.match_score,
                 "salary": r.salary, "is_deep_link": r.is_deep_link,
+                "date_posted": r.date_posted, "job_type": r.job_type,
+                "industry": r.industry, "is_remote": r.is_remote,
+                "is_expired": r.is_expired,
+                "salary_min": r.salary_min, "salary_max": r.salary_max,
+                "match_breakdown": json.loads(r.match_breakdown or "{}"),
+                "matched_skills": json.loads(r.matched_skills or "[]"),
+                "missing_skills": json.loads(r.missing_skills or "[]"),
             }
-            for r in results_db
+            for r in rows
         ]
 
-    activity.log_activity("jobs_search", f"query={query}, location={search_loc}, found={len(saved)}", profile_id)
-    return {"query": query, "jobs": saved}
+    activity.log_activity(
+        "jobs_search",
+        f"query={query}, location={search_loc}, sort={sort}, found={len(saved)}/{total}",
+        profile_id,
+    )
+    return {
+        "query": query,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": (offset + limit) < total,
+        "jobs": saved,
+    }
+
+
+# ── Saved filter presets (Issue #7) ──────────────────────────────────────────
+
+class SavedFilterIn(BaseModel):
+    name: str
+    filters: dict = {}
+    sort: str = "best_match"
+
+
+@router.get("/{profile_id}/saved-filters")
+def list_saved_filters(
+    profile_id: int,
+    user: User = Depends(get_current_user),
+):
+    with Session(db.engine) as s:
+        rows = s.exec(
+            select(SavedFilter)
+            .where(SavedFilter.user_id == user.id)
+            .order_by(SavedFilter.created_at.desc())
+        ).all()
+        return [
+            {
+                "id": r.id,
+                "name": r.name,
+                "filters": json.loads(r.filters or "{}"),
+                "sort": r.sort,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ]
+
+
+@router.post("/{profile_id}/saved-filters", status_code=201)
+def create_saved_filter(
+    profile_id: int,
+    body: SavedFilterIn,
+    user: User = Depends(get_current_user),
+):
+    with Session(db.engine) as s:
+        p = s.get(Profile, profile_id)
+        if not p:
+            raise HTTPException(404, "Profile not found")
+        _check_ownership(s, p, user)
+        sf = SavedFilter(
+            user_id=user.id,
+            profile_id=profile_id,
+            name=body.name,
+            filters=json.dumps(body.filters or {}),
+            sort=body.sort or "best_match",
+        )
+        s.add(sf)
+        s.commit()
+        s.refresh(sf)
+        return {
+            "id": sf.id,
+            "name": sf.name,
+            "filters": json.loads(sf.filters or "{}"),
+            "sort": sf.sort,
+            "created_at": sf.created_at.isoformat(),
+        }
+
+
+@router.delete("/{profile_id}/saved-filters/{sf_id}", status_code=204)
+def delete_saved_filter(
+    profile_id: int,
+    sf_id: int,
+    user: User = Depends(get_current_user),
+):
+    with Session(db.engine) as s:
+        sf = s.get(SavedFilter, sf_id)
+        if not sf or sf.user_id != user.id:
+            raise HTTPException(404, "Saved filter not found")
+        s.delete(sf)
+        s.commit()
+
+
+@router.patch("/{profile_id}/saved-filters/{sf_id}")
+def update_saved_filter(
+    profile_id: int,
+    sf_id: int,
+    body: dict,
+    user: User = Depends(get_current_user),
+):
+    """Edit a saved filter preset (rename + override filters / sort)."""
+    with Session(db.engine) as s:
+        sf = s.get(SavedFilter, sf_id)
+        if not sf or sf.user_id != user.id:
+            raise HTTPException(404, "Saved filter not found")
+        if "name" in body and body["name"]:
+            sf.name = str(body["name"]).strip()
+        if "filters" in body and isinstance(body["filters"], dict):
+            sf.filters = json.dumps(body["filters"])
+        if "sort" in body and body["sort"]:
+            sf.sort = str(body["sort"])
+        s.add(sf)
+        s.commit()
+        s.refresh(sf)
+        return {
+            "id": sf.id,
+            "name": sf.name,
+            "filters": json.loads(sf.filters or "{}"),
+            "sort": sf.sort,
+            "created_at": sf.created_at.isoformat(),
+        }
+
+
+# ── External search deep links (Issue #1) ────────────────────────────────────
+
+# Map our internal filter values to LinkedIn's `f_E` experience-level codes.
+# LinkedIn's standard: 1=Internship, 2=Entry, 3=Associate, 4=Mid-Senior,
+# 5=Director, 6=Executive.
+_LINKEDIN_EXP_LEVELS = {
+    "internship": "1",
+    "entry": "2",
+    "associate": "3",
+    "mid-senior": "4",
+    "director": "5",
+    "executive": "6",
+}
+
+# Map our job_type tokens to LinkedIn's `f_WT` work-type codes.
+# LinkedIn: 1=On-site, 2=Remote, 3=Hybrid.
+_LINKEDIN_WORK_TYPES = {
+    "full-time": "1",
+    "remote": "2",
+    "hybrid": "3",
+}
+
+# Map our date_posted tokens to LinkedIn's `f_TPR` (time posted, recency
+# in seconds). r86400 = 24h, r604800 = 7d, r2592000 = 30d.
+_LINKEDIN_TIME_POSTED = {
+    "last_24h": "r86400",
+    "last_7d": "r604800",
+    "last_30d": "r2592000",
+}
+
+
+@router.get("/{profile_id}/external-search")
+def external_search_links(
+    profile_id: int,
+    user: Optional[User] = Depends(get_current_user_optional),
+    keywords: str = Query(default="", description="Override the keyword string used in deep links"),
+    location: str = Query(default="", description="Override the location used in deep links"),
+    experience_level: str = Query(
+        default="",
+        description="LinkedIn experience level: internship|entry|associate|mid-senior|director|executive",
+    ),
+    work_type: str = Query(
+        default="",
+        description="LinkedIn work type: full-time|remote|hybrid",
+    ),
+    time_posted: str = Query(
+        default="",
+        description="Recency filter: last_24h|last_7d|last_30d",
+    ),
+    salary_min: int = Query(default=0, ge=0),
+    salary_currency: str = Query(
+        default="USD",
+        description="3-letter currency code (USD, INR, GBP, EUR, CAD, AUD, SGD, JPY)",
+    ),
+):
+    """Generate pre-filled external search URLs (LinkedIn, Indeed, Glassdoor,
+    Google Jobs). The `keywords` and `location` query params let the frontend
+    pass the current session's inputs (so the links reflect the Job Title
+    and Location fields the user is currently editing) instead of the stale
+    profile defaults. The advanced filters — experience level, work type,
+    time posted, salary + currency — are forwarded to the deep links as
+    platform-specific parameters so the external site opens with the same
+    filtering the user applied in the in-app search."""
+    with Session(db.engine) as s:
+        p = s.get(Profile, profile_id)
+        if not p:
+            raise HTTPException(404, "Profile not found")
+        if user:
+            _check_ownership(s, p, user)
+        elif p.user_id is not None:
+            raise HTTPException(403, "Forbidden")
+        s.refresh(p)
+        # Read relationships inside the session so they don't detach
+        role = ""
+        if p.experience and p.experience[0] and p.experience[0].role:
+            role = p.experience[0].role
+        all_skills = [
+            sk.name for sk in (p.skills or []) if sk.name
+        ]
+        default_location = p.location or "Remote"
+
+    if not role:
+        role = "Software Engineer"
+
+    if keywords and keywords.strip():
+        kw = keywords.strip()
+    else:
+        kw = " ".join([role] + all_skills) if all_skills else role
+    loc = location.strip() or default_location
+    encoded_kw = urllib.parse.quote(kw)
+    encoded_loc = urllib.parse.quote(loc)
+
+    # Normalise the currency to a 3-letter uppercase code. Default to USD
+    # when the frontend sends something blank or invalid.
+    cur = (salary_currency or "USD").strip().upper()[:3] or "USD"
+
+    # LinkedIn deep-link parameters
+    linkedin_f_E = _LINKEDIN_EXP_LEVELS.get(experience_level, "")
+    linkedin_f_WT = _LINKEDIN_WORK_TYPES.get(work_type, "")
+    linkedin_f_TPR = _LINKEDIN_TIME_POSTED.get(time_posted, "r86400")
+
+    # Build the LinkedIn query string. LinkedIn accepts these as separate
+    # `&f_` parameters and combines them server-side.
+    linkedin_extra = []
+    if linkedin_f_E:
+        linkedin_extra.append(f"f_E={linkedin_f_E}")
+    if linkedin_f_WT:
+        linkedin_extra.append(f"f_WT={linkedin_f_WT}")
+    if linkedin_f_TPR:
+        linkedin_extra.append(f"f_TPR={linkedin_f_TPR}")
+    if salary_min > 0:
+        linkedin_extra.append(f"f_SB2={salary_min}")
+        linkedin_extra.append(f"f_C={cur}")
+    linkedin_extra_str = "&" + "&".join(linkedin_extra) if linkedin_extra else ""
+
+    # Indeed: fromage = days since posting. 1=last day, 3=3 days, 7=7 days,
+    # 14=14 days. salary param format varies; we use the simple "Salary
+    # min" with currency encoded into the label.
+    indeed_fromage_map = {"last_24h": "1", "last_7d": "7", "last_30d": "14"}
+    indeed_fromage = indeed_fromage_map.get(time_posted, "")
+    indeed_extra = []
+    if indeed_fromage:
+        indeed_extra.append(f"fromage={indeed_fromage}")
+    if salary_min > 0:
+        indeed_extra.append(f"salary={salary_min}")
+    if linkedin_f_WT == "2":
+        indeed_extra.append("remotejob=032b3046-708a-4bbf-8c5e-60b0c4e87b1a")
+    indeed_extra_str = "&" + "&".join(indeed_extra) if indeed_extra else ""
+
+    # Glassdoor: param name varies; includeSalary=true and fromAge as days.
+    glassdoor_extra = []
+    if time_posted == "last_24h":
+        glassdoor_extra.append("fromAge=1")
+    elif time_posted == "last_7d":
+        glassdoor_extra.append("fromAge=7")
+    elif time_posted == "last_30d":
+        glassdoor_extra.append("fromAge=30")
+    if linkedin_f_WT == "2":
+        glassdoor_extra.append("remoteWorkType=1")
+    elif linkedin_f_WT == "3":
+        glassdoor_extra.append("remoteWorkType=2")
+    if salary_min > 0:
+        glassdoor_extra.append(f"minSalary={salary_min}")
+    glassdoor_extra_str = "&" + "&".join(glassdoor_extra) if glassdoor_extra else ""
+
+    # Google Jobs: time_posted via `since` param (d_ = days, h_ = hours,
+    # w_ = weeks, m_ = months; default = no limit).
+    google_since_map = {
+        "last_24h": "d_1",
+        "last_7d": "w_1",
+        "last_30d": "m_1",
+    }
+    google_since = google_since_map.get(time_posted, "")
+    google_extra = []
+    if google_since:
+        google_extra.append(f"since={google_since}")
+    if linkedin_f_WT == "2":
+        google_extra.append("q=remote+work")
+    google_extra_str = "&" + "&".join(google_extra) if google_extra else ""
+
+    return {
+        "keywords": kw,
+        "location": loc,
+        "currency": cur,
+        "links": [
+            {
+                "portal": "linkedin",
+                "label": "LinkedIn",
+                # LinkedIn: f_TPR=time posted, f_E=experience level,
+                # f_WT=work type (1=on-site, 2=remote, 3=hybrid),
+                # f_SB2=salary min, f_C=currency code, sortBy=R = relevance
+                "url": (
+                    f"https://www.linkedin.com/jobs/search/?"
+                    f"keywords={encoded_kw}"
+                    f"&location={encoded_loc}"
+                    f"&f_TPR={linkedin_f_TPR}"
+                    f"{linkedin_extra_str}"
+                    f"&sortBy=R"
+                ),
+                "icon": "💼",
+            },
+            {
+                "portal": "indeed",
+                "label": "Indeed",
+                # Indeed: fromage=days since posted, salary=min salary
+                "url": (
+                    f"https://www.indeed.com/jobs?"
+                    f"q={encoded_kw}"
+                    f"&l={encoded_loc}"
+                    f"&sort=date"
+                    f"{indeed_extra_str}"
+                ),
+                "icon": "🔎",
+            },
+            {
+                "portal": "glassdoor",
+                "label": "Glassdoor",
+                "url": (
+                    f"https://www.glassdoor.com/Job/jobs.htm?"
+                    f"sc.keyword={encoded_kw}"
+                    f"&locT=C&locN={encoded_loc}"
+                    f"{glassdoor_extra_str}"
+                ),
+                "icon": "🏢",
+            },
+            {
+                "portal": "google_jobs",
+                "label": "Google Jobs",
+                # Google Jobs aggregator URL. Uses the official
+                # `ibp=htl;jobs` parameter (URL-encoded as %3B) to
+                # switch the result set to the Jobs vertical so the
+                # search opens directly in Jobs mode, not regular
+                # web search.
+                "url": (
+                    f"https://www.google.com/search?"
+                    f"q={encoded_kw}+jobs+{encoded_loc}"
+                    f"&ibp=htl%3Bjobs"
+                    f"{google_extra_str}"
+                ),
+                "icon": "🌐",
+            },
+        ],
+    }

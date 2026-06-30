@@ -67,6 +67,7 @@ export default function SettingsTab() {
   const [ollamaModel, setOllamaModel] = useState("llama3.2");
   const [customOllamaModel, setCustomOllamaModel] = useState("");
   const [localForSimple, setLocalForSimple] = useState(true);
+  const [deepSemanticMatching, setDeepSemanticMatching] = useState(false);
   const [adzunaId, setAdzunaId] = useState("");
   const [adzunaKey, setAdzunaKey] = useState("");
   const [linkedinKey, setLinkedinKey] = useState("");
@@ -102,6 +103,7 @@ export default function SettingsTab() {
       setOllamaUrl(s.ollama_base_url ?? "http://localhost:11434");
       setOllamaModel(s.ollama_model ?? "llama3.2");
       setLocalForSimple(boolVal(s.local_for_simple) || s.local_for_simple === "");
+      setDeepSemanticMatching(boolVal(s.use_deep_semantic_matching));
       
       // Pre-populate keys
       if (s.api_key) setOpenaiKey(s.api_key);
@@ -137,6 +139,7 @@ export default function SettingsTab() {
         ollama_base_url: ollamaUrl,
         ollama_model: customOllamaModel || ollamaModel,
         local_for_simple: localForSimple,
+        use_deep_semantic_matching: deepSemanticMatching,
         adzuna_app_id: adzunaId,
       };
       if (openaiKey) payload.api_key = openaiKey;
@@ -498,6 +501,24 @@ export default function SettingsTab() {
           <p className="text-slate-400 text-xs">
             Configure external job boards. By default, the app searches public APIs like Remotive, RemoteOK, and Arbeitnow. To enable Adzuna, provide your credentials.
           </p>
+
+          <label className="flex items-start gap-4 rounded-xl border border-slate-700 bg-slate-900/50 p-4 cursor-pointer hover:border-slate-500 transition-colors">
+            <input
+              type="checkbox"
+              checked={deepSemanticMatching}
+              onChange={(e) => setDeepSemanticMatching(e.target.checked)}
+              className="mt-1 accent-blue-500"
+            />
+            <div>
+              <p className="text-slate-200 text-sm font-semibold">🧠 Deep Semantic Matching (local AI)</p>
+              <p className="text-slate-400 text-xs mt-1">
+                Uses a small local language model (downloaded once, ~80MB) to catch matches that don't share exact
+                keywords — e.g. a resume bullet about "event-stream processing" matching a job asking for "data
+                pipelines". Runs entirely on your machine after the first download; no data is sent to any external
+                API. Slightly slower search.
+              </p>
+            </div>
+          </label>
 
           <div className="space-y-4">
             <div>

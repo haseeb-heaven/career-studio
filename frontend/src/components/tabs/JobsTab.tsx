@@ -6,10 +6,15 @@ import {
   updateSavedFilter,
   deleteSavedFilter,
   getExternalSearchLinks,
+  fetchResumeKeywords,
   type JobMatch,
   type SavedFilter,
   type ExternalSearchLink,
   type JobSearchOptions,
+  type ResumeKeyword,
+  type SkillDetail,
+  type Gaps,
+  type GapEntry,
 } from "../../api";
 import type { Profile } from "../../types";
 import { useToast } from "../Toast";
@@ -71,15 +76,33 @@ interface Props {
 const JOB_TYPES = ["full-time", "part-time", "contract", "remote", "hybrid"] as const;
 const INDUSTRY_CHOICES = ["tech", "finance", "healthcare", "education", "retail", "media"];
 
-function ScoreBadge({ score }: { score: number }) {
-  const color = score >= 70
-    ? "bg-green-500/10 text-green-400 border border-green-500/20"
-    : score >= 40
-      ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-      : "bg-slate-500/10 text-slate-400 border border-slate-600/20";
+function MatchGauge({ score }: { score: number }) {
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.min(score, 100) / 100) * circumference;
+  const band =
+    score >= 85 ? "emerald" : score >= 70 ? "green" : score >= 50 ? "amber" : score >= 30 ? "orange" : "red";
+  const palette: Record<string, { ring: string; text: string; chip: string; glow: string }> = {
+    emerald: { ring: "stroke-emerald-400", text: "text-emerald-300", chip: "bg-emerald-500/10 border-emerald-500/30 text-emerald-300", glow: "shadow-emerald-900/30" },
+    green:   { ring: "stroke-green-400",   text: "text-green-300",   chip: "bg-green-500/10 border-green-500/30 text-green-300",     glow: "shadow-green-900/30" },
+    amber:   { ring: "stroke-amber-400",   text: "text-amber-300",   chip: "bg-amber-500/10 border-amber-500/30 text-amber-300",     glow: "shadow-amber-900/20" },
+    orange:  { ring: "stroke-orange-400",  text: "text-orange-300",  chip: "bg-orange-500/10 border-orange-500/30 text-orange-300",   glow: "shadow-orange-900/20" },
+    red:     { ring: "stroke-red-400",     text: "text-red-300",     chip: "bg-red-500/10 border-red-500/30 text-red-300",           glow: "shadow-red-900/20" },
+  };
+  const c = palette[band];
   return (
-    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${color}`}>
-      {score.toFixed(0)}% match
+    <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 border text-xs font-semibold shadow-sm ${c.chip} ${c.glow}`}>
+      <svg width="26" height="26" viewBox="0 0 48 48" className="-rotate-90">
+        <circle cx="24" cy="24" r={radius} fill="none" stroke="currentColor" strokeWidth="4" opacity="0.15" className={c.text} />
+        <circle
+          cx="24" cy="24" r={radius} fill="none"
+          strokeWidth="4" strokeLinecap="round"
+          className={`${c.ring} transition-[stroke-dashoffset] duration-1000 ease-out`}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <span className="tabular-nums text-sm">{score.toFixed(0)}%</span>
     </span>
   );
 }
@@ -87,29 +110,119 @@ function ScoreBadge({ score }: { score: number }) {
 function ScoreBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
   const labels: Record<string, string> = {
     skills: "Skills",
+    semantic: "Semantic",
+    neural_semantic: "Deep Semantic (local AI)",
+    keyword_density: "Resume Keywords",
     years: "Experience",
+    seniority: "Seniority",
     education: "Education",
-    location: "Location",
     certifications: "Certifications",
     title: "Title match",
+    location: "Location",
   };
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-      {Object.entries(labels).map(([k, label]) => {
-        const v = breakdown[k] ?? 0;
-        return (
-          <div key={k} className="flex items-center gap-2">
-            <span className="text-slate-400 w-20 shrink-0">{label}</span>
-            <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full ${v >= 70 ? "bg-green-500" : v >= 40 ? "bg-yellow-500" : "bg-slate-500"}`}
-                style={{ width: `${v}%` }}
-              />
+    <div className="grid grid-cols-1 gap-1.5 text-xs">
+      {Object.entries(labels)
+        .filter(([k]) => k !== "neural_semantic" || breakdown[k] !== undefined)
+        .map(([k, label]) => {
+          const v = breakdown[k] ?? 0;
+          const barColor = v >= 70 ? "bg-green-500" : v >= 50 ? "bg-amber-500" : v >= 30 ? "bg-orange-500" : "bg-slate-600";
+          return (
+            <div key={k} className="flex items-center gap-2">
+              <span className="text-slate-400 w-28 shrink-0">{label}</span>
+              <div className="flex-1 h-2 bg-slate-700/70 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${barColor} transition-all duration-700 ease-out`}
+                  style={{ width: `${v}%` }}
+                />
+              </div>
+              <span className="text-slate-300 w-9 text-right tabular-nums">{v.toFixed(0)}</span>
             </div>
-            <span className="text-slate-300 w-8 text-right tabular-nums">{v.toFixed(0)}</span>
-          </div>
-        );
-      })}
+          );
+        })}
+    </div>
+  );
+}
+
+function SkillDetailList({ details }: { details: SkillDetail[] }) {
+  if (!details || details.length === 0) return null;
+  const statusMeta: Record<SkillDetail["status"], { icon: string; label: string; cls: string }> = {
+    matched: { icon: "✓", label: "Matched",   cls: "text-green-300" },
+    partial: { icon: "≈", label: "Partial",   cls: "text-amber-300" },
+    missing: { icon: "✗", label: "Missing",   cls: "text-red-300" },
+    extra:   { icon: "+", label: "Extra",     cls: "text-slate-400" },
+  };
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-semibold text-slate-300">Per-skill match breakdown</p>
+      <div className="space-y-1">
+        {details.map((d) => {
+          const meta = statusMeta[d.status];
+          const barColor = d.confidence >= 85 ? "bg-green-500" : d.confidence >= 60 ? "bg-amber-500" : d.confidence >= 30 ? "bg-orange-500" : "bg-slate-600";
+          return (
+            <div key={`${d.skill}-${d.status}`} className="flex items-center gap-2 text-xs">
+              <span className={`w-4 text-center font-bold ${meta.cls}`} title={meta.label}>{meta.icon}</span>
+              <span className="w-32 shrink-0 truncate text-slate-200" title={d.skill}>{d.skill}</span>
+              {d.category && (
+                <span className="shrink-0 rounded bg-slate-700/60 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">{d.category}</span>
+              )}
+              <div className="flex-1 h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
+                <div className={`h-full ${barColor} transition-all duration-700`} style={{ width: `${d.confidence}%` }} />
+              </div>
+              <span className="w-8 text-right tabular-nums text-slate-400">{d.confidence}%</span>
+              {d.status === "partial" && d.via && (
+                <span className="shrink-0 text-[10px] text-amber-400/80" title={`Covered by related skill: ${d.via}`}>via {d.via}</span>
+              )}
+              {d.severity === "required" && d.status !== "matched" && (
+                <span className="shrink-0 rounded bg-red-500/10 px-1 py-0.5 text-[10px] text-red-400">required</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function GapsPanel({ gaps }: { gaps: Gaps }) {
+  if (!gaps) return null;
+  const order: Array<keyof Gaps> = ["skills", "experience", "location", "seniority", "education", "certifications"];
+  const labels: Record<string, string> = {
+    skills: "Skills", experience: "Experience", location: "Location",
+    seniority: "Seniority", education: "Education", certifications: "Certifications",
+  };
+  const statusMeta: Record<GapEntry["status"], { icon: string; cls: string; chip: string }> = {
+    ok:   { icon: "✓", cls: "text-green-300",  chip: "bg-green-500/10 border-green-500/20 text-green-300" },
+    weak: { icon: "≈", cls: "text-amber-300",  chip: "bg-amber-500/10 border-amber-500/20 text-amber-300" },
+    gap:  { icon: "✗", cls: "text-red-300",    chip: "bg-red-500/10 border-red-500/20 text-red-300" },
+  };
+  const entries = order.map((k) => [k, gaps[k]] as const).filter(([, v]) => v);
+  if (entries.length === 0) return null;
+  const hasGaps = entries.some(([, v]) => v && v.status !== "ok");
+  return (
+    <div className="rounded-lg bg-slate-900/60 border border-slate-700/40 p-3">
+      <p className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+        <span className="text-slate-400">🧩</span>
+        {hasGaps ? "What doesn't match perfectly" : "Match completeness"}
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {entries.map(([key, v]) => {
+          if (!v) return null;
+          const meta = statusMeta[v.status];
+          return (
+            <div key={key} className="flex items-start gap-2 rounded-md bg-slate-800/40 border border-slate-700/30 px-2.5 py-2">
+              <span className={`mt-0.5 text-sm font-bold ${meta.cls}`}>{meta.icon}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-200">{labels[key]}</span>
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase border ${meta.chip}`}>{v.status}</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{v.message}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -119,6 +232,29 @@ function JobCard({ job }: { job: JobMatch }) {
   const hasBreakdown = job.match_breakdown && Object.keys(job.match_breakdown).length > 0;
   const matched = job.matched_skills ?? [];
   const missing = job.missing_skills ?? [];
+  const skillDetails = job.skill_details ?? [];
+  const gaps = job.gaps;
+  const gapsGapCount = gaps
+    ? Object.values(gaps).filter((g) => g && g.status === "gap").length
+    : 0;
+  const gapsWeakCount = gaps
+    ? Object.values(gaps).filter((g) => g && g.status === "weak").length
+    : 0;
+  const canExpand = hasBreakdown || skillDetails.length > 0 || !!gaps;
+  const hireLabel = job.hire_chance_label ?? "";
+  const hireColor = hireLabel === "Very High" || hireLabel === "High"
+    ? "bg-green-500/10 text-green-400 border border-green-500/20"
+    : hireLabel === "Medium"
+      ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+      : "bg-red-500/10 text-red-400 border border-red-500/20";
+  const confidence = job.confidence ?? "";
+  const confidenceColor = confidence === "Excellent"
+    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+    : confidence === "Strong"
+      ? "bg-green-500/10 text-green-400 border border-green-500/20"
+      : confidence === "Moderate"
+        ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+        : "bg-slate-500/10 text-slate-400 border border-slate-600/20";
 
   return (
     <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-5 hover:border-blue-500/40 hover:bg-slate-800/50 transition-all duration-200">
@@ -128,12 +264,32 @@ function JobCard({ job }: { job: JobMatch }) {
             <h3 className="font-semibold text-slate-100 text-sm">{job.title}</h3>
             <button
               type="button"
-              onClick={() => hasBreakdown && setExpanded((e) => !e)}
-              className={hasBreakdown ? "cursor-pointer" : "cursor-default"}
-              title={hasBreakdown ? "Click to see why" : ""}
+              onClick={() => canExpand && setExpanded((e) => !e)}
+              className={canExpand ? "cursor-pointer" : "cursor-default"}
+              title={canExpand ? "Click to see the full match analysis" : ""}
             >
-              <ScoreBadge score={job.match_score} />
+              <MatchGauge score={job.match_score} />
             </button>
+            {gapsGapCount > 0 && (
+              <span className="rounded-full bg-red-500/10 text-red-400 border border-red-500/20 px-2.5 py-0.5 text-xs font-semibold" title="Number of dimensions that don't match">
+                🧩 {gapsGapCount} gap{gapsGapCount > 1 ? "s" : ""}
+              </span>
+            )}
+            {gapsWeakCount > 0 && (
+              <span className="rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 text-xs font-semibold" title="Dimensions partially matching">
+                ≈ {gapsWeakCount} partial
+              </span>
+            )}
+            {hireLabel && (
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${hireColor}`}>
+                🎯 {job.hire_chance}% chance{hireLabel && ` · ${hireLabel}`}
+              </span>
+            )}
+            {confidence && (
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${confidenceColor}`}>
+                📊 {confidence}
+              </span>
+            )}
             <span className="rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-0.5 text-xs uppercase tracking-wide font-medium">
               {job.source}
             </span>
@@ -154,6 +310,18 @@ function JobCard({ job }: { job: JobMatch }) {
             {job.date_posted && ` · ${job.date_posted}`}
             {job.salary && ` · ${job.salary}`}
           </p>
+          {/* AI insight line */}
+          {job.insight && (
+            <div className="mt-3 bg-blue-900/20 border border-blue-500/20 rounded-lg p-3">
+              <p className="text-xs text-blue-300 flex items-start gap-2 leading-relaxed">
+                <span className="text-blue-400 shrink-0 text-sm mt-0.5">🤖</span>
+                <span className="flex-1">
+                  <strong className="text-blue-200 font-semibold block mb-1">Advanced ML Insight</strong>
+                  {job.insight}
+                </span>
+              </p>
+            </div>
+          )}
           {(job.job_type || job.industry) && (
             <p className="text-xs text-slate-500 mt-0.5">
               {job.job_type && `Type: ${job.job_type}`}
@@ -169,11 +337,11 @@ function JobCard({ job }: { job: JobMatch }) {
             <div className="mt-3 space-y-1.5">
               {matched.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs text-green-400/80 font-semibold mr-1">Matched:</span>
+                  <span className="text-xs text-green-400/80 font-semibold mr-1">Matched Skills:</span>
                   {matched.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-green-500/10 text-green-300 border border-green-500/20 px-2 py-0.5 text-xs"
+                      className="rounded-md bg-green-500/10 text-green-300 border border-green-500/30 px-2 py-0.5 text-xs shadow-sm shadow-green-900/20"
                     >
                       ✓ {s}
                     </span>
@@ -182,11 +350,11 @@ function JobCard({ job }: { job: JobMatch }) {
               )}
               {missing.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs text-red-400/80 font-semibold mr-1">Missing:</span>
+                  <span className="text-xs text-red-400/80 font-semibold mr-1">Missing Skills:</span>
                   {missing.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-red-500/10 text-red-300 border border-red-500/20 px-2 py-0.5 text-xs"
+                      className="rounded-md bg-red-500/10 text-red-300 border border-red-500/30 px-2 py-0.5 text-xs shadow-sm shadow-red-900/20"
                     >
                       ✗ {s}
                     </span>
@@ -198,9 +366,31 @@ function JobCard({ job }: { job: JobMatch }) {
 
           {expanded && hasBreakdown && (
             <div className="mt-4 rounded-lg bg-slate-900/60 border border-slate-700/40 p-3">
-              <p className="text-xs font-semibold text-slate-300 mb-2">Why this score?</p>
+              <p className="text-xs font-semibold text-slate-300 mb-2">Why this score? (9-factor weighted model)</p>
               <ScoreBreakdown breakdown={job.match_breakdown!} />
             </div>
+          )}
+
+          {expanded && skillDetails.length > 0 && (
+            <div className="mt-3 rounded-lg bg-slate-900/60 border border-slate-700/40 p-3">
+              <SkillDetailList details={skillDetails} />
+            </div>
+          )}
+
+          {expanded && gaps && (
+            <div className="mt-3">
+              <GapsPanel gaps={gaps} />
+            </div>
+          )}
+
+          {canExpand && !expanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="mt-3 text-xs text-blue-400 hover:text-blue-300 inline-flex items-center gap-1"
+            >
+              ▸ Show full match analysis (per-skill confidence & gaps)
+            </button>
           )}
         </div>
         {job.url && (
@@ -264,6 +454,67 @@ function ExternalSearchSection({
             <span>{l.icon}</span> {l.label} ↗
           </a>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ResumeKeywordPanel({ profileId }: { profileId: number }) {
+  const [keywords, setKeywords] = useState<ResumeKeyword[]>([]);
+  const [total, setTotal] = useState(0);
+  const [topTerms, setTopTerms] = useState<string[]>([]);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    fetchResumeKeywords(profileId)
+      .then((r) => {
+        setKeywords(r.keywords);
+        setTotal(r.total);
+        setTopTerms(r.top_terms);
+      })
+      .catch(() => {});
+  }, [profileId]);
+
+  if (total === 0) return null;
+
+  const display = showAll ? keywords : keywords.slice(0, 20);
+  const maxWeight = Math.max(...keywords.map((k) => k.weight), 1);
+
+  return (
+    <div className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-200">🔑 Your Resume Keyword Profile</h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {total} keywords extracted · Top: {topTerms.join(", ")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowAll((s) => !s)}
+          className="text-xs text-blue-400 hover:text-blue-300"
+        >
+          {showAll ? "Show less" : `Show all ${total}`}
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {display.map((kw) => {
+          const intensity = kw.weight / maxWeight;
+          const bg = intensity >= 0.7
+            ? "bg-blue-600/30 text-blue-200 border-blue-500/30"
+            : intensity >= 0.4
+              ? "bg-slate-700/60 text-slate-300 border-slate-600/40"
+              : "bg-slate-800 text-slate-400 border-slate-700/40";
+          return (
+            <span
+              key={kw.canonical}
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium border ${bg}`}
+              title={`Weight: ${kw.weight.toFixed(2)} · Source: ${kw.source}`}
+            >
+              {kw.term}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -449,6 +700,33 @@ export default function JobsTab({ profileId, profile }: Props) {
     }
   }
 
+  async function searchAiRecommended() {
+    setMinMatchScore(80);
+    setLoading(true);
+    setError("");
+    try {
+      const opts = { ...currentOptions(), minMatchScore: 80, offset: 0 };
+      const r = await searchJobs(profileId, opts);
+      setQueryEcho(r.query);
+      setTotal(r.total);
+      setHasMore(r.has_more);
+      setJobs(r.jobs);
+      setOffset(r.limit);
+      setSearched(true);
+      if (r.total === 0) {
+        toast("info", "No 80%+ matches", "Try adding more skills to your profile or lower the threshold");
+      } else {
+        toast("success", "AI Recommended Jobs", "Showing your top matches at 80%+ fit");
+      }
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Job search failed";
+      setError(msg);
+      toast("error", "Job search failed", msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function applySavedFilter(sf: SavedFilter) {
     applyOptions(sf.filters as Partial<JobSearchOptions>);
     if (sf.sort) setSort(sf.sort as "best_match" | "recent" | "salary" | "location");
@@ -554,7 +832,7 @@ export default function JobsTab({ profileId, profile }: Props) {
         <div>
           <h2 className="text-lg font-semibold text-white">Live Job Matching</h2>
           <p className="text-sm text-slate-400 mt-1">
-            Searches 10+ job boards in parallel with profile-aware match scoring.
+            Advanced 9-factor AI matching across 10+ boards — semantic skill embeddings, TF-IDF, fuzzy matching & per-skill gap analysis.
           </p>
         </div>
         <div className="flex gap-2">
@@ -571,6 +849,14 @@ export default function JobsTab({ profileId, profile }: Props) {
             title="Clear all inputs and search results for this profile"
           >
             ↺ Reset
+          </button>
+          <button
+            type="button"
+            onClick={searchAiRecommended}
+            disabled={loading}
+            className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:scale-[1.02] shadow-md shadow-purple-950/50 active:scale-[0.98] disabled:opacity-50 transition-all"
+          >
+            ✨ AI Recommended Top Jobs
           </button>
           <button
             onClick={() => search(false)}
@@ -946,6 +1232,8 @@ export default function JobsTab({ profileId, profile }: Props) {
         location={location}
         onRefresh={refreshExternalLinksNow}
       />
+
+      <ResumeKeywordPanel profileId={profileId} />
 
       <div className="space-y-3">
         {jobs.map((job) => (

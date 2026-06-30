@@ -22,6 +22,7 @@ from routers.auth_utils import get_current_user, get_current_user_optional
 from routers.profile_router import _check_ownership
 from security_crypto import decrypt_key
 from services import matching_engine as me
+from services import embedding_engine
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/profiles", tags=["jobs"])
@@ -1671,8 +1672,22 @@ async def search_jobs(
             s.delete(o)
         s.commit()
 
-        for j in all_jobs:
-            result = _profile_match_score(p, j, search_loc)
+        neural_scores = None
+        if cfg.use_deep_semantic_matching and all_jobs:
+            try:
+                resume_text = embedding_engine.resume_embedding_text(p)
+                job_texts = [
+                    embedding_engine.job_embedding_text(j.get("title", ""), j.get("description", ""))
+                    for j in all_jobs
+                ]
+                neural_scores = embedding_engine.neural_semantic_scores(resume_text, job_texts)
+            except Exception:
+                logger.exception("Deep semantic matching failed; falling back to lexical scoring only")
+                neural_scores = None
+
+        for idx, j in enumerate(all_jobs):
+            neural_score = neural_scores[idx] if neural_scores is not None else None
+            result = _profile_match_score(p, j, search_loc, neural_score=neural_score)
             j["_score"] = result["score"]
             j["_breakdown"] = json.dumps(result["breakdown"])
             j["_matched"] = json.dumps(result["matched"])

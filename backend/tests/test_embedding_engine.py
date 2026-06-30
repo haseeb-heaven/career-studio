@@ -3,9 +3,12 @@ The real sentence-transformers model is never loaded in tests — get_model()
 is monkeypatched with a deterministic fake encoder so tests run fast with
 no network access or model download."""
 import sys
+import json
 import math
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import numpy as np
 
 from models import Profile, Skill, Experience, ExperienceBullet, Project
 from services import embedding_engine as ee
@@ -76,3 +79,35 @@ def test_neural_semantic_scores_aligned_and_scaled(monkeypatch):
         assert 0.0 <= s <= 100.0
     # The near-identical text must score higher than the unrelated one.
     assert scores[0] > scores[1]
+
+
+class _FakeNumpyModel:
+    """Mimics the real sentence-transformers model, which returns numpy
+    arrays of numpy.float32 — not plain Python floats/lists."""
+
+    def encode(self, texts, **kwargs):
+        rows = []
+        for t in texts:
+            words = sorted(set(t.lower().split()))
+            vec = np.zeros(16, dtype=np.float32)
+            for w in words:
+                vec[hash(w) % 16] += 1.0
+            norm = np.linalg.norm(vec) or 1.0
+            rows.append(vec / norm)
+        return np.array(rows, dtype=np.float32)
+
+
+def test_neural_semantic_scores_are_json_serializable_native_floats(monkeypatch):
+    """Regression test: sentence-transformers returns numpy.float32 values,
+    which json.dumps cannot serialize. neural_semantic_scores must return
+    plain Python floats so the score can be stored in match_breakdown and
+    serialized in the API response."""
+    monkeypatch.setattr(ee, "get_model", lambda: _FakeNumpyModel())
+    scores = ee.neural_semantic_scores(
+        "python backend engineer",
+        ["python backend engineer needed", "completely unrelated topic xyz"],
+    )
+    assert scores is not None
+    for s in scores:
+        assert type(s) is float
+    json.dumps({"breakdown": scores})

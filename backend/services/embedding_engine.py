@@ -94,4 +94,4 @@ def neural_semantic_scores(resume_text: str, job_texts):
         return []
     resume_vec = model.encode([resume_text])[0]
     job_vecs = model.encode(list(job_texts))
-    return [round(cosine(resume_vec, jv) * 100.0, 1) for jv in job_vecs]
+    return [round(float(cosine(resume_vec, jv)) * 100.0, 1) for jv in job_vecs]

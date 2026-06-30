@@ -21,6 +21,7 @@ from typing import Optional
 from routers.auth_utils import get_current_user, get_current_user_optional
 from routers.profile_router import _check_ownership
 from security_crypto import decrypt_key
+from services import matching_engine as me
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/profiles", tags=["jobs"])
@@ -592,10 +593,9 @@ def _fetch_glassdoor(query: str, location: str, limit: int, api_key: str = "") -
 
 
 def _fetch_google_jobs(query: str, location: str) -> list[dict]:
-    """Google Jobs deep link — aggregates LinkedIn, Indeed, Glassdoor, company pages."""
+    """Google Careers jobs results deep link."""
     search_url = (
-        f"https://www.google.com/search?q={urllib.parse.quote(query + ' jobs')}"
-        f"&ibp=htl;jobs"
+        f"https://www.google.com/about/careers/applications/jobs/results?q={urllib.parse.quote(query)}"
     )
     return [{
         "title": f"Search '{query}' on Google Jobs",
@@ -682,13 +682,31 @@ def _contains_token(haystack_l: str, token: str) -> bool:
     return re.search(pattern, haystack_l) is not None
 
 _WEIGHTS = {
-    "skills": 0.40,
-    "years": 0.20,
-    "education": 0.15,
-    "location": 0.10,
-    "certifications": 0.10,
-    "title": 0.05,
+    "skills": 0.26,
+    "semantic": 0.12,
+    "keyword_density": 0.13,
+    "years": 0.13,
+    "seniority": 0.09,
+    "education": 0.07,
+    "certifications": 0.06,
+    "title": 0.07,
+    "location": 0.07,
 }
+
+_NEURAL_WEIGHT = 0.12
+
+
+def _weights_with_neural(enabled: bool) -> dict:
+    """Returns _WEIGHTS unchanged when the neural factor isn't in play
+    (zero behavior change for the default/toggle-off path). When enabled,
+    rescales all existing weights to make room for neural_semantic while
+    preserving their relative proportions."""
+    if not enabled:
+        return _WEIGHTS
+    scale = 1.0 - _NEURAL_WEIGHT
+    out = {k: v * scale for k, v in _WEIGHTS.items()}
+    out["neural_semantic"] = _NEURAL_WEIGHT
+    return out
 
 
 def _parse_required_years(text: str) -> int:
@@ -706,42 +724,60 @@ def _profile_years(profile: Profile) -> int:
 
 
 def _skills_factor(profile: Profile, haystack: str) -> tuple[float, list[str], list[str]]:
+    """Skills match using fuzzy + canonical matching.
+
+    Returns ``(score, matched_surface_forms, missing_job_skills)``.
+    The matched list preserves the user's original skill spelling (e.g.
+    ``Node.js``) even when the job description writes ``nodejs`` — that's
+    the fuzzy/canonical match working under the hood.
+    """
     skills = [s.name for s in (profile.skills or []) if s.name]
     haystack_l = (haystack or "").lower()
     if not skills:
         return 50.0, [], []
+
+    # Fuzzy + canonical match each resume skill against the job text
     matched: list[str] = []
-    missing_user_skills: list[str] = []
+    weighted_total = 0.0
+    weighted_hit = 0.0
+    skill_years = {s.name: float(s.years or 0) for s in (profile.skills or []) if s.name}
     for s in skills:
-        if s.lower() in haystack_l:
+        w = 1.0 + min(skill_years.get(s, 0.0), 10) * 0.10
+        weighted_total += w
+        conf = me.fuzzy_match(s, haystack_l, threshold=85)
+        if conf > 0:
             matched.append(s)
-        else:
-            missing_user_skills.append(s)
-    score = (len(matched) / max(len(skills), 1)) * 100
-    # Identify "missing" — job-required skills not in the profile. We do this
-    # by extracting known skill tokens from the job description via the
-    # JOB_SKILL_VOCAB list and reporting the ones the user doesn't have.
-    profile_lc = {s.lower() for s in skills}
-    seen: set[str] = set()
+            weighted_hit += w * (conf / 100.0)
+    score = (weighted_hit / weighted_total) * 100 if weighted_total > 0 else 0.0
+
+    # Identify job-required skills the user lacks (vocab-driven extraction)
+    profile_lc = {me.canonicalize(x) for x in skills}
     missing_job_skills: list[str] = []
+    seen: set[str] = set()
     for token in _JOB_SKILL_VOCAB:
-        if token in profile_lc:
+        canon = me.canonicalize(token)
+        if canon in profile_lc or canon in seen:
             continue
-        if token in seen:
-            continue
-        if _contains_token(haystack_l, token):
+        if me.fuzzy_match(token, haystack_l, threshold=85) > 0:
             missing_job_skills.append(token)
-            seen.add(token)
+            seen.add(canon)
     return score, matched, missing_job_skills
 
 
 def _years_factor(profile: Profile, required: int) -> float:
     if required <= 0:
-        return 100.0
+        return 70.0
     have = _profile_years(profile)
     if have <= 0:
-        return 30.0
-    return min(have / required, 1.0) * 100
+        return 25.0
+    ratio = have / required
+    if ratio >= 1.0:
+        return 100.0
+    if ratio >= 0.75:
+        return 80.0
+    if ratio >= 0.5:
+        return 55.0
+    return 30.0
 
 
 def _education_factor(profile: Profile, desc: str) -> float:
@@ -754,19 +790,42 @@ def _education_factor(profile: Profile, desc: str) -> float:
         return 100.0
     if job_requires_degree and not has_degree:
         return 40.0
-    return 100.0
+    return 70.0
 
 
-def _location_factor(profile: Profile, job: dict) -> float:
+def _location_factor(profile: Profile, job: dict, search_loc: str = "") -> float:
     if job.get("is_remote") or job.get("job_type") == "remote":
-        return 100.0
-    if not profile or not (profile.location or "").strip():
-        return 50.0
-    profile_tokens = {t.lower() for t in re.split(r"[,\s]+", profile.location) if t}
+        return 90.0
     job_loc = (job.get("location") or "").lower()
-    if any(t in job_loc for t in profile_tokens if len(t) > 2):
-        return 100.0
-    return 60.0
+    if not job_loc:
+        return 40.0
+    # Alias-aware comparison: "SF" on the resume now aligns with
+    # "San Francisco" on the job, and a city-level resume location aligns
+    # with a country-level job tag (e.g. "Berlin" ↔ "Germany").
+    job_city, job_region = me.normalize_location(job_loc)
+    candidates = [search_loc, (profile.location or "")]
+    for candidate in candidates:
+        cand = (candidate or "").strip()
+        if not cand or cand.lower() in ("remote", "anywhere"):
+            continue
+        c_city, c_region = me.normalize_location(cand)
+        # Direct canonical-city equality (covers alias collapse: SF ↔ SF).
+        if c_city and job_city and c_city == job_city:
+            return 100.0
+        # Resume city is inside the job's location string or vice-versa
+        # (covers "San Francisco" appearing in "San Francisco, CA").
+        if c_city and c_city in job_loc:
+            return 100.0
+        if job_city and job_city in cand.lower():
+            return 100.0
+        # Same country / region (city ↔ country granularity match).
+        if c_region and job_region and c_region == job_region:
+            return 75.0
+        # Last-resort token overlap (preserves the original heuristic).
+        tokens = [t for t in re.split(r"[,\s/]+", cand.lower()) if len(t) > 1]
+        if any(t in job_loc for t in tokens):
+            return 90.0
+    return 25.0
 
 
 def _certifications_factor(profile: Profile, desc: str) -> float:
@@ -774,7 +833,7 @@ def _certifications_factor(profile: Profile, desc: str) -> float:
     desc_l = (desc or "").lower()
     job_mentions_cert = any(k in desc_l for k in _CERT_KEYWORDS)
     if not certs:
-        return 30.0 if job_mentions_cert else 80.0
+        return 30.0 if job_mentions_cert else 60.0
     matched = sum(1 for c in certs if c.lower() in desc_l)
     return (matched / len(certs)) * 100
 
@@ -791,29 +850,522 @@ def _title_factor(profile: Profile, job_title: str) -> float:
     return (len(overlap) / max(len(role_tokens), 1)) * 100
 
 
-def _profile_match_score(profile: Profile, job: dict) -> dict:
-    """Weighted 6-factor match score. Returns score, breakdown, matched, missing."""
+def _resume_tokens(profile: Profile) -> dict:
+    """Build a weighted token->importance map from the whole resume.
+    Delegates to matching_engine.build_resume_keywords to properly
+    incorporate location, skills, experience, etc. using advanced tokenization.
+    """
+    if not profile:
+        return {}
+    keywords = me.build_resume_keywords(profile)
+    return {k["term"]: k["weight"] for k in keywords}
+
+
+def _job_required_skills(title: str, desc: str) -> list[str]:
+    """Extract required skills (vocab tokens) from the job title+description."""
+    text = f"{title or ''}\n{desc or ''}".lower()
+    found: list[str] = []
+    seen: set[str] = set()
+    for token in _JOB_SKILL_VOCAB:
+        if token in seen:
+            continue
+        if _contains_token(text, token):
+            found.append(token)
+            seen.add(token)
+    return found
+
+
+_SENIORITY_PATTERNS = (
+    (1, (r"\bjunior\b", r"\bintern\b", r"\bentry\b", r"\bgraduate\b")),
+    (3, (r"\bsenior\b", r"\bsr\b")),
+    (4, (r"\blead\b", r"\bstaff\b", r"\bprincipal\b")),
+    (5, (r"\bmanager\b", r"\bhead\b", r"\bdirector\b", r"\bvp\b", r"\bchief\b")),
+)
+
+
+def _seniority_level(text: str) -> int:
+    """Map seniority from a title/description string to 1..5 (default 2=mid)."""
+    t = (text or "").lower()
+    if not t:
+        return 2
+    best = None
+    for level, pats in _SENIORITY_PATTERNS:
+        if any(re.search(p, t) for p in pats):
+            if best is None or level > best:
+                best = level
+    return best if best is not None else 2
+
+
+def _keyword_density_factor(resume_tokens: dict, job_text: str) -> tuple[float, list[str]]:
+    """Blended deep-analysis signal: 60% fuzzy resume-keyword coverage +
+    40% TF-IDF cosine similarity between the resume vocabulary and the
+    job text.
+
+    ``resume_tokens`` is the legacy ``{surface_form: weight}`` map built
+    by ``_resume_tokens``; we canonicalize on the fly for matching.
+    """
+    if not resume_tokens or not job_text:
+        return 0.0, []
+    job_l = (job_text or "").lower()
+    top = sorted(resume_tokens.items(), key=lambda kv: -kv[1])[:30]
+
+    # --- Coverage: fuzzy match of top-weighted resume keywords ---
+    matched_kw: list[str] = []
+    cover_hits = 0.0
+    cover_den = 0.0
+    for token, w in top:
+        cover_den += w
+        if me.fuzzy_match(token, job_l, threshold=85) > 0:
+            matched_kw.append(token)
+            cover_hits += w
+    coverage = (cover_hits / cover_den) * 100 if cover_den > 0 else 0.0
+
+    # --- TF-IDF cosine over the resume keyword vocabulary ---
+    # Build a 2-document corpus: the resume itself (top keywords) and
+    # the job text (tokenized). Cosine then rewards semantic overlap.
+    resume_doc = []
+    for token, w in top:
+        # repeat by rounded weight to mimic term frequency
+        resume_doc.extend([me.canonicalize(token)] * max(1, int(w * 3)))
+    job_doc = me.tokenize_job("", job_text)
+    idf = me.build_idf([resume_doc, job_doc])
+    cos = me.cosine_similarity(
+        me.tfidf_vector(resume_doc, idf),
+        me.tfidf_vector(job_doc, idf),
+    ) * 100.0
+
+    score = coverage * 0.6 + cos * 0.4
+    return score, matched_kw
+
+
+# ── Semantic + per-skill detail + structured gaps (advanced ML signals) ───────
+
+def _semantic_factor(
+    profile: Profile, required_skills: list[str], missing_skills: list[str],
+) -> tuple[float, list[dict]]:
+    """Category-embedding signal: for every job-required skill the candidate
+    does NOT match exactly, find the most semantically-related resume skill
+    (same category or related categories) and award partial credit.
+
+    Returns ``(score_0_100, partial_matches)`` where each partial match is
+    ``{required, via, confidence}`` — ``via`` is the resume skill that
+    covers the requirement semantically, ``confidence`` is the 0-100
+    strength (60 = same category, 35-45 = related category).
+    """
+    if not required_skills or not missing_skills:
+        return 0.0, []
+    resume_skills = [s.name for s in (profile.skills or []) if s.name]
+    if not resume_skills:
+        return 0.0, []
+    partials: list[dict] = []
+    covered = 0.0
+    for needed in missing_skills:
+        best, via = me.best_semantic_match(needed, resume_skills)
+        if best >= 0.6:
+            covered += best
+            partials.append({
+                "required": needed,
+                "via": via,
+                "confidence": int(round(best * 100)),
+                "category": me.skill_category(needed) or "related",
+            })
+    # Score = covered weight over the total number of required skills, so a
+    # role where most gaps are covered by same-category experience scores
+    # high, while a role with unrelated gaps scores near zero.
+    den = max(1, len(required_skills))
+    score = (covered / den) * 100.0
+    return min(100.0, score), partials
+
+
+def _skill_details(
+    profile: Profile, required_skills: list[str], matched: list[str],
+    missing: list[str], partials: list[dict], haystack: str,
+) -> list[dict]:
+    """Per-skill match detail for the UI.
+
+    Each entry: ``{skill, status, confidence, severity, category, via?}``
+      * status:      matched | partial | missing
+      * confidence:  0-100 (fuzzy strength for matched, semantic for
+                     partial, 0 for missing)
+      * severity:    required | nice_to_have (heuristic: skills that appear
+                     in the job title or with "required"/"must" nearby are
+                     treated as required)
+      * category:    semantic category (frontend/backend/...) if known
+      * via:         (partial only) the resume skill covering the gap
+    """
+    haystack_l = (haystack or "").lower()
+    profile_skills = [s.name for s in (profile.skills or []) if s.name]
+
+    # Confidence per matched skill via fuzzy match against the job text.
+    def _severity(token: str) -> str:
+        t = me.canonicalize(token)
+        if t and t in haystack_l.split("\n")[0].lower():
+            return "required"
+        if any(w in haystack_l for w in (f"require {t}", f"{t} required",
+                                         f"must have {t}", f"{t} must")):
+            return "required"
+        return "nice_to_have"
+
+    details: list[dict] = []
+    seen: set[str] = set()
+    for s in matched:
+        c = me.canonicalize(s)
+        if c in seen:
+            continue
+        seen.add(c)
+        conf = me.fuzzy_match(s, haystack_l, threshold=85) if haystack_l else 100
+        details.append({
+            "skill": s,
+            "status": "matched",
+            "confidence": max(85, conf) if conf > 0 else 100,
+            "severity": _severity(s),
+            "category": me.skill_category(s),
+        })
+    for p in partials:
+        c = me.canonicalize(p["required"])
+        if c in seen:
+            continue
+        seen.add(c)
+        details.append({
+            "skill": p["required"],
+            "status": "partial",
+            "confidence": p["confidence"],
+            "severity": _severity(p["required"]),
+            "category": p.get("category", ""),
+            "via": p.get("via", ""),
+        })
+    for s in missing:
+        c = me.canonicalize(s)
+        if c in seen:
+            continue
+        seen.add(c)
+        # A missing skill is only "required" severity if we couldn't find
+        # any semantic cover for it (i.e. it's not in partials).
+        is_covered = any(me.canonicalize(p["required"]) == c for p in partials)
+        details.append({
+            "skill": s,
+            "status": "missing" if not is_covered else "partial",
+            "confidence": 0,
+            "severity": _severity(s),
+            "category": me.skill_category(s),
+        })
+    # Surface a few unmatched profile skills (nice-to-have context) so the
+    # user can see strengths the job didn't ask for — capped to keep noise low.
+    matched_canon = {me.canonicalize(d["skill"]) for d in details}
+    extra = 0
+    for s in profile_skills:
+        c = me.canonicalize(s)
+        if c in matched_canon or extra >= 4:
+            continue
+        details.append({
+            "skill": s,
+            "status": "extra",
+            "confidence": 100,
+            "severity": "nice_to_have",
+            "category": me.skill_category(s),
+        })
+        matched_canon.add(c)
+        extra += 1
+    return details
+
+
+def _build_gaps(
+    profile: Profile, job: dict, breakdown: dict, missing: list[str],
+    partials: list[dict], required_years: int, search_loc: str,
+) -> dict:
+    """Structured "what doesn't match perfectly" analysis.
+
+    Returns one entry per dimension, each with ``status`` (ok | weak | gap)
+    and a human ``message``. This is the explainable-AI layer that the UI
+    renders as the Gaps panel, answering "what does not match perfectly".
+    """
+    gaps: dict[str, dict] = {}
+
+    # ── Skills gap ──
+    hard_missing = [s for s in missing
+                    if not any(me.canonicalize(p["required"]) == me.canonicalize(s)
+                               for p in partials)]
+    if not missing:
+        gaps["skills"] = {"status": "ok",
+                          "message": "All detected required skills are covered."}
+    elif not hard_missing and partials:
+        gaps["skills"] = {
+            "status": "weak",
+            "message": (f"{len(partials)} skill gap(s) partially covered by "
+                        f"related experience: "
+                        + ", ".join(f"{p['required']}≈{p['via']}" for p in partials[:3])
+                        + "."),
+            "items": [p["required"] for p in partials],
+        }
+    else:
+        gaps["skills"] = {
+            "status": "gap",
+            "message": f"Missing {len(hard_missing)} key skill(s): "
+                       + ", ".join(hard_missing[:5])
+                       + ("…" if len(hard_missing) > 5 else "") + ".",
+            "items": hard_missing,
+        }
+
+    # ── Experience gap ──
+    have = _profile_years(profile)
+    if required_years <= 0:
+        gaps["experience"] = {"status": "ok",
+                              "message": "No specific years requirement detected."}
+    elif have >= required_years:
+        gaps["experience"] = {
+            "status": "ok",
+            "message": f"You have ~{have}y vs {required_years}y required.",
+        }
+    elif have >= required_years * 0.75:
+        gaps["experience"] = {
+            "status": "weak",
+            "message": f"Close: ~{have}y vs {required_years}y required.",
+        }
+    else:
+        gaps["experience"] = {
+            "status": "gap",
+            "message": f"Experience gap: ~{have}y vs {required_years}y required.",
+        }
+
+    # ── Location gap ──
+    loc_score = float(breakdown.get("location", 0))
+    if loc_score >= 90:
+        gaps["location"] = {"status": "ok",
+                            "message": "Location aligns (or remote role)."}
+    elif loc_score >= 70:
+        gaps["location"] = {"status": "weak",
+                            "message": "Same region as the role."}
+    else:
+        job_loc = (job.get("location") or "").strip() or "unstated"
+        gaps["location"] = {
+            "status": "gap",
+            "message": f"Location mismatch — job is in {job_loc}.",
+        }
+
+    # ── Seniority gap ──
+    sen_score = float(breakdown.get("seniority", 0))
+    if sen_score >= 90:
+        gaps["seniority"] = {"status": "ok",
+                             "message": "Seniority level matches."}
+    elif sen_score >= 60:
+        gaps["seniority"] = {"status": "weak",
+                             "message": "Seniority is one level off."}
+    else:
+        gaps["seniority"] = {"status": "gap",
+                             "message": "Seniority level differs significantly."}
+
+    # ── Education gap ──
+    edu_score = float(breakdown.get("education", 0))
+    if edu_score >= 90:
+        gaps["education"] = {"status": "ok",
+                             "message": "Education meets the requirement."}
+    elif edu_score >= 50:
+        gaps["education"] = {"status": "weak",
+                             "message": "Degree may be expected."}
+    else:
+        gaps["education"] = {"status": "gap",
+                             "message": "Job mentions a degree you haven't listed."}
+
+    # ── Certifications gap ──
+    cert_score = float(breakdown.get("certifications", 0))
+    if cert_score >= 90:
+        gaps["certifications"] = {"status": "ok",
+                                  "message": "Certifications align."}
+    elif cert_score >= 50:
+        gaps["certifications"] = {"status": "weak",
+                                  "message": "Some relevant certifications."}
+    else:
+        gaps["certifications"] = {
+            "status": "gap",
+            "message": "Job references certifications you don't hold.",
+        }
+
+    return gaps
+
+
+def _profile_match_score(
+    profile: Profile, job: dict, search_loc: str = "", neural_score: "float | None" = None,
+) -> dict:
+    """Advanced 9-factor match score.
+
+    Factors: skills, semantic (category embedding), keyword_density
+    (TF-IDF + fuzzy coverage), years, seniority, education, certifications,
+    title, location. Returns the score, per-factor breakdown, matched /
+    missing skills, per-skill detail, a structured gaps analysis, a
+    human-readable insight, and a confidence band.
+    """
     title = (job.get("title") or "")
     desc = (job.get("description") or "")
     haystack = f"{title}\n{desc}"
     required_years = _parse_required_years(desc)
 
-    skills_score, matched, missing = _skills_factor(profile, haystack)
+    resume_tokens = _resume_tokens(profile)
+    required_skills = _job_required_skills(title, desc)
+
+    # Canonical-keyed lookup so a resume skill "Node.js" matches a job
+    # required-skill token "nodejs". We keep the original surface form
+    # for display in the matched list.
+    rt_weight = {me.canonicalize(k): v for k, v in resume_tokens.items()}
+    rt_orig = {me.canonicalize(k): k for k in resume_tokens}
+    matched: list[str] = []
+    missing: list[str] = []
+    if required_skills:
+        num = 0.0
+        den = 0.0
+        for rs in required_skills:
+            rs_canon = me.canonicalize(rs)
+            if rs_canon in rt_weight:
+                w = rt_weight[rs_canon]
+                num += w
+                den += w
+                matched.append(rt_orig[rs_canon])
+            else:
+                den += 1.0
+                missing.append(rs)
+        skills_score = (num / den) * 100 if den > 0 else 0.0
+    else:
+        skills_score, matched, missing = _skills_factor(profile, haystack)
+
+    kd_score, _kd_matched = _keyword_density_factor(resume_tokens, haystack)
+
+    # Semantic category-embedding signal over the *unmatched* requirements.
+    sem_score, partials = _semantic_factor(profile, required_skills, missing)
+
+    first_role = ""
+    if getattr(profile, "experience", None):
+        first_role = (profile.experience[0].role or "") if profile.experience[0] else ""
+    profile_sen = _seniority_level(first_role)
+    if _profile_years(profile) >= 8:
+        profile_sen = min(5, profile_sen + 1)
+    job_sen = _seniority_level(title)
+    diff = abs(profile_sen - job_sen)
+    if diff == 0:
+        sen_score = 100.0
+    elif diff == 1:
+        sen_score = 70.0
+    elif diff == 2:
+        sen_score = 40.0
+    else:
+        sen_score = 20.0
+
     factors = {
         "skills": skills_score,
+        "semantic": sem_score,
+        "keyword_density": kd_score,
         "years": _years_factor(profile, required_years),
+        "seniority": sen_score,
         "education": _education_factor(profile, desc),
-        "location": _location_factor(profile, job),
         "certifications": _certifications_factor(profile, desc),
         "title": _title_factor(profile, title),
+        "location": _location_factor(profile, job, search_loc),
     }
-    score = sum(_WEIGHTS[k] * factors[k] for k in _WEIGHTS)
+    weights = _WEIGHTS
+    if neural_score is not None:
+        factors["neural_semantic"] = neural_score
+        weights = _weights_with_neural(True)
+    score = sum(weights[k] * factors[k] for k in weights)
+    rounded_score = round(min(100.0, max(0.0, score)), 1)
+
+    skill_details = _skill_details(
+        profile, required_skills, matched, missing, partials, haystack,
+    )
+    gaps = _build_gaps(
+        profile, job, factors, missing, partials, required_years, search_loc,
+    )
+    insight = _build_insight(
+        min(100.0, max(0.0, score)), len(matched), len(missing),
+        missing[:3], factors,
+    )
     return {
-        "score": round(min(100.0, max(0.0, score)), 1),
+        "score": rounded_score,
         "breakdown": {k: round(v, 1) for k, v in factors.items()},
         "matched": matched,
         "missing": missing,
+        "skill_details": skill_details,
+        "partials": partials,
+        "gaps": gaps,
+        "insight": insight,
+        "confidence": _confidence_band(rounded_score),
     }
+
+
+def _confidence_band(score: float) -> str:
+    """Map a match score to a human-readable confidence label."""
+    if score >= 85:
+        return "Excellent"
+    if score >= 70:
+        return "Strong"
+    if score >= 50:
+        return "Moderate"
+    if score >= 30:
+        return "Weak"
+    return "Poor"
+
+
+def _build_insight(
+    score: float, matched_count: int, missing_count: int,
+    top_missing: list[str], breakdown: dict,
+) -> str:
+    """Generate a short human-readable match insight string.
+
+    Examples:
+      "Strong fit — you match 9/11 required skills. Gap: Kubernetes, Terraform."
+      "Partial fit — 4/8 skills matched. Consider adding Kubernetes."
+      "Weak fit — only 2/9 skills match. This role may need more experience."
+    """
+    total = matched_count + missing_count
+    if total == 0:
+        return "No specific skill requirements detected in this job."
+
+    ratio = matched_count / total
+    if ratio >= 0.8:
+        strength = "Strong"
+    elif ratio >= 0.6:
+        strength = "Good"
+    elif ratio >= 0.4:
+        strength = "Partial"
+    else:
+        strength = "Weak"
+
+    parts = [f"{strength} fit"]
+    if total > 0:
+        parts.append(f"you match {matched_count}/{total} required skills")
+
+    if top_missing:
+        gap = ", ".join(top_missing[:3])
+        parts.append(f"Gap: {gap}")
+
+    if score < 40 and float(breakdown.get("years", 100)) < 50:
+        parts.append("experience gap detected")
+
+    return " — ".join(parts) + "."
+
+
+def _hire_chance(match_score: float, missing_count: int, breakdown: dict) -> tuple[int, str]:
+    """Estimate probability of getting the job (0-100) and a label."""
+    chance = float(match_score)
+    chance -= missing_count * 4
+    years = float(breakdown.get("years", 100))
+    if years < 60:
+        chance -= (60 - years) / 2
+    sen = float(breakdown.get("seniority", 100))
+    if sen < 50:
+        chance -= (50 - sen) / 3
+    if float(breakdown.get("keyword_density", 0)) >= 70:
+        chance += 5
+    chance = max(0.0, min(100.0, chance))
+    chance_i = int(round(chance))
+    if chance_i >= 75:
+        label = "Very High"
+    elif chance_i >= 60:
+        label = "High"
+    elif chance_i >= 40:
+        label = "Medium"
+    elif chance_i >= 25:
+        label = "Low"
+    else:
+        label = "Very Low"
+    return chance_i, label
 
 
 # ── Backwards-compatible simple scorer (kept for legacy callers/tests) ────────
@@ -1066,22 +1618,43 @@ async def search_jobs(
                 "Strict title filter '%s' kept %d / %d jobs",
                 job_title, len(all_jobs), before,
             )
-    if location and location.strip():
+    # Use the effective search location (user input, else profile location).
+    # Skip strict filtering when it resolves to a generic "Remote"/"Anywhere"
+    # default — in that case the scoring engine's location penalty handles it.
+    eff_loc = search_loc.strip() if search_loc and search_loc.strip() else (location.strip() or "")
+    if eff_loc and eff_loc.lower() not in ("remote", "anywhere"):
         loc_tokens = [
-            t.lower() for t in re.split(r"[\s,/]+", location.strip())
-            if len(t) > 2
+            t.lower() for t in re.split(r"[\s,/]+", eff_loc)
+            if len(t) > 1
         ]
-        if loc_tokens:
+        # Alias-aware canonical forms of the user's location tokens, so "SF"
+        # aligns with "San Francisco" and "NYC" with "New York". Falls back
+        # to the raw token when no alias is known.
+        eff_city, eff_region = me.normalize_location(eff_loc)
+        if loc_tokens or eff_city or eff_region:
             def _matches_loc(j: dict) -> bool:
                 jl = (j.get("location") or "").lower()
                 if not jl:
-                    return True  # untagged → keep
+                    return True  # untagged → keep, scored low later
+                if jl in ("remote", "anywhere") or "remote" in jl:
+                    return True  # remote jobs are location-agnostic
+                # Alias-aware: canonical-city or region equality, then the
+                # canonical city appearing inside the job location string,
+                # then the original raw token overlap (preserves the legacy
+                # heuristic for un-aliased inputs).
+                j_city, j_region = me.normalize_location(jl)
+                if eff_city and j_city and eff_city == j_city:
+                    return True
+                if eff_region and j_region and eff_region == j_region:
+                    return True
+                if eff_city and eff_city in jl:
+                    return True
                 return any(tok in jl for tok in loc_tokens)
             before = len(all_jobs)
             all_jobs = [j for j in all_jobs if _matches_loc(j)]
             logger.info(
                 "Strict location filter '%s' kept %d / %d jobs",
-                location, len(all_jobs), before,
+                eff_loc, len(all_jobs), before,
             )
 
     # ---- 3. Score & persist all fetched jobs ----
@@ -1099,11 +1672,15 @@ async def search_jobs(
         s.commit()
 
         for j in all_jobs:
-            result = _profile_match_score(p, j)
+            result = _profile_match_score(p, j, search_loc)
             j["_score"] = result["score"]
             j["_breakdown"] = json.dumps(result["breakdown"])
             j["_matched"] = json.dumps(result["matched"])
             j["_missing"] = json.dumps(result["missing"])
+            j["_skill_details"] = json.dumps(result.get("skill_details", []))
+            j["_gaps"] = json.dumps(result.get("gaps", {}))
+            j["_insight"] = result.get("insight", "")
+            j["_confidence"] = result.get("confidence", "")
             if not j.get("date_posted"):
                 j["date_posted"] = _extract_date_posted(j)
             if not j.get("job_type"):
@@ -1131,6 +1708,10 @@ async def search_jobs(
                 match_breakdown=j["_breakdown"],
                 matched_skills=j["_matched"],
                 missing_skills=j["_missing"],
+                skill_details=j["_skill_details"],
+                gaps=j["_gaps"],
+                insight=j.get("_insight", ""),
+                confidence=j.get("_confidence", ""),
             ))
         s.commit()
 
@@ -1215,8 +1796,14 @@ async def search_jobs(
         total = len(all_rows)
         rows = all_rows[offset : offset + limit]
 
-        saved = [
-            {
+        saved = []
+        for r in rows:
+            _bd = json.loads(r.match_breakdown or "{}")
+            _miss = json.loads(r.missing_skills or "[]")
+            _details = json.loads(getattr(r, "skill_details", "[]") or "[]")
+            _gaps = json.loads(getattr(r, "gaps", "{}") or "{}")
+            _chance, _chance_label = _hire_chance(r.match_score, len(_miss), _bd)
+            saved.append({
                 "id": r.id, "title": r.title, "company": r.company,
                 "location": r.location, "url": r.url, "description": r.description,
                 "source": r.source, "match_score": r.match_score,
@@ -1225,12 +1812,16 @@ async def search_jobs(
                 "industry": r.industry, "is_remote": r.is_remote,
                 "is_expired": r.is_expired,
                 "salary_min": r.salary_min, "salary_max": r.salary_max,
-                "match_breakdown": json.loads(r.match_breakdown or "{}"),
+                "match_breakdown": _bd,
                 "matched_skills": json.loads(r.matched_skills or "[]"),
-                "missing_skills": json.loads(r.missing_skills or "[]"),
-            }
-            for r in rows
-        ]
+                "missing_skills": _miss,
+                "skill_details": _details,
+                "gaps": _gaps,
+                "hire_chance": _chance,
+                "hire_chance_label": _chance_label,
+                "insight": r.insight or "",
+                "confidence": r.confidence or "",
+            })
 
     activity.log_activity(
         "jobs_search",
@@ -1350,6 +1941,46 @@ def update_saved_filter(
             "sort": sf.sort,
             "created_at": sf.created_at.isoformat(),
         }
+
+
+# ── Resume keyword profile (advanced matching) ───────────────────────────────
+
+@router.get("/{profile_id}/resume-keywords")
+def resume_keywords(
+    profile_id: int,
+    user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Extract and return the weighted keyword profile built from the user's
+    resume. Each keyword has a canonical form, importance weight, and
+    source section. Drives the "Resume Keyword Profile" panel in the UI."""
+    with Session(db.engine) as s:
+        p = s.get(Profile, profile_id)
+        if not p:
+            raise HTTPException(404, "Profile not found")
+        if user:
+            _check_ownership(s, p, user)
+        elif p.user_id is not None:
+            raise HTTPException(403, "Forbidden")
+        s.refresh(p)
+        # Build keywords inside the session so the profile's relationships
+        # (skills, experience, projects, ...) can lazy-load.
+        keywords = me.build_resume_keywords(p)
+
+    # Top 5 canonical terms for a quick summary
+    seen: set[str] = set()
+    top_terms: list[str] = []
+    for kw in keywords:
+        c = kw["canonical"]
+        if c not in seen:
+            seen.add(c)
+            top_terms.append(kw["term"])
+        if len(top_terms) >= 5:
+            break
+    return {
+        "keywords": keywords,
+        "total": len(keywords),
+        "top_terms": top_terms,
+    }
 
 
 # ── External search deep links (Issue #1) ────────────────────────────────────
@@ -1497,20 +2128,9 @@ def external_search_links(
         glassdoor_extra.append(f"minSalary={salary_min}")
     glassdoor_extra_str = "&" + "&".join(glassdoor_extra) if glassdoor_extra else ""
 
-    # Google Jobs: time_posted via `since` param (d_ = days, h_ = hours,
-    # w_ = weeks, m_ = months; default = no limit).
-    google_since_map = {
-        "last_24h": "d_1",
-        "last_7d": "w_1",
-        "last_30d": "m_1",
-    }
-    google_since = google_since_map.get(time_posted, "")
-    google_extra = []
-    if google_since:
-        google_extra.append(f"since={google_since}")
-    if linkedin_f_WT == "2":
-        google_extra.append("q=remote+work")
-    google_extra_str = "&" + "&".join(google_extra) if google_extra else ""
+    # Google Jobs: the careers applications jobs results endpoint takes a
+    # single `q` parameter. Remote work-type filter appends "+remote" to the
+    # keyword so remote postings are favoured.
 
     return {
         "keywords": kw,
@@ -1560,16 +2180,19 @@ def external_search_links(
             {
                 "portal": "google_jobs",
                 "label": "Google Jobs",
-                # Google Jobs aggregator URL. Uses the official
-                # `ibp=htl;jobs` parameter (URL-encoded as %3B) to
-                # switch the result set to the Jobs vertical so the
-                # search opens directly in Jobs mode, not regular
-                # web search.
+                # Modern Google Jobs deep link: a regular Google web search
+                # with the `ibp=htl;jobs` parameter (URL-encoded as
+                # `ibp=htl%3Bjobs`) switches the result set to the Jobs
+                # vertical. The query includes the location and an optional
+                # "+remote" modifier when the user filtered for remote work.
+                # The deprecated `/about/careers/applications/jobs/results`
+                # endpoint was removed by Google, so we use the search URL.
                 "url": (
                     f"https://www.google.com/search?"
-                    f"q={encoded_kw}+jobs+{encoded_loc}"
+                    f"q={encoded_kw}"
+                    f"+jobs+{encoded_loc}"
+                    f"{'+remote' if linkedin_f_WT == '2' else ''}"
                     f"&ibp=htl%3Bjobs"
-                    f"{google_extra_str}"
                 ),
                 "icon": "🌐",
             },

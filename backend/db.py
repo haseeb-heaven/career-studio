@@ -33,6 +33,7 @@ def migrate_db():
         ("ollama_base_url", "TEXT DEFAULT 'http://localhost:11434'"),
         ("ollama_model",    "TEXT DEFAULT 'llama3.2'"),
         ("local_for_simple","INTEGER DEFAULT 1"),
+        ("use_deep_semantic_matching", "INTEGER DEFAULT 0"),
         ("adzuna_app_id",  "TEXT DEFAULT ''"),
         ("adzuna_app_key", "TEXT DEFAULT ''"),
         ("linkedin_api_key", "TEXT DEFAULT ''"),
@@ -57,6 +58,10 @@ def migrate_db():
         ("match_breakdown",   "TEXT DEFAULT ''"),
         ("matched_skills",    "TEXT DEFAULT '[]'"),
         ("missing_skills",    "TEXT DEFAULT '[]'"),
+        ("skill_details",     "TEXT DEFAULT '[]'"),
+        ("gaps",              "TEXT DEFAULT '{}'"),
+        ("insight",           "TEXT DEFAULT ''"),
+        ("confidence",        "TEXT DEFAULT ''"),
     ]
     new_cert_cols = [
         ("cert_id", "TEXT DEFAULT ''"),

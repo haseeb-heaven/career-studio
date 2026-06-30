@@ -157,6 +157,8 @@ class Settings(SQLModel, table=True):
     ollama_model: str = Field(default="llama3.2")
     # Task routing: use local for quick tasks, external for heavy ones
     local_for_simple: bool = Field(default=True)
+    # Hybrid local semantic matching (sentence-transformers, fully offline)
+    use_deep_semantic_matching: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -220,6 +222,10 @@ class JobMatch(SQLModel, table=True):
     match_breakdown: str = Field(default="")        # JSON: {"skills": 40, "years": 20, ...}
     matched_skills: str = Field(default="[]")       # JSON list
     missing_skills: str = Field(default="[]")       # JSON list
+    skill_details: str = Field(default="[]")        # JSON: per-skill {skill,status,confidence,severity,category,via?}
+    gaps: str = Field(default="{}")                 # JSON: structured "what doesn't match" by dimension
+    insight: str = Field(default="")                # Human-readable match explanation
+    confidence: str = Field(default="")             # Excellent | Strong | Moderate | Weak | Poor
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

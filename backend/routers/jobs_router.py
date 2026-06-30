@@ -1505,7 +1505,10 @@ async def search_jobs(
         query = job_title.strip() if job_title.strip() else _build_keywords(p)
         search_loc = location.strip() if location.strip() else (p.location or "Remote")
 
-        cfg = s.exec(select(Settings)).first() or Settings()
+        if user:
+            cfg = s.exec(select(Settings).where(Settings.user_id == user.id)).first() or Settings()
+        else:
+            cfg = s.exec(select(Settings)).first() or Settings()
         adzuna_id = cfg.adzuna_app_id or ""
         adzuna_key = decrypt_key(cfg.adzuna_app_key or "")
         linkedin_key = decrypt_key(cfg.linkedin_api_key or "")
@@ -1686,8 +1689,10 @@ async def search_jobs(
                 neural_scores = None
 
         for idx, j in enumerate(all_jobs):
-            neural_score = neural_scores[idx] if neural_scores is not None else None
-            result = _profile_match_score(p, j, search_loc, neural_score=neural_score)
+            if neural_scores is not None:
+                result = _profile_match_score(p, j, search_loc, neural_score=neural_scores[idx])
+            else:
+                result = _profile_match_score(p, j, search_loc)
             j["_score"] = result["score"]
             j["_breakdown"] = json.dumps(result["breakdown"])
             j["_matched"] = json.dumps(result["matched"])

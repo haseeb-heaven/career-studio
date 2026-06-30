@@ -7,9 +7,15 @@ within the same test.
 """
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+
+def _days_ago(n: int) -> str:
+    """ISO date string for n days before today (date-robust fixtures)."""
+    return (datetime.now(timezone.utc) - timedelta(days=n)).date().isoformat()
 
 
 def _auth(client, username):
@@ -48,7 +54,7 @@ def _build_fixture_jobs():
             "location": "Remote", "source": "remotive",
             "description": "Python FastAPI AWS required. 5+ years experience.",
             "salary": "$120k-$150k", "is_deep_link": False,
-            "date_posted": "2026-06-15", "job_type": "remote",
+            "date_posted": _days_ago(2), "job_type": "remote",
             "is_remote": True, "industry": "tech",
             "match_score": 92.0, "salary_min": 120000, "salary_max": 150000,
             "match_breakdown": "{}", "matched_skills": "[]", "missing_skills": "[]",
@@ -59,7 +65,7 @@ def _build_fixture_jobs():
             "location": "New York, NY", "source": "arbeitnow",
             "description": "Entry level Java developer.",
             "salary": None, "is_deep_link": False,
-            "date_posted": "2025-12-01", "job_type": "full-time",
+            "date_posted": _days_ago(200), "job_type": "full-time",
             "is_remote": False, "industry": "finance",
             "match_score": 22.0, "salary_min": 0, "salary_max": 0,
             "match_breakdown": "{}", "matched_skills": "[]", "missing_skills": "[]",
@@ -70,7 +76,7 @@ def _build_fixture_jobs():
             "location": "Remote", "source": "himalayas",
             "description": "Machine Learning and Python expert. AWS required. 3+ years experience.",
             "salary": "$140k-$180k", "is_deep_link": False,
-            "date_posted": "2026-06-18", "job_type": "contract",
+            "date_posted": _days_ago(4), "job_type": "contract",
             "is_remote": True, "industry": "tech",
             "match_score": 85.0, "salary_min": 140000, "salary_max": 180000,
             "match_breakdown": "{}", "matched_skills": "[]", "missing_skills": "[]",
@@ -81,7 +87,7 @@ def _build_fixture_jobs():
             "location": "San Francisco, CA", "source": "themuse",
             "description": "Python and data analysis. 3+ years experience.",
             "salary": "$100k", "is_deep_link": False,
-            "date_posted": "2026-06-10", "job_type": "full-time",
+            "date_posted": _days_ago(6), "job_type": "full-time",
             "is_remote": False, "industry": "tech",
             "match_score": 70.0, "salary_min": 100000, "salary_max": 100000,
             "match_breakdown": "{}", "matched_skills": "[]", "missing_skills": "[]",
@@ -92,7 +98,7 @@ def _build_fixture_jobs():
             "location": "Berlin", "source": "remoteok",
             "description": "Node.js backend development.",
             "salary": None, "is_deep_link": False,
-            "date_posted": "2026-06-16", "job_type": "",
+            "date_posted": _days_ago(9), "job_type": "",
             "is_remote": True, "industry": "",
             "match_score": 55.0, "salary_min": 0, "salary_max": 0,
             "match_breakdown": "{}", "matched_skills": "[]", "missing_skills": "[]",
@@ -103,7 +109,7 @@ def _build_fixture_jobs():
             "location": "Remote", "source": "jobicy",
             "description": "Full-Stack role with React and Python.",
             "salary": "$80k-$110k", "is_deep_link": False,
-            "date_posted": "2026-06-12", "job_type": "remote",
+            "date_posted": _days_ago(5), "job_type": "remote",
             "is_remote": True, "industry": "",
             "match_score": 60.0, "salary_min": 80000, "salary_max": 110000,
             "match_breakdown": "{}", "matched_skills": "[]", "missing_skills": "[]",
@@ -137,12 +143,17 @@ def patched_sources(monkeypatch):
     def _zero_gj(query, location):
         return []
 
-    def fake_scoring(profile, job):
+    def fake_scoring(profile, job, search_loc=""):
         return {
             "score": float(job.get("match_score", 0.0)),
             "breakdown": json.loads(job.get("match_breakdown", "{}") or "{}"),
             "matched": json.loads(job.get("matched_skills", "[]") or "[]"),
             "missing": json.loads(job.get("missing_skills", "[]") or "[]"),
+            "skill_details": [],
+            "gaps": {},
+            "partials": [],
+            "insight": "",
+            "confidence": "",
         }
 
     monkeypatch.setattr(rj, "_fetch_remotive", _one_source)
@@ -194,8 +205,19 @@ def test_filter_date_posted_last_7d(client, patched_sources):
     h = _auth(client, "flt_date_v1")
     pid = _profile(client, h)
     r = client.get(f"/api/profiles/{pid}/jobs?date_posted=last_7d&limit=100", headers=h).json()
+    # last_7d keeps jobs dated within the past 7 days (or untagged). With the
+    # dynamic fixtures, 4 jobs are within 7d (2/4/5/6 days ago) and 2 are
+    # older (9 and 200 days ago) — so this now asserts a non-vacuous set.
+    cutoff = _days_ago(7)
+    titles = {j["title"] for j in r["jobs"]}
+    assert "Senior Python Developer" in titles   # 2 days ago
+    assert "ML Engineer" in titles               # 4 days ago
+    assert "Full-Stack Engineer" in titles       # 5 days ago
+    assert "Data Scientist" in titles            # 6 days ago
+    assert "Backend Node Developer" not in titles  # 9 days ago → filtered
+    assert "Junior Java Developer" not in titles   # 200 days ago → filtered
     for job in r["jobs"]:
-        assert job["date_posted"] == "" or job["date_posted"] >= "2026-06-12"
+        assert job["date_posted"] == "" or job["date_posted"] >= cutoff
 
 
 def test_filter_date_posted_any_returns_all(client, patched_sources):
@@ -401,8 +423,186 @@ def test_response_shape_includes_all_filter_metadata(client, patched_sources):
             "date_posted", "job_type", "industry", "is_remote", "is_deep_link",
             "salary_min", "salary_max", "match_breakdown", "matched_skills",
             "missing_skills", "source", "url", "description", "is_expired",
+            "skill_details", "gaps", "hire_chance", "hire_chance_label",
+            "insight", "confidence",
         ):
             assert k in j, f"Missing key {k} in job response"
+
+
+# ── Advanced ML matchmaking: semantic, per-skill detail, gaps (real engine) ────
+#
+# These tests use the REAL _profile_match_score (not the stubbed one) so the
+# new advanced signals — semantic partial matches, per-skill confidence, and
+# the structured gaps analysis — are exercised end-to-end through the API.
+
+def _patch_only_remotive_with(monkeypatch, jobs):
+    """Patch every source so only Remotive returns ``jobs``; keep real scoring."""
+    import routers.jobs_router as rj
+    monkeypatch.setattr(rj, "_fetch_remotive", lambda q, l: [dict(j) for j in jobs])
+    for name in ("_fetch_arbeitnow", "_fetch_remoteok", "_fetch_himalayas",
+                 "_fetch_the_muse", "_fetch_jobicy", "_fetch_weworkremotely",
+                 "_fetch_adzuna", "_fetch_findwork", "_fetch_jooble",
+                 "_fetch_reed", "_fetch_usajobs"):
+        monkeypatch.setattr(rj, name, lambda q, l: [])
+    for name in ("_fetch_linkedin", "_fetch_indeed", "_fetch_glassdoor"):
+        monkeypatch.setattr(rj, name, lambda q, loc, l, k="": [])
+    monkeypatch.setattr(rj, "_fetch_google_jobs", lambda q, loc: [])
+
+
+def test_semantic_partial_match_appears_in_skill_details(client, monkeypatch):
+    """A candidate with React/Vue should get PARTIAL credit (not "missing")
+    for a job requiring Angular, because all three are frontend skills — the
+    semantic category-embedding signal rewards same-category overlap."""
+    jobs = [{
+        "title": "Frontend Engineer",
+        "company": "UI Co",
+        "location": "Remote",
+        "source": "remotive",
+        "description": "We need Angular and TypeScript. Frontend framework experience required.",
+        "salary": None, "is_deep_link": False, "url": "https://example.com/fe",
+    }]
+    _patch_only_remotive_with(monkeypatch, jobs)
+
+    h = _auth(client, "sem_partial_v1")
+    # Custom profile with React + Vue (frontend) so Angular gets partial credit
+    # via the semantic category-embedding signal.
+    data = json.dumps({
+        "full_name": "FE Dev",
+        "skills": [{"name": "React", "years": 3}, {"name": "Vue", "years": 2}],
+        "experience": [{"company": "UI Inc", "role": "Frontend Engineer", "start": "2021"}],
+    }).encode()
+    pid = client.post(
+        "/api/import", files={"file": ("p.json", data, "application/json")}, headers=h,
+    ).json()["profile_id"]
+    r = client.get(f"/api/profiles/{pid}/jobs?limit=100", headers=h).json()
+    assert r["total"] == 1
+    job = r["jobs"][0]
+    # The breakdown must include the new semantic factor
+    assert "semantic" in job["match_breakdown"]
+    assert job["match_breakdown"]["semantic"] > 0
+    # skill_details must contain a "partial" entry for Angular (via React/Vue)
+    partials = [d for d in job["skill_details"] if d["status"] == "partial"]
+    assert len(partials) > 0
+    partial_skills = {d["skill"].lower() for d in partials}
+    assert "angular" in partial_skills
+    # Each partial entry must name the covering resume skill and carry confidence
+    for d in partials:
+        assert d["via"]
+        assert 0 < d["confidence"] <= 100
+        assert d["category"]
+
+
+def test_gaps_panel_reports_location_mismatch(client, monkeypatch):
+    """When the candidate's effective location is Remote but the job is in
+    Berlin, the gaps panel must surface a location "gap" with a human message.
+    (We use a Remote profile location so the strict location filter doesn't
+    drop the Berlin job before the scoring engine can evaluate it.)"""
+    jobs = [{
+        "title": "Backend Engineer",
+        "company": "DE Co",
+        "location": "Berlin, Germany",
+        "source": "remotive",
+        "description": "Python backend developer. 3+ years experience.",
+        "salary": None, "is_deep_link": False, "url": "https://example.com/de",
+    }]
+    _patch_only_remotive_with(monkeypatch, jobs)
+
+    h = _auth(client, "gap_loc_v1")
+    # Profile with no location → effective search location defaults to Remote,
+    # so the strict location filter is skipped and the Berlin job survives to
+    # be scored (and penalized on the location factor).
+    data = json.dumps({
+        "full_name": "Remote Dev",
+        "skills": [{"name": "Python", "years": 4}],
+        "experience": [{"company": "X", "role": "Backend Engineer", "start": "2022"}],
+    }).encode()
+    pid = client.post(
+        "/api/import", files={"file": ("p.json", data, "application/json")}, headers=h,
+    ).json()["profile_id"]
+    r = client.get(f"/api/profiles/{pid}/jobs?limit=100", headers=h).json()
+    assert r["total"] == 1
+    gaps = r["jobs"][0]["gaps"]
+    assert gaps["location"]["status"] == "gap"
+    assert "Berlin" in gaps["location"]["message"]
+
+
+def test_gaps_panel_reports_experience_gap(client, monkeypatch):
+    """A junior candidate (0 profile years) vs a 5+ year requirement must
+    surface an experience "gap"."""
+    jobs = [{
+        "title": "Senior Engineer",
+        "company": "S Co",
+        "location": "Remote",
+        "source": "remotive",
+        "description": "Python developer. 5+ years of experience required.",
+        "salary": None, "is_deep_link": False, "url": "https://example.com/sr",
+    }]
+    _patch_only_remotive_with(monkeypatch, jobs)
+
+    # Build a profile with skills but no years, so _profile_years ≈ 0
+    h = _auth(client, "gap_exp_v1")
+    data = json.dumps({
+        "full_name": "Junior Dev",
+        "skills": [{"name": "Python", "years": 0}],
+        "experience": [{"company": "School", "role": "Intern", "start": "2026"}],
+    }).encode()
+    pid = client.post(
+        "/api/import", files={"file": ("p.json", data, "application/json")}, headers=h,
+    ).json()["profile_id"]
+    r = client.get(f"/api/profiles/{pid}/jobs?limit=100", headers=h).json()
+    assert r["total"] == 1
+    gaps = r["jobs"][0]["gaps"]
+    assert gaps["experience"]["status"] == "gap"
+    assert "5" in gaps["experience"]["message"]
+
+
+def test_location_alias_sf_matches_san_francisco(client, monkeypatch):
+    """Alias-aware location matching: a candidate location of "SF" must align
+    with a job tagged "San Francisco" (previously these would NOT match)."""
+    jobs = [{
+        "title": "Python Developer",
+        "company": "SF Co",
+        "location": "San Francisco, CA",
+        "source": "remotive",
+        "description": "Python developer.",
+        "salary": None, "is_deep_link": False, "url": "https://example.com/sf",
+    }]
+    _patch_only_remotive_with(monkeypatch, jobs)
+
+    h = _auth(client, "alias_sf_v1")
+    pid = _profile(client, h)
+    r = client.get(
+        f"/api/profiles/{pid}/jobs?location=SF&limit=100", headers=h,
+    ).json()
+    assert r["total"] == 1
+    # The location factor should be high (canonical-city equality)
+    assert r["jobs"][0]["match_breakdown"]["location"] >= 75
+    assert r["jobs"][0]["gaps"]["location"]["status"] != "gap"
+
+
+def test_skill_details_matched_have_high_confidence(client, monkeypatch):
+    """Exactly-matched skills must appear with status "matched" and confidence
+    >= 85 in the per-skill detail list."""
+    jobs = [{
+        "title": "Python Developer",
+        "company": "Py Co",
+        "location": "Remote",
+        "source": "remotive",
+        "description": "Python FastAPI developer needed.",
+        "salary": None, "is_deep_link": False, "url": "https://example.com/py",
+    }]
+    _patch_only_remotive_with(monkeypatch, jobs)
+
+    h = _auth(client, "detail_match_v1")
+    pid = _profile(client, h)  # profile has Python, FastAPI, ML, AWS
+    r = client.get(f"/api/profiles/{pid}/jobs?limit=100", headers=h).json()
+    details = r["jobs"][0]["skill_details"]
+    matched = [d for d in details if d["status"] == "matched"]
+    matched_skills = {d["skill"].lower() for d in matched}
+    assert "python" in matched_skills
+    assert "fastapi" in matched_skills
+    for d in matched:
+        assert d["confidence"] >= 85
 
 
 def test_invalid_sort_returns_400(client, patched_sources):
@@ -441,9 +641,11 @@ def test_dedupe_collapses_same_title_company(client, monkeypatch):
     for name in ("_fetch_linkedin", "_fetch_indeed", "_fetch_glassdoor"):
         monkeypatch.setattr(rj, name, lambda q, loc, l, k="": [])
     monkeypatch.setattr(rj, "_fetch_google_jobs", lambda q, loc: [])
-    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j: {
+    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j, sl="": {
         "score": float(j.get("match_score", 0.0)),
         "breakdown": {}, "matched": [], "missing": [],
+        "skill_details": [], "gaps": {}, "partials": [],
+        "insight": "", "confidence": "",
     })
 
     h = _auth(client, "dedup_v1")
@@ -513,9 +715,11 @@ def test_strict_query_filter_keeps_only_matching_jobs(client, monkeypatch):
     for name in ("_fetch_linkedin", "_fetch_indeed", "_fetch_glassdoor"):
         monkeypatch.setattr(rj, name, lambda q, loc, l, k="": [])
     monkeypatch.setattr(rj, "_fetch_google_jobs", lambda q, loc: [])
-    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j: {
+    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j, sl="": {
         "score": float(j.get("match_score", 0.0)),
         "breakdown": {}, "matched": [], "missing": [],
+        "skill_details": [], "gaps": {}, "partials": [],
+        "insight": "", "confidence": "",
     })
 
     h = _auth(client, "strict_q_v1")
@@ -571,9 +775,11 @@ def test_strict_query_filter_matches_description_too(client, monkeypatch):
     for name in ("_fetch_linkedin", "_fetch_indeed", "_fetch_glassdoor"):
         monkeypatch.setattr(rj, name, lambda q, loc, l, k="": [])
     monkeypatch.setattr(rj, "_fetch_google_jobs", lambda q, loc: [])
-    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j: {
+    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j, sl="": {
         "score": float(j.get("match_score", 0.0)),
         "breakdown": {}, "matched": [], "missing": [],
+        "skill_details": [], "gaps": {}, "partials": [],
+        "insight": "", "confidence": "",
     })
 
     h = _auth(client, "strict_q2_v1")
@@ -626,9 +832,11 @@ def test_strict_location_filter_excludes_other_regions(client, monkeypatch):
     for name in ("_fetch_linkedin", "_fetch_indeed", "_fetch_glassdoor"):
         monkeypatch.setattr(rj, name, lambda q, loc, l, k="": [])
     monkeypatch.setattr(rj, "_fetch_google_jobs", lambda q, loc: [])
-    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j: {
+    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j, sl="": {
         "score": float(j.get("match_score", 0.0)),
         "breakdown": {}, "matched": [], "missing": [],
+        "skill_details": [], "gaps": {}, "partials": [],
+        "insight": "", "confidence": "",
     })
 
     h = _auth(client, "strict_loc_v1")
@@ -669,9 +877,11 @@ def test_strict_location_keeps_untagged_jobs(client, monkeypatch):
     for name in ("_fetch_linkedin", "_fetch_indeed", "_fetch_glassdoor"):
         monkeypatch.setattr(rj, name, lambda q, loc, l, k="": [])
     monkeypatch.setattr(rj, "_fetch_google_jobs", lambda q, loc: [])
-    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j: {
+    monkeypatch.setattr(rj, "_profile_match_score", lambda p, j, sl="": {
         "score": float(j.get("match_score", 0.0)),
         "breakdown": {}, "matched": [], "missing": [],
+        "skill_details": [], "gaps": {}, "partials": [],
+        "insight": "", "confidence": "",
     })
 
     h = _auth(client, "strict_loc2_v1")
@@ -684,6 +894,48 @@ def test_strict_location_keeps_untagged_jobs(client, monkeypatch):
     assert "A" in companies
     # Untagged job kept (empty location)
     assert "B" in companies
+
+
+# ── Deep semantic matching settings toggle ────────────────────────────────
+
+def test_deep_semantic_matching_toggle_appears_in_breakdown(client, monkeypatch):
+    """When use_deep_semantic_matching is on, the neural_semantic factor must
+    appear in match_breakdown (using the real scoring engine, with only the
+    embedding model mocked out); when off, it must not."""
+    from unittest.mock import patch
+
+    jobs = [{
+        "title": "Python Developer",
+        "company": "Py Co",
+        "location": "Remote",
+        "source": "remotive",
+        "description": "Python FastAPI developer needed.",
+        "salary": None, "is_deep_link": False, "url": "https://example.com/py-deep-sem",
+    }]
+    _patch_only_remotive_with(monkeypatch, jobs)
+
+    h = _auth(client, "deep_sem_v1")
+    pid = _profile(client, h)
+
+    r = client.put("/api/settings", json={"use_deep_semantic_matching": True}, headers=h)
+    assert r.status_code == 200
+
+    with patch(
+        "routers.jobs_router.embedding_engine.neural_semantic_scores",
+        return_value=[88.5],
+    ):
+        r = client.get(f"/api/profiles/{pid}/jobs?limit=100", headers=h)
+    assert r.status_code == 200
+    jobs_resp = r.json()["jobs"]
+    assert len(jobs_resp) == 1
+    assert jobs_resp[0]["match_breakdown"].get("neural_semantic") == 88.5
+
+    r = client.put("/api/settings", json={"use_deep_semantic_matching": False}, headers=h)
+    assert r.status_code == 200
+    r = client.get(f"/api/profiles/{pid}/jobs?limit=100", headers=h)
+    assert r.status_code == 200
+    jobs_resp = r.json()["jobs"]
+    assert "neural_semantic" not in jobs_resp[0]["match_breakdown"]
 
 
 def test_external_search_google_jobs_uses_ibp_format(client, patched_sources):
@@ -707,7 +959,4 @@ def test_external_search_google_jobs_uses_ibp_format(client, patched_sources):
     # Must use the official ibp=htl;jobs parameter (URL-encoded)
     assert "ibp=htl%3Bjobs" in url
     # Must NOT use the deprecated uibp parameter
-    assert "uibp=" not in url# â”€â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-def test_no_filter_returns_all_jobs(client, patched_sources):
-    h = _auth(client, "flt_all_v1")
+    assert "uibp=" not in url

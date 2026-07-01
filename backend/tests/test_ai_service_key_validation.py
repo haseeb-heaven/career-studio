@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.ai_service import test_provider_key
+test_provider_key.__test__ = False
 
 
 def _mock_response(status_code):

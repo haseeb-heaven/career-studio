@@ -264,9 +264,6 @@ def test_provider_key(provider: str, api_key: str) -> tuple[bool, str]:
     return False, f"{provider} returned HTTP {resp.status_code}."
 
 
-test_provider_key.__test__ = False  # prevent pytest from collecting this as a test when imported
-
-
 # Valid model name prefixes per provider (to reject junk values like 'openrouter/free')
 _OPENROUTER_DEFAULT = "meta-llama/llama-3.1-8b-instruct:free"
 _OPENAI_DEFAULT = "gpt-4o-mini"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getSettings, updateSettings } from "../../api";
+import { getSettings, updateSettings, testApiKey } from "../../api";
 import axios from "axios";
 
 const BASE = "http://localhost:8000/api";
@@ -75,6 +75,8 @@ export default function SettingsTab() {
   const [glassdoorKey, setGlassdoorKey] = useState("");
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus | null>(null);
   const [checkingOllama, setCheckingOllama] = useState(false);
+  const [keyTestStatus, setKeyTestStatus] = useState<Record<string, { ok: boolean; message: string } | null>>({});
+  const [testingKey, setTestingKey] = useState<string | null>(null);
 
   useEffect(() => {
     getSettings().then((s) => {
@@ -126,6 +128,18 @@ export default function SettingsTab() {
       setOllamaStatus({ available: false, models: [] });
     } finally {
       setCheckingOllama(false);
+    }
+  }
+
+  async function handleTestKey(provider: string, keyValue: string) {
+    setTestingKey(provider);
+    try {
+      const result = await testApiKey(provider, keyValue);
+      setKeyTestStatus((prev) => ({ ...prev, [provider]: result }));
+    } catch {
+      setKeyTestStatus((prev) => ({ ...prev, [provider]: { ok: false, message: "Could not reach the backend." } }));
+    } finally {
+      setTestingKey(null);
     }
   }
 
@@ -395,37 +409,79 @@ export default function SettingsTab() {
               {externalProvider === "openai" && (
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1.5">OpenAI API Key</label>
-                  <input
-                    type="password"
-                    placeholder="sk-…  (leave blank to keep existing key)"
-                    value={openaiKey}
-                    onChange={(e) => setOpenaiKey(e.target.value)}
-                    className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="sk-…  (leave blank to keep existing key)"
+                      value={openaiKey}
+                      onChange={(e) => setOpenaiKey(e.target.value)}
+                      className="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handleTestKey("openai", openaiKey)}
+                      disabled={testingKey === "openai" || !openaiKey}
+                      className="rounded-lg bg-slate-700 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-600 disabled:opacity-50 shrink-0"
+                    >
+                      {testingKey === "openai" ? "Testing…" : "Test"}
+                    </button>
+                  </div>
+                  {keyTestStatus.openai && (
+                    <p className={`mt-1.5 text-xs font-medium ${keyTestStatus.openai.ok ? "text-green-400" : "text-red-400"}`}>
+                      {keyTestStatus.openai.ok ? `✅ ${keyTestStatus.openai.message}` : `❌ ${keyTestStatus.openai.message}`}
+                    </p>
+                  )}
                 </div>
               )}
               {externalProvider === "anthropic" && (
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1.5">Anthropic API Key</label>
-                  <input
-                    type="password"
-                    placeholder="sk-ant-…  (leave blank to keep existing key)"
-                    value={anthropicKey}
-                    onChange={(e) => setAnthropicKey(e.target.value)}
-                    className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="sk-ant-…  (leave blank to keep existing key)"
+                      value={anthropicKey}
+                      onChange={(e) => setAnthropicKey(e.target.value)}
+                      className="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handleTestKey("anthropic", anthropicKey)}
+                      disabled={testingKey === "anthropic" || !anthropicKey}
+                      className="rounded-lg bg-slate-700 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-600 disabled:opacity-50 shrink-0"
+                    >
+                      {testingKey === "anthropic" ? "Testing…" : "Test"}
+                    </button>
+                  </div>
+                  {keyTestStatus.anthropic && (
+                    <p className={`mt-1.5 text-xs font-medium ${keyTestStatus.anthropic.ok ? "text-green-400" : "text-red-400"}`}>
+                      {keyTestStatus.anthropic.ok ? `✅ ${keyTestStatus.anthropic.message}` : `❌ ${keyTestStatus.anthropic.message}`}
+                    </p>
+                  )}
                 </div>
               )}
               {externalProvider === "openrouter" && (
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1.5">OpenRouter API Key</label>
-                  <input
-                    type="password"
-                    placeholder="sk-or-…  (leave blank to keep existing key)"
-                    value={openrouterKey}
-                    onChange={(e) => setOpenrouterKey(e.target.value)}
-                    className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="sk-or-…  (leave blank to keep existing key)"
+                      value={openrouterKey}
+                      onChange={(e) => setOpenrouterKey(e.target.value)}
+                      className="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handleTestKey("openrouter", openrouterKey)}
+                      disabled={testingKey === "openrouter" || !openrouterKey}
+                      className="rounded-lg bg-slate-700 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-600 disabled:opacity-50 shrink-0"
+                    >
+                      {testingKey === "openrouter" ? "Testing…" : "Test"}
+                    </button>
+                  </div>
+                  {keyTestStatus.openrouter && (
+                    <p className={`mt-1.5 text-xs font-medium ${keyTestStatus.openrouter.ok ? "text-green-400" : "text-red-400"}`}>
+                      {keyTestStatus.openrouter.ok ? `✅ ${keyTestStatus.openrouter.message}` : `❌ ${keyTestStatus.openrouter.message}`}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

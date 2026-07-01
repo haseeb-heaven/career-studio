@@ -84,6 +84,22 @@ def test_test_key_resolves_masked_sentinel_to_stored_key(mock_test, client):
     mock_test.assert_called_once_with("openai", "sk-stored-key")
 
 
+@patch("routers.settings_router.test_provider_key")
+def test_test_key_resolves_masked_sentinel_to_env_var(mock_test, client, monkeypatch):
+    mock_test.return_value = (True, "Key is valid.")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-env-key")
+    headers = _auth_headers(client)
+
+    resp = client.post(
+        "/api/settings/test-key",
+        json={"provider": "openrouter", "api_key": "***"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+    mock_test.assert_called_once_with("openrouter", "sk-env-key")
+
+
 def test_test_key_requires_auth(client):
     resp = client.post(
         "/api/settings/test-key",

@@ -102,6 +102,12 @@ PROVIDER_KEY_FIELD = {
     "openrouter": "openrouter_api_key",
 }
 
+PROVIDER_ENV_VAR = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+}
+
 
 @router.post("/test-key")
 def test_key(body: dict, user: User = Depends(get_current_user)):
@@ -116,6 +122,8 @@ def test_key(body: dict, user: User = Depends(get_current_user)):
             cfg = _get_or_create(session, user.id)
             stored = getattr(cfg, field, "")
         api_key = decrypt_key(stored) if stored else ""
+        if not api_key:
+            api_key = os.getenv(PROVIDER_ENV_VAR[provider], "")
 
     ok, message = test_provider_key(provider, api_key)
     return {"ok": ok, "message": message}

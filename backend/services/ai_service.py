@@ -9,6 +9,18 @@ from models import Settings
 from security_crypto import decrypt_key, _KEY_FIELDS
 
 
+def _extract_choice_content(resp, provider: str) -> str:
+    """Safely pull message content from a chat-completion response, raising a
+    friendly error instead of crashing with 'NoneType is not subscriptable'
+    when the provider returns a response with no choices."""
+    if not resp or not getattr(resp, "choices", None):
+        raise RuntimeError(
+            f"{provider} returned an empty response (no choices). "
+            "The model may be unavailable or rate-limited — try again or switch models."
+        )
+    return resp.choices[0].message.content or ""
+
+
 def _friendly_api_error(e: Exception, provider: str) -> str:
     """Return a human-readable error message for common API errors."""
     msg = str(e)
@@ -68,7 +80,7 @@ def _call_litellm(model: str, api_key: str | None, system: str, user: str, provi
             kwargs["api_base"] = api_base.rstrip("/")
             
         resp = litellm.completion(**kwargs)
-        return resp.choices[0].message.content or ""
+        return _extract_choice_content(resp, provider)
     except ImportError:
         # Fall back to using native libraries if litellm is not installed
         try:
@@ -105,7 +117,7 @@ def _call_litellm(model: str, api_key: str | None, system: str, user: str, provi
                     model=clean_model,
                     messages=messages,
                 )
-                return resp.choices[0].message.content or ""
+                return _extract_choice_content(resp, "OpenRouter")
 
             elif model_provider == "ollama":
                 import urllib.request
@@ -132,7 +144,7 @@ def _call_litellm(model: str, api_key: str | None, system: str, user: str, provi
                     model=clean_model,
                     messages=messages,
                 )
-                return resp.choices[0].message.content or ""
+                return _extract_choice_content(resp, provider)
         except Exception as e:
             raise RuntimeError(_friendly_api_error(e, provider)) from e
     except Exception as e:
@@ -184,7 +196,7 @@ def _call_openai(api_key: str, model: str, system: str, user: str) -> str:
             model=model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         )
-        return resp.choices[0].message.content or ""
+        return _extract_choice_content(resp, "OpenAI")
     except Exception as e:
         raise RuntimeError(_friendly_api_error(e, "OpenAI")) from e
 
@@ -222,7 +234,7 @@ def _call_openrouter(api_key: str, model: str, system: str, user: str) -> str:
             model=model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         )
-        return resp.choices[0].message.content or ""
+        return _extract_choice_content(resp, "OpenRouter")
     except Exception as e:
         raise RuntimeError(_friendly_api_error(e, "OpenRouter")) from e
 

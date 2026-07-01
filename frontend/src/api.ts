@@ -100,6 +100,11 @@ export async function updateSettings(data: Record<string, string>): Promise<void
   await axios.put(`${BASE}/settings`, data);
 }
 
+export async function testApiKey(provider: string, apiKey: string): Promise<{ ok: boolean; message: string }> {
+  const res = await axios.post(`${BASE}/settings/test-key`, { provider, api_key: apiKey });
+  return res.data;
+}
+
 // ---- Logs ----
 export interface ActivityLog {
   id: number;

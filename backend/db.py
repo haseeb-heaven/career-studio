@@ -43,6 +43,10 @@ def migrate_db():
         ("jooble_api_key", "TEXT DEFAULT ''"),
         ("reed_api_key", "TEXT DEFAULT ''"),
         ("usajobs_api_key", "TEXT DEFAULT ''"),
+        ("gemini_api_key", "TEXT DEFAULT ''"),
+        ("cerebras_api_key", "TEXT DEFAULT ''"),
+        ("groq_api_key", "TEXT DEFAULT ''"),
+        ("nvidia_api_key", "TEXT DEFAULT ''"),
     ]
     new_profile_cols = [
         ("user_id", "INTEGER"),
@@ -65,6 +69,9 @@ def migrate_db():
     ]
     new_cert_cols = [
         ("cert_id", "TEXT DEFAULT ''"),
+    ]
+    new_activitylog_cols = [
+        ("level", "TEXT DEFAULT 'info'"),
     ]
     with engine.connect() as conn:
         try:
@@ -117,6 +124,15 @@ def migrate_db():
             conn.commit()
         except Exception as exc:
             _logger.error("Failed to migrate activity log index: %s", exc)
+            raise
+        try:
+            existing = {row[1] for row in conn.execute(text("PRAGMA table_info(activitylog)")).fetchall()}
+            for col, defn in new_activitylog_cols:
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE activitylog ADD COLUMN {col} {defn}"))
+            conn.commit()
+        except Exception as exc:
+            _logger.error("Failed to migrate activitylog table: %s", exc)
             raise
         try:
             existing = {row[1] for row in conn.execute(text("PRAGMA table_info(jobmatch)")).fetchall()}

@@ -39,6 +39,7 @@ export default function LogsTab() {
   const [clearing, setClearing] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [filter, setFilter] = useState<string>("all");
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
@@ -81,9 +82,16 @@ export default function LogsTab() {
   }
 
   const actions = Array.from(new Set(logs.map(l => l.action)));
+  const SEVERITIES = ["info", "success", "warning", "error"];
+  const severityCounts = logs.reduce<Record<string, number>>((acc, l) => {
+    const sev = l.severity ?? "info";
+    acc[sev] = (acc[sev] ?? 0) + 1;
+    return acc;
+  }, {});
 
   const filtered = logs.filter(l => {
     if (filter !== "all" && l.action !== filter) return false;
+    if (severityFilter !== "all" && (l.severity ?? "info") !== severityFilter) return false;
     if (search && !l.detail?.toLowerCase().includes(search.toLowerCase()) && !l.action.includes(search.toLowerCase())) return false;
     return true;
   });
@@ -163,6 +171,33 @@ export default function LogsTab() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Severity filter bar */}
+      {logs.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap items-center">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Severity:</span>
+          {["all", ...SEVERITIES].map(sev => {
+            const st = sev === "all" ? null : SEVERITY_STYLES[sev];
+            const count = sev === "all" ? logs.length : (severityCounts[sev] ?? 0);
+            return (
+              <button
+                key={sev}
+                onClick={() => setSeverityFilter(sev)}
+                disabled={sev !== "all" && count === 0}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-30 ${
+                  severityFilter === sev
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : `border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200 ${st ? "" : ""}`
+                }`}
+              >
+                {st && <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />}
+                <span className="capitalize">{sev}</span>
+                <span className="text-slate-500">({count})</span>
+              </button>
+            );
+          })}
         </div>
       )}
 

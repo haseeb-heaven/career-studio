@@ -142,6 +142,10 @@ class Settings(SQLModel, table=True):
     api_key: str = Field(default="")
     openrouter_api_key: str = Field(default="")
     anthropic_api_key: str = Field(default="")
+    gemini_api_key: str = Field(default="")
+    cerebras_api_key: str = Field(default="")
+    groq_api_key: str = Field(default="")
+    nvidia_api_key: str = Field(default="")
     adzuna_app_id: str = Field(default="")
     adzuna_app_key: str = Field(default="")
     linkedin_api_key: str = Field(default="")
@@ -170,6 +174,7 @@ class ActivityLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     action: str                          # "import" | "export" | "patch" | "delete" | "analyze" | "cover_letter" | "roadmap"
     detail: str = Field(default="")
+    level: str = Field(default="info", index=True)   # info | success | warning | error
     profile_id: Optional[int] = Field(default=None, foreign_key="profile.id", ondelete="CASCADE", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

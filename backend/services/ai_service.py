@@ -221,7 +221,9 @@ def _call_anthropic(api_key: str, model: str, system: str, user: str) -> str:
         raise RuntimeError(_friendly_api_error(e, "Anthropic")) from e
 
 
-def _call_openrouter(api_key: str, model: str, system: str, user: str) -> str:
+def _call_openai_compatible(base_url: str, api_key: str, model: str, system: str, user: str, provider_label: str) -> str:
+    """Shared call path for providers that expose an OpenAI-compatible
+    /chat/completions endpoint (OpenRouter, Gemini, Cerebras, Groq, NVIDIA)."""
     try:
         from openai import OpenAI
     except ImportError:
@@ -229,14 +231,36 @@ def _call_openrouter(api_key: str, model: str, system: str, user: str) -> str:
             "openai package not installed. Run: pip install openai"
         )
     try:
-        client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+        client = OpenAI(api_key=api_key, base_url=base_url)
         resp = client.chat.completions.create(
             model=model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         )
-        return _extract_choice_content(resp, "OpenRouter")
+        return _extract_choice_content(resp, provider_label)
     except Exception as e:
-        raise RuntimeError(_friendly_api_error(e, "OpenRouter")) from e
+        raise RuntimeError(_friendly_api_error(e, provider_label)) from e
+
+
+def _call_openrouter(api_key: str, model: str, system: str, user: str) -> str:
+    return _call_openai_compatible("https://openrouter.ai/api/v1", api_key, model, system, user, "OpenRouter")
+
+
+def _call_gemini(api_key: str, model: str, system: str, user: str) -> str:
+    return _call_openai_compatible(
+        "https://generativelanguage.googleapis.com/v1beta/openai/", api_key, model, system, user, "Gemini"
+    )
+
+
+def _call_cerebras(api_key: str, model: str, system: str, user: str) -> str:
+    return _call_openai_compatible("https://api.cerebras.ai/v1", api_key, model, system, user, "Cerebras")
+
+
+def _call_groq(api_key: str, model: str, system: str, user: str) -> str:
+    return _call_openai_compatible("https://api.groq.com/openai/v1", api_key, model, system, user, "Groq")
+
+
+def _call_nvidia(api_key: str, model: str, system: str, user: str) -> str:
+    return _call_openai_compatible("https://integrate.api.nvidia.com/v1", api_key, model, system, user, "NVIDIA")
 
 
 def test_provider_key(provider: str, api_key: str) -> tuple[bool, str]:
@@ -264,6 +288,30 @@ def test_provider_key(provider: str, api_key: str) -> tuple[bool, str]:
                 headers={"Authorization": f"Bearer {api_key}"},
                 timeout=10,
             )
+        elif provider == "gemini":
+            resp = httpx.get(
+                "https://generativelanguage.googleapis.com/v1beta/openai/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10,
+            )
+        elif provider == "cerebras":
+            resp = httpx.get(
+                "https://api.cerebras.ai/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10,
+            )
+        elif provider == "groq":
+            resp = httpx.get(
+                "https://api.groq.com/openai/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10,
+            )
+        elif provider == "nvidia":
+            resp = httpx.get(
+                "https://integrate.api.nvidia.com/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10,
+            )
         else:
             return False, f"Unknown provider: {provider}"
     except Exception as e:
@@ -280,45 +328,81 @@ def test_provider_key(provider: str, api_key: str) -> tuple[bool, str]:
 _OPENROUTER_DEFAULT = "meta-llama/llama-3.1-8b-instruct:free"
 _OPENAI_DEFAULT = "gpt-4o-mini"
 _ANTHROPIC_DEFAULT = "claude-haiku-4-5-20251001"
+_GEMINI_DEFAULT = "gemini-2.5-flash"
+_CEREBRAS_DEFAULT = "llama-3.3-70b"
+_GROQ_DEFAULT = "llama-3.3-70b-versatile"
+_NVIDIA_DEFAULT = "nvidia/nemotron-3-super-120b-a12b"
+
+_PROVIDER_DEFAULTS = {
+    "anthropic":  _ANTHROPIC_DEFAULT,
+    "openrouter": _OPENROUTER_DEFAULT,
+    "gemini":     _GEMINI_DEFAULT,
+    "cerebras":   _CEREBRAS_DEFAULT,
+    "groq":       _GROQ_DEFAULT,
+    "nvidia":     _NVIDIA_DEFAULT,
+}
+
+# Proper display names for error messages — str.title() mangles "openrouter"
+# into "Openrouter" instead of the branded "OpenRouter", so this map is used
+# instead wherever a provider name is shown to the user.
+_PROVIDER_LABELS = {
+    "openai":     "OpenAI",
+    "anthropic":  "Anthropic",
+    "openrouter": "OpenRouter",
+    "gemini":     "Gemini",
+    "cerebras":   "Cerebras",
+    "groq":       "Groq",
+    "nvidia":     "NVIDIA",
+}
 
 
 def _valid_model(model: str, provider: str) -> str:
     """Return model if it looks valid for the provider, else a safe default."""
+    default = _PROVIDER_DEFAULTS.get(provider, _OPENAI_DEFAULT)
     if not model:
-        if provider == "anthropic":
-            return _ANTHROPIC_DEFAULT
-        if provider == "openrouter":
-            return _OPENROUTER_DEFAULT
-        return _OPENAI_DEFAULT
+        return default
     if provider == "openrouter" and "/" not in model:
-        return _OPENROUTER_DEFAULT
+        return default
     if len(model) < 3 or (" " in model and "/" not in model):
-        if provider == "anthropic":
-            return _ANTHROPIC_DEFAULT
-        if provider == "openrouter":
-            return _OPENROUTER_DEFAULT
-        return _OPENAI_DEFAULT
+        return default
+    # A leftover OpenAI-style model id (e.g. the default "gpt-4o-mini") is
+    # invalid for any other provider — fall back rather than forwarding an
+    # OpenAI model name to a different provider's API.
+    if provider != "openai" and model.startswith(("gpt-", "o1", "o3", "o4")):
+        return default
     return model
+
+
+_EXTERNAL_PROVIDERS = {
+    # provider: (key_field, env_var, call_fn_name)
+    # call_fn_name is looked up dynamically via globals() at call time (not
+    # bound directly) so that @patch("services.ai_service._call_xxx") in
+    # tests actually takes effect.
+    "anthropic":  ("anthropic_api_key", "ANTHROPIC_API_KEY", "_call_anthropic"),
+    "openrouter": ("openrouter_api_key", "OPENROUTER_API_KEY", "_call_openrouter"),
+    "gemini":     ("gemini_api_key", "GEMINI_API_KEY", "_call_gemini"),
+    "cerebras":   ("cerebras_api_key", "CEREBRAS_API_KEY", "_call_cerebras"),
+    "groq":       ("groq_api_key", "GROQ_API_KEY", "_call_groq"),
+    "nvidia":     ("nvidia_api_key", "NVIDIA_API_KEY", "_call_nvidia"),
+}
 
 
 def _call_external(cfg: Settings, system: str, user: str) -> str:
     provider = cfg.ai_provider
     model = _valid_model(cfg.ai_model, provider)
-    if provider == "anthropic":
-        key = cfg.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY", "")
+    if provider in _EXTERNAL_PROVIDERS:
+        key_field, env_var, call_fn_name = _EXTERNAL_PROVIDERS[provider]
+        key = getattr(cfg, key_field, "") or os.getenv(env_var, "")
         if not key:
-            raise ValueError("Anthropic API key not configured — set it in Settings or ANTHROPIC_API_KEY in .env")
-        return _call_anthropic(key, model, system, user)
-    elif provider == "openrouter":
-        key = cfg.openrouter_api_key or os.getenv("OPENROUTER_API_KEY", "")
-        if not key:
-            raise ValueError("OpenRouter API key not configured — set it in Settings or OPENROUTER_API_KEY in .env")
-        return _call_openrouter(key, model, system, user)
-    else:  # openai
-        key = cfg.api_key or os.getenv("OPENAI_API_KEY", "")
-        if not key:
-            raise ValueError("OpenAI API key not configured — set it in Settings or OPENAI_API_KEY in .env")
-        return _call_openai(key, model, system, user)
+            label = _PROVIDER_LABELS.get(provider, provider.title())
+            raise ValueError(f"{label} API key not configured — set it in Settings or {env_var} in .env")
+        call_fn = globals()[call_fn_name]
+        return call_fn(key, model, system, user)
+    # openai (default)
+    key = cfg.api_key or os.getenv("OPENAI_API_KEY", "")
+    if not key:
+        raise ValueError("OpenAI API key not configured — set it in Settings or OPENAI_API_KEY in .env")
+    return _call_openai(key, model, system, user)
 
 
 # ---------- Public interface ----------

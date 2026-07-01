@@ -21,24 +21,30 @@ _LABELS = {
 }
 
 
+_VALID_LEVELS = {"info", "success", "warning", "error"}
+
+
 def log_activity(
     action: str,
     detail: str = "",
     profile_id: int | None = None,
     level: str = "info",
 ) -> None:
+    level = level if level in _VALID_LEVELS else "info"
     label = _LABELS.get(action, action)
     msg = f"[{label}] {detail}" if detail else f"[{label}]"
     if profile_id is not None:
         msg += f" (profile #{profile_id})"
 
-    getattr(log, level, log.info)(msg)
+    log_method = {"warning": log.warning, "error": log.error}.get(level, log.info)
+    log_method(msg)
 
     try:
         with Session(db.engine) as s:
             s.add(ActivityLog(
                 action=action,
                 detail=detail,
+                level=level,
                 profile_id=profile_id,
                 created_at=datetime.now(timezone.utc),
             ))

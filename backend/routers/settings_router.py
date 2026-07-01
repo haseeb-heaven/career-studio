@@ -11,6 +11,7 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 ALLOWED = {
     "ai_provider", "ai_model", "api_key", "anthropic_api_key", "openrouter_api_key",
+    "gemini_api_key", "cerebras_api_key", "groq_api_key", "nvidia_api_key",
     "use_local_ai", "ollama_base_url", "ollama_model", "local_for_simple",
     "use_deep_semantic_matching",
     "adzuna_app_id", "adzuna_app_key",
@@ -67,6 +68,10 @@ def get_settings(user: User = Depends(get_current_user)):
             "api_key": _key_status(cfg.api_key, "OPENAI_API_KEY"),
             "anthropic_api_key": _key_status(cfg.anthropic_api_key, "ANTHROPIC_API_KEY"),
             "openrouter_api_key": _key_status(cfg.openrouter_api_key, "OPENROUTER_API_KEY"),
+            "gemini_api_key": _key_status(cfg.gemini_api_key, "GEMINI_API_KEY"),
+            "cerebras_api_key": _key_status(cfg.cerebras_api_key, "CEREBRAS_API_KEY"),
+            "groq_api_key": _key_status(cfg.groq_api_key, "GROQ_API_KEY"),
+            "nvidia_api_key": _key_status(cfg.nvidia_api_key, "NVIDIA_API_KEY"),
             "use_local_ai": cfg.use_local_ai,
             "ollama_base_url": cfg.ollama_base_url,
             "ollama_model": cfg.ollama_model,
@@ -100,12 +105,20 @@ PROVIDER_KEY_FIELD = {
     "openai": "api_key",
     "anthropic": "anthropic_api_key",
     "openrouter": "openrouter_api_key",
+    "gemini": "gemini_api_key",
+    "cerebras": "cerebras_api_key",
+    "groq": "groq_api_key",
+    "nvidia": "nvidia_api_key",
 }
 
 PROVIDER_ENV_VAR = {
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "cerebras": "CEREBRAS_API_KEY",
+    "groq": "GROQ_API_KEY",
+    "nvidia": "NVIDIA_API_KEY",
 }
 
 

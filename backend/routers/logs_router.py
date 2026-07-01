@@ -39,11 +39,13 @@ ACTION_SEVERITY = {
 
 
 @router.get("")
-def get_logs(limit: int = Query(default=200, le=1000), action: str | None = None):
+def get_logs(limit: int = Query(default=200, le=1000), action: str | None = None, level: str | None = None):
     with Session(db.engine) as session:
         q = select(ActivityLog).order_by(ActivityLog.id.desc())
         if action:
             q = q.where(ActivityLog.action == action)
+        if level:
+            q = q.where(ActivityLog.level == level)
         q = q.limit(limit)
         logs = session.exec(q).all()
         return [
@@ -51,7 +53,7 @@ def get_logs(limit: int = Query(default=200, le=1000), action: str | None = None
                 "id":         l.id,
                 "action":     l.action,
                 "label":      ACTION_LABELS.get(l.action, l.action.replace("_", " ").title()),
-                "severity":   ACTION_SEVERITY.get(l.action, "info"),
+                "severity":   l.level or ACTION_SEVERITY.get(l.action, "info"),
                 "detail":     l.detail,
                 "profile_id": l.profile_id,
                 "created_at": l.created_at.isoformat(),

@@ -36,6 +36,10 @@ def _fake_settings(**kwargs):
     s.api_key = kwargs.get("api_key", "sk-test")
     s.openrouter_api_key = kwargs.get("openrouter_api_key", "sk-or-test")
     s.anthropic_api_key = kwargs.get("anthropic_api_key", "sk-ant-test")
+    s.gemini_api_key = kwargs.get("gemini_api_key", "AIza-test")
+    s.cerebras_api_key = kwargs.get("cerebras_api_key", "csk-test")
+    s.groq_api_key = kwargs.get("groq_api_key", "gsk_test")
+    s.nvidia_api_key = kwargs.get("nvidia_api_key", "nvapi-test")
     s.use_local_ai = kwargs.get("use_local_ai", False)
     s.ollama_base_url = kwargs.get("ollama_base_url", "http://localhost:11434")
     s.ollama_model = kwargs.get("ollama_model", "llama3.2")
@@ -127,6 +131,34 @@ class TestValidModel:
         result = _valid_model("google/gemma-3-27b-it:free", "openrouter")
         assert result == "google/gemma-3-27b-it:free"
 
+    def test_empty_gemini_default(self):
+        from services.ai_service import _valid_model
+        assert _valid_model("", "gemini") == "gemini-2.5-flash"
+
+    def test_empty_cerebras_default(self):
+        from services.ai_service import _valid_model
+        assert _valid_model("", "cerebras") == "llama-3.3-70b"
+
+    def test_empty_groq_default(self):
+        from services.ai_service import _valid_model
+        assert _valid_model("", "groq") == "llama-3.3-70b-versatile"
+
+    def test_empty_nvidia_default(self):
+        from services.ai_service import _valid_model
+        assert _valid_model("", "nvidia") == "nvidia/nemotron-3-super-120b-a12b"
+
+    def test_valid_gemini_model_passthrough(self):
+        from services.ai_service import _valid_model
+        assert _valid_model("gemini-2.5-pro", "gemini") == "gemini-2.5-pro"
+
+    def test_valid_nvidia_model_passthrough(self):
+        from services.ai_service import _valid_model
+        assert _valid_model("nvidia/nemotron-3-nano-30b-a3b", "nvidia") == "nvidia/nemotron-3-nano-30b-a3b"
+
+    def test_too_short_gemini_gets_default(self):
+        from services.ai_service import _valid_model
+        assert _valid_model("ab", "gemini") == "gemini-2.5-flash"
+
     def test_all_json_openrouter_models_valid(self):
         from services.ai_service import _valid_model
         import json
@@ -177,6 +209,42 @@ class TestCompleteRouting:
         mock_or.return_value = "openrouter response"
         assert complete("sys", "user") == "openrouter response"
         mock_or.assert_called_once_with("sk-or", chosen_model, "sys", "user")
+
+    @patch("services.ai_service._load_settings")
+    @patch("services.ai_service._call_gemini")
+    def test_routes_to_gemini(self, mock_gemini, mock_settings):
+        from services.ai_service import complete
+        mock_settings.return_value = _fake_settings(ai_provider="gemini", gemini_api_key="AIza-test")
+        mock_gemini.return_value = "gemini response"
+        assert complete("sys", "user") == "gemini response"
+        mock_gemini.assert_called_once_with("AIza-test", "gemini-2.5-flash", "sys", "user")
+
+    @patch("services.ai_service._load_settings")
+    @patch("services.ai_service._call_cerebras")
+    def test_routes_to_cerebras(self, mock_cerebras, mock_settings):
+        from services.ai_service import complete
+        mock_settings.return_value = _fake_settings(ai_provider="cerebras", cerebras_api_key="csk-test")
+        mock_cerebras.return_value = "cerebras response"
+        assert complete("sys", "user") == "cerebras response"
+        mock_cerebras.assert_called_once_with("csk-test", "llama-3.3-70b", "sys", "user")
+
+    @patch("services.ai_service._load_settings")
+    @patch("services.ai_service._call_groq")
+    def test_routes_to_groq(self, mock_groq, mock_settings):
+        from services.ai_service import complete
+        mock_settings.return_value = _fake_settings(ai_provider="groq", groq_api_key="gsk_test")
+        mock_groq.return_value = "groq response"
+        assert complete("sys", "user") == "groq response"
+        mock_groq.assert_called_once_with("gsk_test", "llama-3.3-70b-versatile", "sys", "user")
+
+    @patch("services.ai_service._load_settings")
+    @patch("services.ai_service._call_nvidia")
+    def test_routes_to_nvidia(self, mock_nvidia, mock_settings):
+        from services.ai_service import complete
+        mock_settings.return_value = _fake_settings(ai_provider="nvidia", nvidia_api_key="nvapi-test")
+        mock_nvidia.return_value = "nvidia response"
+        assert complete("sys", "user") == "nvidia response"
+        mock_nvidia.assert_called_once_with("nvapi-test", "nvidia/nemotron-3-super-120b-a12b", "sys", "user")
 
     @patch("services.ai_service._load_settings")
     @patch("services.ai_service.ollama_available", return_value=True)
@@ -256,6 +324,69 @@ class TestAIErrorHandling:
         )
         with pytest.raises(ValueError, match="OpenRouter API key"):
             _call_external(cfg, "sys", "user")
+
+    @patch("services.ai_service.os.getenv", return_value="")
+    def test_missing_gemini_key_raises(self, mock_getenv):
+        from services.ai_service import _call_external
+        cfg = _fake_settings(ai_provider="gemini", gemini_api_key="")
+        with pytest.raises(ValueError, match="Gemini API key"):
+            _call_external(cfg, "sys", "user")
+
+    @patch("services.ai_service.os.getenv", return_value="")
+    def test_missing_cerebras_key_raises(self, mock_getenv):
+        from services.ai_service import _call_external
+        cfg = _fake_settings(ai_provider="cerebras", cerebras_api_key="")
+        with pytest.raises(ValueError, match="Cerebras API key"):
+            _call_external(cfg, "sys", "user")
+
+    @patch("services.ai_service.os.getenv", return_value="")
+    def test_missing_groq_key_raises(self, mock_getenv):
+        from services.ai_service import _call_external
+        cfg = _fake_settings(ai_provider="groq", groq_api_key="")
+        with pytest.raises(ValueError, match="Groq API key"):
+            _call_external(cfg, "sys", "user")
+
+    @patch("services.ai_service.os.getenv", return_value="")
+    def test_missing_nvidia_key_raises(self, mock_getenv):
+        from services.ai_service import _call_external
+        cfg = _fake_settings(ai_provider="nvidia", nvidia_api_key="")
+        with pytest.raises(ValueError, match="NVIDIA API key"):
+            _call_external(cfg, "sys", "user")
+
+    @patch("services.ai_service.httpx.get")
+    def test_provider_key_gemini_success(self, mock_get):
+        from services.ai_service import test_provider_key
+        mock_get.return_value = MagicMock(status_code=200)
+        ok, msg = test_provider_key("gemini", "AIza-real-key")
+        assert ok is True
+
+    @patch("services.ai_service.httpx.get")
+    def test_provider_key_cerebras_success(self, mock_get):
+        from services.ai_service import test_provider_key
+        mock_get.return_value = MagicMock(status_code=200)
+        ok, msg = test_provider_key("cerebras", "csk-real-key")
+        assert ok is True
+
+    @patch("services.ai_service.httpx.get")
+    def test_provider_key_groq_success(self, mock_get):
+        from services.ai_service import test_provider_key
+        mock_get.return_value = MagicMock(status_code=200)
+        ok, msg = test_provider_key("groq", "gsk_real_key")
+        assert ok is True
+
+    @patch("services.ai_service.httpx.get")
+    def test_provider_key_nvidia_success(self, mock_get):
+        from services.ai_service import test_provider_key
+        mock_get.return_value = MagicMock(status_code=200)
+        ok, msg = test_provider_key("nvidia", "nvapi-real-key")
+        assert ok is True
+
+    @patch("services.ai_service.httpx.get")
+    def test_provider_key_gemini_unauthorized(self, mock_get):
+        from services.ai_service import test_provider_key
+        mock_get.return_value = MagicMock(status_code=401)
+        ok, msg = test_provider_key("gemini", "bad-key")
+        assert ok is False
 
 
 # ── API contract tests ───────────────────────────────────────────────────
@@ -441,6 +572,26 @@ class TestSettingsAPI:
         client.put("/api/settings", json={"openrouter_api_key": "sk-or-myrealkey"}, headers=auth_headers)
         resp = client.get("/api/settings", headers=auth_headers)
         assert resp.json()["openrouter_api_key"] == "***"
+
+    def test_gemini_key_masked(self, client, auth_headers):
+        client.put("/api/settings", json={"gemini_api_key": "AIza-real-secret-key"}, headers=auth_headers)
+        resp = client.get("/api/settings", headers=auth_headers)
+        assert resp.json()["gemini_api_key"] == "***"
+
+    def test_cerebras_key_masked(self, client, auth_headers):
+        client.put("/api/settings", json={"cerebras_api_key": "csk-real-secret-key"}, headers=auth_headers)
+        resp = client.get("/api/settings", headers=auth_headers)
+        assert resp.json()["cerebras_api_key"] == "***"
+
+    def test_groq_key_masked(self, client, auth_headers):
+        client.put("/api/settings", json={"groq_api_key": "gsk_real_secret_key"}, headers=auth_headers)
+        resp = client.get("/api/settings", headers=auth_headers)
+        assert resp.json()["groq_api_key"] == "***"
+
+    def test_nvidia_key_masked(self, client, auth_headers):
+        client.put("/api/settings", json={"nvidia_api_key": "nvapi-real-secret-key"}, headers=auth_headers)
+        resp = client.get("/api/settings", headers=auth_headers)
+        assert resp.json()["nvidia_api_key"] == "***"
 
     def test_update_local_ai_settings(self, client, auth_headers):
         resp = client.put("/api/settings", json={

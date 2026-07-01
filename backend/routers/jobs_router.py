@@ -576,10 +576,20 @@ def _fetch_indeed(query: str, location: str, limit: int, api_key: str = "") -> l
 
 
 def _fetch_glassdoor(query: str, location: str, limit: int, api_key: str = "") -> list[dict]:
-    """Glassdoor deep link — opens pre-filled search in browser."""
+    """Glassdoor deep link — opens pre-filled search in browser.
+
+    Glassdoor's `locN`/`locKeyword` param only takes effect when paired with
+    a matching numeric `locId` resolved from Glassdoor's internal location
+    database — an unresolved location silently falls back to locId=0 (no
+    location filter, geo-IP/account-default results). Since we don't have
+    that lookup, the location is folded into the free-text keyword instead,
+    which Glassdoor always matches against job title/location text.
+    """
+    loc = (location or "Remote").strip()
+    kw = f"{query} {loc}" if loc.lower() not in ("remote", "anywhere") else query
     search_url = (
-        f"https://www.glassdoor.com/Job/jobs.htm?sc.keyword={urllib.parse.quote(query)}"
-        f"&locT=C&locN={urllib.parse.quote(location or 'Remote')}"
+        f"https://www.glassdoor.com/Job/jobs.htm?sc.keyword={urllib.parse.quote(kw)}"
+        f"&locT=C&locKeyword={urllib.parse.quote(loc)}"
     )
     return [{
         "title": f"Search '{query}' on Glassdoor",
@@ -1872,11 +1882,35 @@ async def search_jobs(
                 "confidence": r.confidence or "",
             })
 
-    activity.log_activity(
-        "jobs_search",
-        f"query={query}, location={search_loc}, sort={sort}, found={len(saved)}/{total}",
-        profile_id,
-    )
+    if total == 0:
+        active_filters = []
+        if min_match_score > 0:
+            active_filters.append(f"min_match_score={min_match_score}")
+        if cutoff:
+            active_filters.append(f"date_posted={date_posted}")
+        if job_type_set:
+            active_filters.append(f"job_type={','.join(job_type_set)}")
+        if industry_set:
+            active_filters.append(f"industries={','.join(industry_set)}")
+        if min_salary > 0 or max_salary > 0:
+            active_filters.append(f"salary=[{min_salary},{max_salary}]")
+        if min_years > 0 or max_years < 50:
+            active_filters.append(f"years=[{min_years},{max_years}]")
+        if loc_filter and loc_filter.lower() not in ("remote", "anywhere"):
+            active_filters.append(f"location={loc_filter}")
+        cause = f" — active filters: {'; '.join(active_filters)}" if active_filters else " — no filters applied; likely no source returned matching postings or the profile's skills didn't overlap with any listing"
+        activity.log_activity(
+            "jobs_search",
+            f"query={query}, location={search_loc}, sort={sort}, found=0/0{cause}",
+            profile_id,
+            level="warning",
+        )
+    else:
+        activity.log_activity(
+            "jobs_search",
+            f"query={query}, location={search_loc}, sort={sort}, found={len(saved)}/{total}",
+            profile_id,
+        )
     return {
         "query": query,
         "total": total,
@@ -2218,10 +2252,14 @@ def external_search_links(
             {
                 "portal": "glassdoor",
                 "label": "Glassdoor",
+                # Glassdoor ignores locN/locKeyword without a resolved numeric
+                # locId (falls back to a geo-IP/account-default location), so
+                # the location is folded into sc.keyword as well to guarantee
+                # it's actually used as a search filter.
                 "url": (
                     f"https://www.glassdoor.com/Job/jobs.htm?"
-                    f"sc.keyword={encoded_kw}"
-                    f"&locT=C&locN={encoded_loc}"
+                    f"sc.keyword={encoded_kw}+{encoded_loc}"
+                    f"&locT=C&locKeyword={encoded_loc}"
                     f"{glassdoor_extra_str}"
                 ),
                 "icon": "🏢",

@@ -31,7 +31,14 @@ const FREE_OPENROUTER_MODELS = [
   { model: "z-ai/glm-4.5-air:free", use_case: "general" },
   { model: "arcee-ai/trinity-large-preview:free", use_case: "general" },
   { model: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", use_case: "general" },
-  { model: "nousresearch/hermes-3-llama-3.1-405b:free", use_case: "heavy reasoning" }
+  { model: "nousresearch/hermes-3-llama-3.1-405b:free", use_case: "heavy reasoning" },
+  { model: "meta-llama/llama-3.1-8b-instruct:free", use_case: "lightweight fallback" },
+  { model: "mistralai/mistral-7b-instruct:free", use_case: "general" },
+  { model: "mistralai/mistral-small-3.2-24b-instruct:free", use_case: "general" },
+  { model: "deepseek/deepseek-chat-v3.1:free", use_case: "general reasoning" },
+  { model: "deepseek/deepseek-r1:free", use_case: "heavy reasoning" },
+  { model: "qwen/qwen-2.5-72b-instruct:free", use_case: "instruct" },
+  { model: "microsoft/mai-ds-r1:free", use_case: "general reasoning" }
 ];
 
 const EXTERNAL_MODELS: Record<string, string[]> = {

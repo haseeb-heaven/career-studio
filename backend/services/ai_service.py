@@ -2,29 +2,11 @@
 import json
 import os
 import urllib.request
+import httpx
 from sqlmodel import Session, select
 import db
 from models import Settings
 from security_crypto import decrypt_key, _KEY_FIELDS
-
-
-def _friendly_api_error(e: Exception, provider: str) -> str:
-    """Return a human-readable error message for common API errors."""
-    msg = str(e)
-    if "401" in msg or "User not found" in msg or "Incorrect API key" in msg:
-        return (
-            f"{provider} API key is invalid or not found (401). "
-            "Please set a valid API key in the Settings tab or .env file. "
-            "Alternatively, use Ollama for local AI or switch to OpenRouter (free models available)."
-        )
-    if "429" in msg or "insufficient_quota" in msg or "exceeded your current quota" in msg:
-        return (
-            f"{provider} API quota exceeded (429). "
-            "Please check your billing at platform.openai.com or switch to OpenRouter/Anthropic."
-        )
-    if "403" in msg:
-        return f"{provider} access forbidden (403). Check your API key permissions."
-    return f"{provider} API error: {msg}"
 
 
 def _friendly_api_error(e: Exception, provider: str) -> str:
@@ -243,6 +225,46 @@ def _call_openrouter(api_key: str, model: str, system: str, user: str) -> str:
         return resp.choices[0].message.content or ""
     except Exception as e:
         raise RuntimeError(_friendly_api_error(e, "OpenRouter")) from e
+
+
+def test_provider_key(provider: str, api_key: str) -> tuple[bool, str]:
+    """Make a single zero-completion-cost request to verify an API key is accepted.
+    Returns (ok, message)."""
+    if not api_key:
+        return False, f"No {provider} API key provided."
+
+    try:
+        if provider == "openai":
+            resp = httpx.get(
+                "https://api.openai.com/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10,
+            )
+        elif provider == "anthropic":
+            resp = httpx.get(
+                "https://api.anthropic.com/v1/models",
+                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+                timeout=10,
+            )
+        elif provider == "openrouter":
+            resp = httpx.get(
+                "https://openrouter.ai/api/v1/auth/key",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10,
+            )
+        else:
+            return False, f"Unknown provider: {provider}"
+    except Exception as e:
+        return False, f"Could not reach {provider}: {e}"
+
+    if resp.status_code == 200:
+        return True, "Key is valid."
+    if resp.status_code == 401:
+        return False, f"{provider} rejected this key (401 unauthorized)."
+    return False, f"{provider} returned HTTP {resp.status_code}."
+
+
+test_provider_key.__test__ = False  # prevent pytest from collecting this as a test when imported
 
 
 # Valid model name prefixes per provider (to reject junk values like 'openrouter/free')

@@ -685,6 +685,58 @@ class TestExternalSearchLinks:
         li = next(l for l in r["links"] if l["portal"] == "linkedin")
         assert "f_TPR=r86400" in li["url"]
 
+    def test_external_search_all_filters_combined(self, client):
+        """When every advanced filter is set at once, all four portal URLs
+        must reflect keywords + location, and each portal's platform-specific
+        params (experience level, work type, time posted, salary + currency)
+        must all be present together — not just when set one at a time."""
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "ext_all_v1", "password": "password123", "email": "ext_all_v1@test.local"},
+        )
+        if r.status_code == 400:
+            r = client.post("/api/auth/login", data={"username": "ext_all_v1", "password": "password123"})
+        token = r.json()["access_token"]
+        h = {"Authorization": f"Bearer {token}"}
+        imp = client.post(
+            "/api/import",
+            files={"file": ("p.json", json.dumps({"full_name": "X", "skills": [{"name": "Python"}]}).encode())},
+            headers=h,
+        )
+        pid = imp.json()["profile_id"]
+
+        r = client.get(
+            f"/api/profiles/{pid}/external-search"
+            "?keywords=Backend+Developer&location=India"
+            "&experience_level=mid-senior&work_type=remote"
+            "&time_posted=last_7d&salary_min=100000&salary_currency=INR",
+            headers=h,
+        ).json()
+
+        for link in r["links"]:
+            assert "Backend" in link["url"] or "Backend" in r["keywords"]
+            assert "India" in link["url"]
+
+        li = next(l for l in r["links"] if l["portal"] == "linkedin")
+        assert "f_E=4" in li["url"]
+        assert "f_WT=2" in li["url"]
+        assert "f_TPR=r604800" in li["url"]
+        assert "f_SB2=100000" in li["url"]
+        assert "f_C=INR" in li["url"]
+
+        indeed = next(l for l in r["links"] if l["portal"] == "indeed")
+        assert "fromage=7" in indeed["url"]
+        assert "salary=100000" in indeed["url"]
+        assert "remotejob=" in indeed["url"]
+
+        gd = next(l for l in r["links"] if l["portal"] == "glassdoor")
+        assert "fromAge=7" in gd["url"]
+        assert "remoteWorkType=1" in gd["url"]
+        assert "minSalary=100000" in gd["url"]
+
+        google = next(l for l in r["links"] if l["portal"] == "google_jobs")
+        assert "+remote" in google["url"]
+
 
 class TestDeepLinks:
     def test_indeed_returns_deep_link(self):
@@ -711,6 +763,19 @@ class TestDeepLinks:
         assert jobs[0]["is_deep_link"] is True
         assert jobs[0]["source"] == "google_jobs"
         assert "google.com" in jobs[0]["url"]
+
+    def test_google_jobs_deep_link_includes_location_and_modern_endpoint(self):
+        """Regression: the old /about/careers/applications/jobs/results
+        endpoint was removed by Google and ignored the location entirely —
+        it must use the modern search+ibp=htl;jobs URL with location baked
+        into the query."""
+        from routers.jobs_router import _fetch_google_jobs
+        jobs = _fetch_google_jobs("Backend Developer", "India")
+        url = jobs[0]["url"]
+        assert url.startswith("https://www.google.com/search?")
+        assert "about/careers/applications" not in url
+        assert "India" in url
+        assert "ibp=htl%3Bjobs" in url
 
     def test_linkedin_falls_back_to_deep_link_on_failure(self):
         from routers.jobs_router import _fetch_linkedin

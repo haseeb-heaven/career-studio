@@ -594,9 +594,13 @@ def _fetch_glassdoor(query: str, location: str, limit: int, api_key: str = "") -
 
 
 def _fetch_google_jobs(query: str, location: str) -> list[dict]:
-    """Google Careers jobs results deep link."""
+    """Google Jobs deep link. Uses the Google web search `ibp=htl;jobs`
+    vertical (the old /about/careers/applications/jobs/results endpoint was
+    removed by Google and no longer returns filtered results)."""
     search_url = (
-        f"https://www.google.com/about/careers/applications/jobs/results?q={urllib.parse.quote(query)}"
+        f"https://www.google.com/search?q={urllib.parse.quote(query)}"
+        f"+jobs+{urllib.parse.quote(location or 'Remote')}"
+        f"&ibp=htl%3Bjobs"
     )
     return [{
         "title": f"Search '{query}' on Google Jobs",
@@ -792,6 +796,31 @@ def _education_factor(profile: Profile, desc: str) -> float:
     if job_requires_degree and not has_degree:
         return 40.0
     return 70.0
+
+
+def _location_matches(job_loc: str, search_loc: str) -> bool:
+    """Hard location filter used by the advanced-filters panel. Remote jobs
+    and jobs with no listed location always pass (we don't know enough to
+    exclude them); otherwise reuses the same city/region normalization as
+    the scoring factor so the hard filter agrees with the match score."""
+    job_loc_l = (job_loc or "").lower()
+    if not job_loc_l or "remote" in job_loc_l:
+        return True
+    cand = (search_loc or "").strip()
+    if not cand or cand.lower() in ("remote", "anywhere"):
+        return True
+    job_city, job_region = me.normalize_location(job_loc_l)
+    c_city, c_region = me.normalize_location(cand)
+    if c_city and job_city and c_city == job_city:
+        return True
+    if c_city and c_city in job_loc_l:
+        return True
+    if job_city and job_city in cand.lower():
+        return True
+    if c_region and job_region and c_region == job_region:
+        return True
+    tokens = [t for t in re.split(r"[,\s/]+", cand.lower()) if len(t) > 1]
+    return any(t in job_loc_l for t in tokens)
 
 
 def _location_factor(profile: Profile, job: dict, search_loc: str = "") -> float:
@@ -1640,7 +1669,7 @@ async def search_jobs(
                 jl = (j.get("location") or "").lower()
                 if not jl:
                     return True  # untagged → keep, scored low later
-                if jl in ("remote", "anywhere") or "remote" in jl:
+                if _is_remote_job(j):
                     return True  # remote jobs are location-agnostic
                 # Alias-aware: canonical-city or region equality, then the
                 # canonical city appearing inside the job location string,
@@ -1780,31 +1809,6 @@ async def search_jobs(
             stmt = stmt.where(
                 (JobMatch.date_posted == "") | (JobMatch.date_posted >= cutoff)
             )
-        # Years filter: exclude jobs whose description mentions a years
-        # requirement BELOW min_years (too junior) or ABOVE max_years (too
-        # senior). Jobs with no years mention are kept — better to over-show
-        # than to silently drop postings the upstream API didn't tag.
-        if min_years > 0 or max_years < 50:
-            from sqlalchemy import or_
-            exclude_clauses = []
-            # Exclude "N+ years" / "N years" / "N yrs" for N below min_years
-            for n in range(1, max(1, min_years)):
-                exclude_clauses.append(
-                    JobMatch.description.contains(f"{n}+ years")
-                    | JobMatch.description.contains(f"{n} years")
-                    | JobMatch.description.contains(f"{n} yrs")
-                )
-            # Exclude years above max_years
-            if max_years < 50:
-                for n in range(max_years + 1, 51):
-                    exclude_clauses.append(
-                        JobMatch.description.contains(f"{n}+ years")
-                        | JobMatch.description.contains(f"{n} years")
-                        | JobMatch.description.contains(f"{n} yrs")
-                    )
-            if exclude_clauses:
-                stmt = stmt.where(~or_(*exclude_clauses))
-
         if sort == "recent":
             stmt = stmt.order_by(JobMatch.date_posted.desc(), JobMatch.match_score.desc())
         elif sort == "salary":
@@ -1813,6 +1817,31 @@ async def search_jobs(
             stmt = stmt.order_by(JobMatch.match_score.desc(), JobMatch.created_at.desc())
 
         all_rows = s.exec(stmt).all()
+
+        # Years filter: parse the required-years figure from the description
+        # with the same regex used for scoring (_parse_required_years), then
+        # keep jobs whose requirement overlaps [min_years, max_years]. Jobs
+        # with no years mention are kept — better to over-show than to
+        # silently drop postings the upstream API didn't tag. Done in Python
+        # (not SQL) because substring matching on free text misses common
+        # phrasings like "5-8 years" or "minimum 3 yrs".
+        if min_years > 0 or max_years < 50:
+            def _years_ok(row):
+                req = _parse_required_years(row.description or "")
+                return req <= 0 or (min_years <= req <= max_years)
+            all_rows = [r for r in all_rows if _years_ok(r)]
+
+        # Location filter: hard-exclude jobs whose listed location clearly
+        # doesn't match the requested location. Remote jobs (via the is_remote
+        # flag, not just the location text) and jobs with no listed location
+        # always pass — see _location_matches.
+        loc_filter = location.strip()
+        if loc_filter and loc_filter.lower() not in ("remote", "anywhere"):
+            all_rows = [
+                r for r in all_rows
+                if r.is_remote or _location_matches(r.location, loc_filter)
+            ]
+
         total = len(all_rows)
         rows = all_rows[offset : offset + limit]
 

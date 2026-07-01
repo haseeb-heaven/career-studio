@@ -356,6 +356,56 @@ def test_filter_years_excludes_high_min(client, patched_sources):
     assert "Junior Java Developer" in titles
 
 
+def test_filter_years_handles_range_phrasing(client, patched_sources, monkeypatch):
+    """Regression: a description phrased as "3-5 years of experience" (not
+    the flat "N years" pattern) must still be excluded when it falls outside
+    the requested range — the old filter only matched exact "N years"/"N yrs"
+    substrings and silently let range-phrased postings through."""
+    import routers.jobs_router as rj
+    jobs = [{
+        "title": "Range Phrased Role", "company": "RangeCo",
+        "location": "Remote", "source": "remotive",
+        "description": "Backend role. 3-5 years of experience required.",
+        "salary": None, "is_deep_link": False,
+        "date_posted": _days_ago(1), "job_type": "remote",
+        "is_remote": True, "industry": "tech",
+        "match_score": 80.0, "salary_min": 0, "salary_max": 0,
+        "match_breakdown": "{}", "matched_skills": "[]", "missing_skills": "[]",
+        "url": "https://example.com/range-phrased",
+    }]
+    monkeypatch.setattr(rj, "_fetch_remotive", lambda query, limit: [dict(j) for j in jobs])
+
+    h = _auth(client, "flt_yrs_range_v1")
+    pid = _profile(client, h)
+    r = client.get(f"/api/profiles/{pid}/jobs?min_years=10&max_years=50&limit=100", headers=h).json()
+    titles = {j["title"] for j in r["jobs"]}
+    assert "Range Phrased Role" not in titles
+
+
+def test_filter_location_excludes_mismatched_city(client, patched_sources):
+    """Setting location=India should exclude onsite jobs tagged with an
+    unrelated city/country, while remote jobs (via is_remote) still show up
+    regardless of their location text."""
+    h = _auth(client, "flt_loc_v1")
+    pid = _profile(client, h)
+    r = client.get(f"/api/profiles/{pid}/jobs?location=India&limit=100", headers=h).json()
+    titles = {j["title"] for j in r["jobs"]}
+    # Onsite jobs in unrelated cities are excluded
+    assert "Junior Java Developer" not in titles       # New York, NY
+    assert "Data Scientist" not in titles               # San Francisco, CA
+    # Remote jobs pass regardless of location text (Backend Node Developer
+    # is tagged "Berlin" but is_remote=True)
+    assert "Senior Python Developer" in titles
+    assert "Backend Node Developer" in titles
+
+
+def test_filter_location_blank_returns_all(client, patched_sources):
+    h = _auth(client, "flt_loc_blank_v1")
+    pid = _profile(client, h)
+    r = client.get(f"/api/profiles/{pid}/jobs?limit=100", headers=h).json()
+    assert r["total"] == 6
+
+
 def test_filter_combined_realistic(client, patched_sources):
     h = _auth(client, "flt_combo_v1")
     pid = _profile(client, h)

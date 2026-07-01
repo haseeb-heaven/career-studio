@@ -927,25 +927,23 @@ export default function JobsTab({ profileId, profile }: Props) {
             {/* Years of experience */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">Years of Experience</label>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={minYears}
-                  onChange={(e) => setMinYears(parseInt(e.target.value || "0"))}
-                  className="w-20 rounded-lg bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
-                />
-                <span className="text-slate-500">–</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={maxYears}
-                  onChange={(e) => setMaxYears(parseInt(e.target.value || "50"))}
-                  className="w-20 rounded-lg bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
+              <select
+                value={`${minYears}-${maxYears}`}
+                onChange={(e) => {
+                  const [min, max] = e.target.value.split("-").map(Number);
+                  setMinYears(min);
+                  setMaxYears(max);
+                }}
+                className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="0-50">Any experience</option>
+                <option value="0-1">0–1 years</option>
+                <option value="1-3">1–3 years</option>
+                <option value="3-5">3–5 years</option>
+                <option value="5-8">5–8 years</option>
+                <option value="8-10">8–10 years</option>
+                <option value="10-50">10+ years</option>
+              </select>
             </div>
 
             {/* Date posted */}
@@ -999,15 +997,21 @@ export default function JobsTab({ profileId, profile }: Props) {
                   placeholder="max"
                   className="w-24 rounded-lg bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
                 />
-                <input
-                  type="text"
+                <select
                   value={salaryCurrency}
-                  onChange={(e) => setSalaryCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                  placeholder="USD"
-                  maxLength={3}
-                  title="3-letter currency code (USD, INR, GBP, EUR, CAD, AUD, SGD, JPY)"
-                  className="w-16 rounded-lg bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm text-slate-200 text-center uppercase focus:border-blue-500 focus:outline-none"
-                />
+                  onChange={(e) => setSalaryCurrency(e.target.value)}
+                  title="Currency"
+                  className="rounded-lg bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="INR">INR</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                  <option value="SGD">SGD</option>
+                  <option value="JPY">JPY</option>
+                </select>
                 <span className="text-xs text-slate-500">currency</span>
               </div>
             </div>

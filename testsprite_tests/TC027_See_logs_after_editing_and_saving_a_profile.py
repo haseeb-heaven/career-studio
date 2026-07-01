@@ -40,26 +40,32 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the Username and Password fields and click the 'Sign In' button.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the Username and Password fields and click the 'Sign In' button.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the Username and Password fields and click the 'Sign In' button.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        # Assert: Verify the profile edit activity is displayed
+        assert False, "Expected: Verify the profile edit activity is displayed (could not be verified on the page)"
+        # Assert: Verify the saved change is reflected in the activity history
+        assert False, "Expected: Verify the saved change is reflected in the activity history (could not be verified on the page)"
+        
+        # --> Test blocked by environment/access constraints during agent run
+        # Reason: TEST BLOCKED The test could not be run — login with the provided credentials failed, preventing access to profile editing and activity logs. Observations: - The sign-in page displayed the error message: 'Invalid username or password'. - The sign-in form remains visible and the app did not navigate to an authenticated area. - A 'Continue as guest (no account)' option is present, but guest access...
+        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED The test could not be run \u2014 login with the provided credentials failed, preventing access to profile editing and activity logs. Observations: - The sign-in page displayed the error message: 'Invalid username or password'. - The sign-in form remains visible and the app did not navigate to an authenticated area. - A 'Continue as guest (no account)' option is present, but guest access..." + " — the exported script cannot reproduce a PASS in this environment.")
         await asyncio.sleep(5)
 
     finally:

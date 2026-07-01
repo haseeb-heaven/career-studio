@@ -40,26 +40,30 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Sign in using the 'Username' and 'Password' fields and click the 'Sign In' button.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Sign in using the 'Username' and 'Password' fields and click the 'Sign In' button.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Sign in using the 'Username' and 'Password' fields and click the 'Sign In' button.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        # Assert: Verify filtered job results are displayed
+        assert False, "Expected: Verify filtered job results are displayed (could not be verified on the page)"
+        
+        # --> Test blocked by environment/access constraints during agent run
+        # Reason: TEST BLOCKED The test could not be run — the Sign In attempt with the provided credentials failed, preventing access to authenticated features required by the test (loading a saved profile). Observations: - The Sign In page displayed an 'Invalid username or password' error after submitting credentials. - The username field contains 'haseeb-heaven' and a password was entered, but authentication ...
+        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED The test could not be run \u2014 the Sign In attempt with the provided credentials failed, preventing access to authenticated features required by the test (loading a saved profile). Observations: - The Sign In page displayed an 'Invalid username or password' error after submitting credentials. - The username field contains 'haseeb-heaven' and a password was entered, but authentication ..." + " — the exported script cannot reproduce a PASS in this environment.")
         await asyncio.sleep(5)
 
     finally:

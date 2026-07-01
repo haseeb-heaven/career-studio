@@ -40,26 +40,22 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
-        # Enter username text field
-        elem = page.get_by_placeholder('Enter username', exact=True)
-        await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("haseeb-heaven")
-        
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
-        # Password password field
-        elem = page.get_by_placeholder('Password', exact=True)
-        await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("123456")
-        
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
-        # Sign In button
-        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
+        # -> Click the 'Continue as guest (no account)' link and verify the upload or workspace area is displayed.
+        # Continue as guest (no account) button
+        elem = page.get_by_role('button', name='Continue as guest (no account)', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        
+        # --> Verify the upload or workspace area is displayed
+        await page.locator("xpath=/html/body/div[1]/div[1]/div/div[2]").nth(0).scroll_into_view_if_needed()
+        # Assert: The upload/workspace container is visible.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/div[2]").nth(0)).to_be_visible(timeout=15000), "The upload/workspace container is visible."
+        # Assert: The upload area shows the exact 'Drag & drop your resume here' text.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/div[2]/p[1]").nth(0)).to_have_text("Drag & drop your resume here", timeout=15000), "The upload area shows the exact 'Drag & drop your resume here' text."
+        await page.locator("xpath=/html/body/div[1]/div[1]/div/div[2]/input").nth(0).scroll_into_view_if_needed()
+        # Assert: A file input control for uploading resumes is present.
+        await expect(page.locator("xpath=/html/body/div[1]/div[1]/div/div[2]/input").nth(0)).to_be_visible(timeout=15000), "A file input control for uploading resumes is present."
         await asyncio.sleep(5)
 
     finally:

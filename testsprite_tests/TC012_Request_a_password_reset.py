@@ -40,26 +40,28 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Click the 'Forgot Password?' button to switch to password recovery view.
+        # Forgot Password? button
+        elem = page.get_by_role('button', name='Forgot Password?', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Fill 'haseeb-heaven' into the 'Enter username' field and click the 'Send Reset Link' button.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
-        # Password password field
-        elem = page.get_by_placeholder('Password', exact=True)
-        await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("123456")
-        
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
-        # Sign In button
-        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
+        # -> Fill 'haseeb-heaven' into the 'Enter username' field and click the 'Send Reset Link' button.
+        # Send Reset Link button
+        elem = page.get_by_role('button', name='Send Reset Link', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        
+        # --> Verify a success confirmation is visible
+        await page.locator("xpath=/html/body/div/div[1]/div/form/div[2]/div/a").nth(0).scroll_into_view_if_needed()
+        # Assert: The success confirmation link 'Click here to reset your password →' is visible.
+        await expect(page.locator("xpath=/html/body/div/div[1]/div/form/div[2]/div/a").nth(0)).to_be_visible(timeout=15000), "The success confirmation link 'Click here to reset your password \u2192' is visible."
         await asyncio.sleep(5)
 
     finally:

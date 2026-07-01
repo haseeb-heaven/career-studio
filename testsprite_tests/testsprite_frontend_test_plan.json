@@ -2,16 +2,12 @@
   {
     "id": "TC001",
     "title": "Sign in to access the workspace",
-    "description": "This verifies that a returning user can sign in and reach the authenticated workspace.",
+    "description": "A returning user can sign in with valid credentials and reach the authenticated workspace.",
     "category": "Login & Account Access",
     "steps": [
       {
         "type": "action",
         "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Switch to the sign in view"
       },
       {
         "type": "action",
@@ -23,7 +19,7 @@
       },
       {
         "type": "action",
-        "description": "Submit the form"
+        "description": "Submit the sign-in form"
       },
       {
         "type": "assertion",
@@ -34,45 +30,8 @@
   },
   {
     "id": "TC002",
-    "title": "Update contact details in a loaded profile",
-    "description": "This verifies that a loaded profile can be edited in the contact section and saved successfully.",
-    "category": "Profile Editor — Contact and Summary",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile in the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the contact section"
-      },
-      {
-        "type": "action",
-        "description": "Edit the contact details"
-      },
-      {
-        "type": "action",
-        "description": "Save the contact details"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a success notification is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the updated contact details are displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC003",
-    "title": "Import a supported resume into the editor",
-    "description": "This verifies that a supported resume file can be uploaded and opens the imported profile in the editor.",
+    "title": "Import a resume into the editor",
+    "description": "A user can upload a supported resume file and see the imported profile open in the editor after parsing completes.",
     "category": "Resume Import and Profile Loading",
     "steps": [
       {
@@ -81,23 +40,114 @@
       },
       {
         "type": "action",
-        "description": "Upload the resume file at D:\\Code\\career-studio-ai\\testsprite_tests\\fixtures\\sample_resume.pdf using the file upload control"
+        "description": "Upload a supported resume file"
       },
       {
         "type": "assertion",
-        "description": "Verify a loading indicator is displayed while the file is parsed"
+        "description": "Verify a loading indicator is shown while the file is parsed"
       },
       {
         "type": "assertion",
-        "description": "Verify the editor opens with the imported profile"
+        "description": "Verify the editor opens with an imported profile"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Open a saved profile from the list",
+    "description": "A user can browse saved profiles and open one so it loads in the editor.",
+    "category": "Resume Import and Profile Loading",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved profiles list"
+      },
+      {
+        "type": "action",
+        "description": "Open a saved profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected profile is loaded in the editor"
       }
     ],
     "priority": "High"
   },
   {
     "id": "TC004",
-    "title": "Create a new account successfully",
-    "description": "This verifies that a guest can create an account and see a success confirmation.",
+    "title": "Generate a resume analysis from a loaded profile",
+    "description": "This verifies that a loaded profile can be analyzed and the user can see the completed analysis results.",
+    "category": "Profile Analysis",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the analysis section"
+      },
+      {
+        "type": "action",
+        "description": "Start the resume analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an overall score is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify analysis recommendations are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Export a profile as JSON",
+    "description": "This verifies that a loaded profile can be exported as a JSON file from the export panel.",
+    "category": "Export Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a saved profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the export panel"
+      },
+      {
+        "type": "action",
+        "description": "Choose JSON export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the JSON export action is available for the current profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the export completes successfully"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Create a new account",
+    "description": "A guest can create an account with valid details and see a success confirmation.",
     "category": "Login & Account Access",
     "steps": [
       {
@@ -106,11 +156,11 @@
       },
       {
         "type": "action",
-        "description": "Switch to the create account view"
+        "description": "Switch to account creation"
       },
       {
         "type": "action",
-        "description": "Fill in the username field with a unique test username"
+        "description": "Fill in the username field with a unique username"
       },
       {
         "type": "action",
@@ -122,7 +172,7 @@
       },
       {
         "type": "action",
-        "description": "Submit the form"
+        "description": "Submit the account creation form"
       },
       {
         "type": "assertion",
@@ -132,9 +182,46 @@
     "priority": "High"
   },
   {
-    "id": "TC005",
+    "id": "TC007",
+    "title": "Generate a tailored cover letter from a profile",
+    "description": "This verifies that a user can enter job details and generate a cover letter based on the loaded profile.",
+    "category": "Cover Letter Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the cover letter section"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the job title field with a valid role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the company name field with a valid company"
+      },
+      {
+        "type": "action",
+        "description": "Generate the cover letter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a generated cover letter is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
     "title": "Continue as a guest",
-    "description": "This verifies that a guest can continue without signing in and reach the upload or workspace area.",
+    "description": "A guest user can continue without signing in and reach the upload or workspace area.",
     "category": "Login & Account Access",
     "steps": [
       {
@@ -153,9 +240,124 @@
     "priority": "High"
   },
   {
-    "id": "TC006",
+    "id": "TC009",
+    "title": "Update contact details for a loaded profile",
+    "description": "A user can edit contact information in a loaded profile and save the changes successfully.",
+    "category": "Profile Editor — Contact and Summary",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the contact section"
+      },
+      {
+        "type": "action",
+        "description": "Edit the name, email, phone, and location fields"
+      },
+      {
+        "type": "action",
+        "description": "Save the contact details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success notification is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Save AI provider settings",
+    "description": "This verifies that a user can choose an AI provider, enter the matching key, and save the configuration successfully.",
+    "category": "Settings Configuration",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the settings section"
+      },
+      {
+        "type": "action",
+        "description": "Select an AI provider"
+      },
+      {
+        "type": "action",
+        "description": "Enter the corresponding API key"
+      },
+      {
+        "type": "action",
+        "description": "Save the settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success notification is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the settings remain configured after saving"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Generate a career roadmap from a loaded profile",
+    "description": "This verifies that a user can create a roadmap plan and see the resulting milestone timeline.",
+    "category": "Career Roadmap Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the roadmap section"
+      },
+      {
+        "type": "action",
+        "description": "Select a plan type"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the target role field with a valid role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the years horizon field with a valid duration"
+      },
+      {
+        "type": "action",
+        "description": "Generate the plan"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a milestone timeline is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify roadmap skills or resources are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
     "title": "Request a password reset",
-    "description": "This verifies that a user can request account recovery and see a success confirmation.",
+    "description": "A user who forgot their password can request a reset link and see a success confirmation.",
     "category": "Login & Account Access",
     "steps": [
       {
@@ -164,7 +366,7 @@
       },
       {
         "type": "action",
-        "description": "Switch to the forgot password view"
+        "description": "Switch to password recovery"
       },
       {
         "type": "action",
@@ -172,7 +374,7 @@
       },
       {
         "type": "action",
-        "description": "Request the reset link"
+        "description": "Request a password reset link"
       },
       {
         "type": "assertion",
@@ -182,9 +384,75 @@
     "priority": "High"
   },
   {
-    "id": "TC007",
-    "title": "Update the professional summary and save it",
-    "description": "This verifies that a user can edit the summary text, save it, and see the updated content persist in the editor.",
+    "id": "TC013",
+    "title": "Export a profile as CSV",
+    "description": "This verifies that a loaded profile can be exported as a CSV file from the export panel.",
+    "category": "Export Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a saved profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the export panel"
+      },
+      {
+        "type": "action",
+        "description": "Choose CSV export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the CSV export action is available for the current profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the export completes successfully"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Export a profile as PDF",
+    "description": "This verifies that a loaded profile can be exported as a PDF file from the export panel.",
+    "category": "Export Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a saved profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the export panel"
+      },
+      {
+        "type": "action",
+        "description": "Choose PDF export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the PDF export action is available for the current profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the export completes successfully"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Update the professional summary",
+    "description": "A user can edit the summary text for a loaded profile and see the updated content saved with the character count refreshed.",
     "category": "Profile Editor — Contact and Summary",
     "steps": [
       {
@@ -213,318 +481,15 @@
       },
       {
         "type": "assertion",
-        "description": "Verify the updated summary is displayed"
+        "description": "Verify the updated summary character count is displayed"
       }
     ],
     "priority": "High"
   },
   {
-    "id": "TC008",
-    "title": "Open the password reset view from a reset link",
-    "description": "This verifies that the forgot-password UI flow produces a real reset link, clicking it opens the password reset view, and the user can submit a new password. Uses a dedicated reset-test account (tc008-reset-user) to avoid breaking the shared test account.",
-    "category": "Login & Account Access",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Switch to the 'Create Account' tab and register a new account with username 'tc008-reset-user' and password 'OldPass123' to create a fresh account for this test"
-      },
-      {
-        "type": "action",
-        "description": "Sign out after successful registration"
-      },
-      {
-        "type": "action",
-        "description": "Click the 'Forgot Password?' button on the login screen"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the username field with 'tc008-reset-user'"
-      },
-      {
-        "type": "action",
-        "description": "Click the 'Send Reset Link' button"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the success message with a reset link is displayed"
-      },
-      {
-        "type": "action",
-        "description": "Click the 'Click here to reset your password' link in the success message"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the Set New Password view is shown"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the new password field with 'NewPassword123'"
-      },
-      {
-        "type": "action",
-        "description": "Submit the form"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a success confirmation is visible"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC009",
-    "title": "Open a saved profile from the saved profiles list",
-    "description": "This verifies that a user can review saved profiles and open one into the editor.",
-    "category": "Resume Import and Profile Loading",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Open the saved profiles list"
-      },
-      {
-        "type": "action",
-        "description": "Open a saved profile from the list"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the selected profile is loaded in the editor"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC010",
-    "title": "Add work experience to the profile",
-    "description": "A user can add a work experience entry with job details and see it appear in the experience list with its bullet points.",
-    "category": "Profile Editor — Experience Management",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile in the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the experience section"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the company name"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the role title"
-      },
-      {
-        "type": "action",
-        "description": "Fill in valid start and end dates"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the location"
-      },
-      {
-        "type": "action",
-        "description": "Add the experience"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the new experience entry appears in the experience list"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC011",
-    "title": "Add a skill to the profile",
-    "description": "A user can add a new skill with its category and experience years and see it appear in the skills list.",
-    "category": "Profile Editor — Skills Management",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile in the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the skills section"
-      },
-      {
-        "type": "action",
-        "description": "Fill in a new skill name"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the skill category"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the years of experience"
-      },
-      {
-        "type": "action",
-        "description": "Add the skill"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the new skill appears in the skills list"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC012",
-    "title": "Generate a resume analysis for a loaded profile",
-    "description": "This test verifies that a user can load a profile, configure an AI provider in the Settings tab (only visible after a profile is loaded in the editor sidebar), and receive a completed AI resume analysis. IMPORTANT: Settings tab is in the profile editor sidebar under System section — it is NOT accessible from the login screen.",
-    "category": "Profile Analysis",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Log in with username 'haseeb-heaven' and password '123456'"
-      },
-      {
-        "type": "action",
-        "description": "Import a resume file (D:\\Code\\career-studio-ai\\testsprite_tests\\fixtures\\sample_resume.pdf) to load a profile into the editor first"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the profile editor sidebar is visible with tabs including Settings"
-      },
-      {
-        "type": "action",
-        "description": "Click the 'Settings' tab (gear icon, under System section in the sidebar)"
-      },
-      {
-        "type": "action",
-        "description": "Select 'openrouter' as the AI provider"
-      },
-      {
-        "type": "action",
-        "description": "Enter the OPENROUTER_API_KEY value (from env) in the API key field"
-      },
-      {
-        "type": "action",
-        "description": "Save the AI settings"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify settings saved successfully"
-      },
-      {
-        "type": "action",
-        "description": "Import the resume file at D:\\Code\\career-studio-ai\\testsprite_tests\\fixtures\\sample_resume.pdf to load a profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Click the 'Analysis' tab in the sidebar"
-      },
-      {
-        "type": "action",
-        "description": "Start the resume analysis"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the analysis results are displayed"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the score and improvement guidance are displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC013",
-    "title": "Save AI provider settings",
-    "description": "This verifies that a user can choose an AI provider, enter the matching API key, save settings, and see a success confirmation.",
-    "category": "Settings Configuration",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Open the settings section"
-      },
-      {
-        "type": "action",
-        "description": "Select an AI provider"
-      },
-      {
-        "type": "action",
-        "description": "Enter the corresponding API key"
-      },
-      {
-        "type": "action",
-        "description": "Save the settings"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a success confirmation is visible"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC014",
-    "title": "Generate a cover letter for a job application",
-    "description": "This test verifies that a user can generate a cover letter for a specific role and company and see the completed letter content.",
-    "category": "Cover Letter Generation",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the cover letter section"
-      },
-      {
-        "type": "action",
-        "description": "Enter a job title"
-      },
-      {
-        "type": "action",
-        "description": "Enter a company name"
-      },
-      {
-        "type": "action",
-        "description": "Generate the cover letter"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the generated cover letter is displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC015",
-    "title": "Search for jobs using profile skills",
-    "description": "This verifies that a loaded profile can be used to search for relevant jobs and that ranked matches with source badges are shown.",
+    "id": "TC016",
+    "title": "Search for job matches from a saved profile",
+    "description": "This verifies that a loaded profile can be used to generate ranked job matches with visible scores and source indicators.",
     "category": "Job Search and Matching",
     "steps": [
       {
@@ -545,123 +510,20 @@
       },
       {
         "type": "assertion",
-        "description": "Verify ranked job matches are displayed"
+        "description": "Verify a ranked list of job matches is displayed"
       },
       {
         "type": "assertion",
-        "description": "Verify source badges are displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC016",
-    "title": "Export the profile as JSON",
-    "description": "This verifies that a loaded profile can be exported as JSON and that the export completes successfully.",
-    "category": "Export Profile",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a saved profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the export panel"
-      },
-      {
-        "type": "action",
-        "description": "Choose JSON export"
-      },
-      {
-        "type": "action",
-        "description": "Download the export"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the export completes successfully"
+        "description": "Verify match scores and source badges are displayed"
       }
     ],
     "priority": "High"
   },
   {
     "id": "TC017",
-    "title": "See a success toast after an import",
-    "description": "This test verifies that importing a resume shows a success toast and the notification disappears automatically.",
-    "category": "Toast Notifications",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Import a valid resume into the workspace"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a success toast is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the toast dismisses automatically"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC018",
-    "title": "Generate a career roadmap",
-    "description": "This test verifies that a user can create a career roadmap for a target role and see the resulting milestone timeline and resources.",
-    "category": "Career Roadmap Generation",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the roadmap section"
-      },
-      {
-        "type": "action",
-        "description": "Select a plan type"
-      },
-      {
-        "type": "action",
-        "description": "Enter a target role"
-      },
-      {
-        "type": "action",
-        "description": "Enter a years horizon"
-      },
-      {
-        "type": "action",
-        "description": "Generate the plan"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the roadmap timeline is displayed"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify milestones and supporting resources are displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC019",
-    "title": "Add a project to the profile",
-    "description": "A user can add a portfolio project with its details and see it appear in the projects list.",
-    "category": "Profile Editor — Projects, Education, and Certifications",
+    "title": "Add a new skill to the profile",
+    "description": "This test verifies that a user can add a skill with category and experience details and see it appear in the skills list.",
+    "category": "Profile Editor — Skills Management",
     "steps": [
       {
         "type": "action",
@@ -673,39 +535,35 @@
       },
       {
         "type": "action",
-        "description": "Open the projects section"
+        "description": "Open the skills section"
       },
       {
         "type": "action",
-        "description": "Fill in a project name"
+        "description": "Fill a skill name into the skill field"
       },
       {
         "type": "action",
-        "description": "Fill in the project description"
+        "description": "Fill a category into the skill category field"
       },
       {
         "type": "action",
-        "description": "Fill in the project link"
+        "description": "Fill a valid number of years of experience into the years field"
       },
       {
         "type": "action",
-        "description": "Fill in the tech stack"
-      },
-      {
-        "type": "action",
-        "description": "Add the project"
+        "description": "Add the skill"
       },
       {
         "type": "assertion",
-        "description": "Verify the new project appears in the projects list"
+        "description": "Verify the new skill appears in the skills list"
       }
     ],
     "priority": "High"
   },
   {
-    "id": "TC020",
-    "title": "Save local AI settings",
-    "description": "This verifies that a user can enable local AI, enter Ollama connection details, save them, and see a success confirmation.",
+    "id": "TC018",
+    "title": "Enable local AI with Ollama settings",
+    "description": "This verifies that a user can enable local AI, provide Ollama connection details, and save them successfully.",
     "category": "Settings Configuration",
     "steps": [
       {
@@ -734,16 +592,45 @@
       },
       {
         "type": "assertion",
+        "description": "Verify a success notification is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify local AI settings remain enabled after saving"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Open the reset password screen from a token link",
+    "description": "A reset token deep link opens the password reset view and allows the user to submit a new password successfully.",
+    "category": "Login & Account Access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /?token=valid-jwt-token"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the new password field with a valid password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the password reset form"
+      },
+      {
+        "type": "assertion",
         "description": "Verify a success confirmation is visible"
       }
     ],
     "priority": "High"
   },
   {
-    "id": "TC021",
-    "title": "See a success toast after an AI action",
-    "description": "This test verifies that a successful AI-powered action shows a toast notification and then clears automatically.",
-    "category": "Toast Notifications",
+    "id": "TC020",
+    "title": "See logs after exporting a profile",
+    "description": "A user can export a profile and confirm the export appears in the activity logs.",
+    "category": "Activity Logs",
     "steps": [
       {
         "type": "action",
@@ -751,27 +638,381 @@
       },
       {
         "type": "action",
-        "description": "Open the AI analysis section"
+        "description": "Open a saved profile in the editor"
       },
       {
         "type": "action",
-        "description": "Run an AI-powered action after configuring a provider"
+        "description": "Export the current profile"
+      },
+      {
+        "type": "action",
+        "description": "Open the activity logs section"
       },
       {
         "type": "assertion",
-        "description": "Verify a success toast is visible"
+        "description": "Verify the export activity is displayed"
       },
       {
         "type": "assertion",
-        "description": "Verify the toast dismisses automatically"
+        "description": "Verify the export entry includes a timestamp"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Add a new experience entry",
+    "description": "This test verifies that a user can add work experience details and see the entry appear in the experience list with its bullet points.",
+    "category": "Profile Editor — Experience Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the experience section"
+      },
+      {
+        "type": "action",
+        "description": "Fill a company name into the company field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a role title into the role field"
+      },
+      {
+        "type": "action",
+        "description": "Fill valid dates into the date fields"
+      },
+      {
+        "type": "action",
+        "description": "Fill a location into the location field"
+      },
+      {
+        "type": "action",
+        "description": "Add the experience"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new experience appears in the experience list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the experience bullet points are displayed"
       }
     ],
     "priority": "High"
   },
   {
     "id": "TC022",
-    "title": "Add education history to the profile",
-    "description": "A user can add an education entry with institution, degree, field, and dates and see it appear in the education list.",
+    "title": "Filter job matches by title, location, and portal",
+    "description": "This verifies that job search filters narrow results while still returning matching jobs when searched again.",
+    "category": "Job Search and Matching",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a saved profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the jobs section"
+      },
+      {
+        "type": "action",
+        "description": "Enter a job title into the job title field"
+      },
+      {
+        "type": "action",
+        "description": "Enter a location into the location field"
+      },
+      {
+        "type": "action",
+        "description": "Select a portal filter"
+      },
+      {
+        "type": "action",
+        "description": "Search for jobs again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify filtered job results are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC023",
+    "title": "Show an error when analysis is started without an AI provider",
+    "description": "This verifies that starting analysis without AI provider settings shows an error instead of running the analysis.",
+    "category": "Profile Analysis",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the analysis section"
+      },
+      {
+        "type": "action",
+        "description": "Start the resume analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an AI provider configuration error is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC024",
+    "title": "See logs after importing a profile",
+    "description": "A user can import a profile and then see the import recorded in the activity logs.",
+    "category": "Activity Logs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Import a resume into a new profile"
+      },
+      {
+        "type": "action",
+        "description": "Open the activity logs section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the import activity is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the activity entry includes a timestamp"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC025",
+    "title": "Delete a saved profile from the list",
+    "description": "A user can remove a saved profile and confirm that it disappears from the saved profiles list.",
+    "category": "Resume Import and Profile Loading",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved profiles list"
+      },
+      {
+        "type": "action",
+        "description": "Delete a saved profile"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile no longer appears in the list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC026",
+    "title": "Open a previously generated cover letter",
+    "description": "This verifies that a user can review an existing saved cover letter and see its contents.",
+    "category": "Cover Letter Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the cover letter section"
+      },
+      {
+        "type": "action",
+        "description": "Open a previously generated cover letter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected cover letter contents are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC027",
+    "title": "See logs after editing and saving a profile",
+    "description": "A user can make a profile edit, save it, and confirm the edit is recorded in the activity logs.",
+    "category": "Activity Logs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open a saved profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Edit a structured profile section and save the changes"
+      },
+      {
+        "type": "action",
+        "description": "Open the activity logs section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile edit activity is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the saved change is reflected in the activity history"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC028",
+    "title": "Add a new project to the profile",
+    "description": "This test verifies that a user can add a project with description, link, and tech stack and see it appear in the projects list.",
+    "category": "Profile Editor — Projects, Education, and Certifications",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the projects section"
+      },
+      {
+        "type": "action",
+        "description": "Fill a project name into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a project description into the description field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a project link into the link field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a tech stack into the tech stack field"
+      },
+      {
+        "type": "action",
+        "description": "Add the project"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new project appears in the projects list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC029",
+    "title": "Delete a previously generated cover letter",
+    "description": "This verifies that a saved cover letter can be removed from the list and no longer appears after deletion.",
+    "category": "Cover Letter Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the cover letter section"
+      },
+      {
+        "type": "action",
+        "description": "Open a previously generated cover letter"
+      },
+      {
+        "type": "action",
+        "description": "Delete the saved cover letter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cover letter is removed from the list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC030",
+    "title": "Save job board API credentials",
+    "description": "This verifies that a user can enter job board credentials in settings and save them for future job search use.",
+    "category": "Settings Configuration",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the settings section"
+      },
+      {
+        "type": "action",
+        "description": "Enter job board API credentials"
+      },
+      {
+        "type": "action",
+        "description": "Save the settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success notification is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the job board credentials remain saved"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC031",
+    "title": "Add a new education entry",
+    "description": "This test verifies that a user can add education details and see the entry appear in the education list.",
     "category": "Profile Editor — Projects, Education, and Certifications",
     "steps": [
       {
@@ -788,19 +1029,19 @@
       },
       {
         "type": "action",
-        "description": "Fill in the institution name"
+        "description": "Fill an institution name into the institution field"
       },
       {
         "type": "action",
-        "description": "Fill in the degree"
+        "description": "Fill a degree into the degree field"
       },
       {
         "type": "action",
-        "description": "Fill in the field of study"
+        "description": "Fill a field of study into the field of study field"
       },
       {
         "type": "action",
-        "description": "Fill in valid start and end dates"
+        "description": "Fill valid dates into the date fields"
       },
       {
         "type": "action",
@@ -811,13 +1052,13 @@
         "description": "Verify the new education entry appears in the education list"
       }
     ],
-    "priority": "High"
+    "priority": "Medium"
   },
   {
-    "id": "TC023",
-    "title": "Export the profile as CSV",
-    "description": "This verifies that a loaded profile can be exported as CSV and that the export completes successfully.",
-    "category": "Export Profile",
+    "id": "TC032",
+    "title": "Open a previously generated roadmap",
+    "description": "This verifies that a saved roadmap can be opened and its plan details are shown.",
+    "category": "Career Roadmap Generation",
     "steps": [
       {
         "type": "action",
@@ -825,31 +1066,97 @@
       },
       {
         "type": "action",
-        "description": "Load a saved profile into the editor"
+        "description": "Load a profile into the editor"
       },
       {
         "type": "action",
-        "description": "Open the export panel"
+        "description": "Open the roadmap section"
       },
       {
         "type": "action",
-        "description": "Choose CSV export"
-      },
-      {
-        "type": "action",
-        "description": "Download the export"
+        "description": "Open a saved roadmap"
       },
       {
         "type": "assertion",
-        "description": "Verify the export completes successfully"
+        "description": "Verify the roadmap plan details are displayed"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC024",
-    "title": "See a success toast after a save",
-    "description": "This test verifies that saving a profile-related change shows a success toast that appears briefly after the action.",
+    "id": "TC033",
+    "title": "See logs after generating AI content",
+    "description": "A user can run an AI action and confirm it is recorded in the activity logs.",
+    "category": "Activity Logs",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open a saved profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Configure a valid AI provider in settings"
+      },
+      {
+        "type": "action",
+        "description": "Generate an AI-assisted career output"
+      },
+      {
+        "type": "action",
+        "description": "Open the activity logs section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the AI action is displayed in the activity log"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the AI activity includes a timestamp"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC034",
+    "title": "Delete a previously generated roadmap",
+    "description": "This verifies that a saved roadmap can be deleted and no longer appears in the saved list.",
+    "category": "Career Roadmap Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the roadmap section"
+      },
+      {
+        "type": "action",
+        "description": "Open a saved roadmap"
+      },
+      {
+        "type": "action",
+        "description": "Delete the saved roadmap"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the roadmap is removed from the list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "See a toast after exporting a profile",
+    "description": "A user can export the current profile and see a brief confirmation toast that dismisses automatically.",
     "category": "Toast Notifications",
     "steps": [
       {
@@ -858,7 +1165,11 @@
       },
       {
         "type": "action",
-        "description": "Make a small profile edit and save it"
+        "description": "Open a saved profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Export the current profile"
       },
       {
         "type": "assertion",
@@ -872,9 +1183,42 @@
     "priority": "Medium"
   },
   {
-    "id": "TC025",
-    "title": "Add a new social link to contact details",
-    "description": "This verifies that a user can add a new contact link and see it appear in the list.",
+    "id": "TC036",
+    "title": "Open a job application link from matched results",
+    "description": "This verifies that a user can choose a matched job and open its application page from the results.",
+    "category": "Job Search and Matching",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Load a saved profile into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the jobs section"
+      },
+      {
+        "type": "action",
+        "description": "Search for jobs using the profile skills"
+      },
+      {
+        "type": "action",
+        "description": "Open a job match application link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the application link is opened for the selected job"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC037",
+    "title": "Add a social link to contact details",
+    "description": "A user can add a new contact link and see it appear in the profile's link list after saving.",
     "category": "Profile Editor — Contact and Summary",
     "steps": [
       {
@@ -905,9 +1249,42 @@
     "priority": "Medium"
   },
   {
-    "id": "TC026",
-    "title": "Add a certification to the profile",
-    "description": "A user can add a certification with its issuer and date and see it appear in the certifications list.",
+    "id": "TC038",
+    "title": "See a toast after generating AI content",
+    "description": "A user can generate AI-assisted output and see a brief toast confirming the action before it auto-dismisses.",
+    "category": "Toast Notifications",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open a saved profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Configure a valid AI provider in settings"
+      },
+      {
+        "type": "action",
+        "description": "Generate an AI-assisted career output"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a confirmation toast is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the toast dismisses automatically"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC039",
+    "title": "Add a new certification to the profile",
+    "description": "This test verifies that a user can add a certification with issuer and date and see it appear in the certifications list.",
     "category": "Profile Editor — Projects, Education, and Certifications",
     "steps": [
       {
@@ -924,15 +1301,15 @@
       },
       {
         "type": "action",
-        "description": "Fill in a certification name"
+        "description": "Fill a certification name into the certification field"
       },
       {
         "type": "action",
-        "description": "Fill in the issuer"
+        "description": "Fill an issuer into the issuer field"
       },
       {
         "type": "action",
-        "description": "Fill in a valid certification date"
+        "description": "Fill a valid date into the date field"
       },
       {
         "type": "action",
@@ -946,10 +1323,10 @@
     "priority": "Medium"
   },
   {
-    "id": "TC027",
-    "title": "Open a job application link",
-    "description": "This verifies that a user can choose a job match and open its external application page from the results list.",
-    "category": "Job Search and Matching",
+    "id": "TC040",
+    "title": "See a toast after importing a profile",
+    "description": "A user can import a resume or profile and see a brief success toast that disappears on its own.",
+    "category": "Toast Notifications",
     "steps": [
       {
         "type": "action",
@@ -957,32 +1334,24 @@
       },
       {
         "type": "action",
-        "description": "Load a saved profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the jobs section"
-      },
-      {
-        "type": "action",
-        "description": "Search for jobs using the profile skills"
-      },
-      {
-        "type": "action",
-        "description": "Open the application link for a job match"
+        "description": "Import a resume into a new profile"
       },
       {
         "type": "assertion",
-        "description": "Verify the external application page opens"
+        "description": "Verify a success toast is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the toast dismisses automatically"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC028",
-    "title": "Search for jobs with filters applied",
-    "description": "This verifies that a user can refine job results by title, location, and portal filter and still see matching results.",
-    "category": "Job Search and Matching",
+    "id": "TC041",
+    "title": "Review recent activity logs",
+    "description": "A user can open the activity log view and review the recent history of profile actions with timestamps and details.",
+    "category": "Activity Logs",
     "steps": [
       {
         "type": "action",
@@ -990,39 +1359,23 @@
       },
       {
         "type": "action",
-        "description": "Load a saved profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the jobs section"
-      },
-      {
-        "type": "action",
-        "description": "Enter a job title into the title field"
-      },
-      {
-        "type": "action",
-        "description": "Enter a location into the location field"
-      },
-      {
-        "type": "action",
-        "description": "Select a portal filter"
-      },
-      {
-        "type": "action",
-        "description": "Search for jobs"
+        "description": "Open the activity logs section"
       },
       {
         "type": "assertion",
-        "description": "Verify filtered job results are displayed"
+        "description": "Verify recent activity entries are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify timestamps and action details are displayed"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC029",
-    "title": "Delete a saved profile from the list",
-    "description": "This verifies that a user can remove a saved profile and see it disappear from the list.",
+    "id": "TC042",
+    "title": "Close the saved profiles list and return to upload",
+    "description": "A user can close the saved profiles list and return to the upload view without losing the current workspace context.",
     "category": "Resume Import and Profile Loading",
     "steps": [
       {
@@ -1035,114 +1388,19 @@
       },
       {
         "type": "action",
-        "description": "Delete a saved profile"
-      },
-      {
-        "type": "action",
-        "description": "Confirm the deletion"
+        "description": "Close the saved profiles list"
       },
       {
         "type": "assertion",
-        "description": "Verify the profile is removed from the list"
+        "description": "Verify the upload view is displayed"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC030",
-    "title": "Open a previously generated cover letter",
-    "description": "This test verifies that a user can review a saved cover letter and open it to view the full contents.",
-    "category": "Cover Letter Generation",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the cover letter section"
-      },
-      {
-        "type": "action",
-        "description": "Open a previously generated cover letter"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the selected cover letter contents are displayed"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC031",
-    "title": "Export the profile as XML",
-    "description": "This verifies that a loaded profile can be exported as XML and that the export completes successfully.",
-    "category": "Export Profile",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a saved profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the export panel"
-      },
-      {
-        "type": "action",
-        "description": "Choose XML export"
-      },
-      {
-        "type": "action",
-        "description": "Download the export"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the export completes successfully"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC032",
-    "title": "Open a saved career roadmap",
-    "description": "This test verifies that a user can review a saved roadmap and open it to see the full plan details.",
-    "category": "Career Roadmap Generation",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the roadmap section"
-      },
-      {
-        "type": "action",
-        "description": "Open a saved roadmap"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the roadmap details are displayed"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC033",
+    "id": "TC043",
     "title": "Remove a skill from the profile",
-    "description": "A user can remove an existing skill and confirm that it no longer appears in the skills list.",
+    "description": "This test verifies that a user can remove an existing skill and see it disappear from the skills list.",
     "category": "Profile Editor — Skills Management",
     "steps": [
       {
@@ -1173,10 +1431,10 @@
     "priority": "Medium"
   },
   {
-    "id": "TC034",
-    "title": "Review recent activity logs",
-    "description": "This test verifies that a user can open the activity log view and review recent action history.",
-    "category": "Activity Logs",
+    "id": "TC044",
+    "title": "Remove an experience entry from the profile",
+    "description": "This test verifies that a user can remove an existing experience entry and see it disappear from the experience list.",
+    "category": "Profile Editor — Experience Management",
     "steps": [
       {
         "type": "action",
@@ -1184,23 +1442,31 @@
       },
       {
         "type": "action",
-        "description": "Open the activity logs section"
+        "description": "Load a profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Open the experience section"
+      },
+      {
+        "type": "action",
+        "description": "Add an experience"
+      },
+      {
+        "type": "action",
+        "description": "Remove the experience entry"
       },
       {
         "type": "assertion",
-        "description": "Verify recent activity entries are displayed"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify timestamps and action details are visible"
+        "description": "Verify the experience entry no longer appears in the list"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC035",
-    "title": "Remove an existing social link from contact details",
-    "description": "This verifies that a user can remove an existing contact link and see it disappear.",
+    "id": "TC045",
+    "title": "Remove a contact link from a profile",
+    "description": "A user can delete an existing contact link and see it disappear from the profile.",
     "category": "Profile Editor — Contact and Summary",
     "steps": [
       {
@@ -1221,168 +1487,15 @@
       },
       {
         "type": "assertion",
-        "description": "Verify the link is removed from the list"
+        "description": "Verify the link no longer appears in the list"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC036",
-    "title": "Delete a saved cover letter",
-    "description": "This test verifies that a user can remove a previously generated cover letter from the saved list.",
-    "category": "Cover Letter Generation",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the cover letter section"
-      },
-      {
-        "type": "action",
-        "description": "Delete a previously generated cover letter"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the cover letter is removed from the saved list"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC037",
-    "title": "Save job board credentials",
-    "description": "This verifies that a user can enter job board API credentials, save them, and see a success confirmation.",
-    "category": "Settings Configuration",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Open the settings section"
-      },
-      {
-        "type": "action",
-        "description": "Enter job board API credentials"
-      },
-      {
-        "type": "action",
-        "description": "Save the settings"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a success confirmation is visible"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC038",
-    "title": "Export the profile as DOCX",
-    "description": "This verifies that a loaded profile can be exported as DOCX and that the export completes successfully.",
-    "category": "Export Profile",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a saved profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the export panel"
-      },
-      {
-        "type": "action",
-        "description": "Choose DOCX export"
-      },
-      {
-        "type": "action",
-        "description": "Download the export"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the export completes successfully"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC039",
-    "title": "Remove work experience from the profile",
-    "description": "A user can remove an existing experience entry and confirm that it no longer appears in the experience list.",
-    "category": "Profile Editor — Experience Management",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile in the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the experience section"
-      },
-      {
-        "type": "action",
-        "description": "Add an experience entry"
-      },
-      {
-        "type": "action",
-        "description": "Remove the experience entry"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the experience entry no longer appears in the experience list"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC040",
-    "title": "Delete a saved career roadmap",
-    "description": "This test verifies that a user can remove a saved roadmap from the list of plans.",
-    "category": "Career Roadmap Generation",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the roadmap section"
-      },
-      {
-        "type": "action",
-        "description": "Delete a saved roadmap"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the roadmap is removed from the saved list"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC041",
-    "title": "See a success toast after an export",
-    "description": "This test verifies that exporting the current profile shows a success toast that dismisses on its own.",
+    "id": "TC046",
+    "title": "See a toast after saving changes",
+    "description": "A user can save profile edits and briefly see a success toast that dismisses automatically.",
     "category": "Toast Notifications",
     "steps": [
       {
@@ -1391,11 +1504,11 @@
       },
       {
         "type": "action",
-        "description": "Open the export section"
+        "description": "Open a saved profile in the editor"
       },
       {
         "type": "action",
-        "description": "Export the current profile in a supported format"
+        "description": "Edit a structured profile section and save the changes"
       },
       {
         "type": "assertion",
@@ -1409,10 +1522,10 @@
     "priority": "Medium"
   },
   {
-    "id": "TC042",
-    "title": "Close the saved profiles list and return to upload",
-    "description": "This verifies that a user can close the saved profiles list and return to the upload view.",
-    "category": "Resume Import and Profile Loading",
+    "id": "TC047",
+    "title": "Show validation for invalid login credentials",
+    "description": "A user who submits invalid credentials sees an inline validation error and does not proceed into the workspace.",
+    "category": "Login & Account Access",
     "steps": [
       {
         "type": "action",
@@ -1420,85 +1533,27 @@
       },
       {
         "type": "action",
-        "description": "Open the saved profiles list"
+        "description": "Fill in the username field with an invalid username"
       },
       {
         "type": "action",
-        "description": "Close the saved profiles list"
+        "description": "Fill in the password field with an invalid password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
       },
       {
         "type": "assertion",
-        "description": "Verify the upload view is displayed"
+        "description": "Verify an inline validation error is visible"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC043",
-    "title": "See an analysis error when AI is not configured",
-    "description": "This test verifies that starting resume analysis without configuring an AI provider shows an error instead of results.",
-    "category": "Profile Analysis",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the analysis section"
-      },
-      {
-        "type": "action",
-        "description": "Start the resume analysis"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify an AI configuration error is displayed"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC044",
-    "title": "Export the profile as PDF",
-    "description": "This verifies that a loaded profile can be exported as PDF and that the export completes successfully.",
-    "category": "Export Profile",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a saved profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the export panel"
-      },
-      {
-        "type": "action",
-        "description": "Choose PDF export"
-      },
-      {
-        "type": "action",
-        "description": "Download the export"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the export completes successfully"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC045",
-    "title": "Remove a project, education entry, or certification",
-    "description": "A user can remove an existing project, education entry, or certification and confirm it no longer appears in its list.",
+    "id": "TC048",
+    "title": "Remove a project from the profile",
+    "description": "This test verifies that a user can remove an existing project and see it disappear from the projects list.",
     "category": "Profile Editor — Projects, Education, and Certifications",
     "steps": [
       {
@@ -1511,28 +1566,28 @@
       },
       {
         "type": "action",
-        "description": "Open the projects, education, or certifications section"
+        "description": "Open the projects section"
       },
       {
         "type": "action",
-        "description": "Add an item in the selected section"
+        "description": "Add a project"
       },
       {
         "type": "action",
-        "description": "Remove the item"
+        "description": "Remove the project"
       },
       {
         "type": "assertion",
-        "description": "Verify the item no longer appears in the selected list"
+        "description": "Verify the project no longer appears in the projects list"
       }
     ],
-    "priority": "Low"
+    "priority": "Medium"
   },
   {
-    "id": "TC046",
-    "title": "Export the profile as LaTeX",
-    "description": "This verifies that a loaded profile can be exported as LaTeX and that the export completes successfully.",
-    "category": "Export Profile",
+    "id": "TC049",
+    "title": "Remove a certification from the profile",
+    "description": "This test verifies that a user can remove an existing certification and see it disappear from the certifications list.",
+    "category": "Profile Editor — Projects, Education, and Certifications",
     "steps": [
       {
         "type": "action",
@@ -1540,52 +1595,31 @@
       },
       {
         "type": "action",
-        "description": "Load a saved profile into the editor"
+        "description": "Load a profile in the editor"
       },
       {
         "type": "action",
-        "description": "Open the export panel"
+        "description": "Open the certifications section"
       },
       {
         "type": "action",
-        "description": "Choose LaTeX export"
+        "description": "Add a certification"
       },
       {
         "type": "action",
-        "description": "Download the export"
+        "description": "Remove the certification"
       },
       {
         "type": "assertion",
-        "description": "Verify the export completes successfully"
+        "description": "Verify the certification no longer appears in the certifications list"
       }
     ],
-    "priority": "Low"
+    "priority": "Medium"
   },
   {
-    "id": "TC047",
-    "title": "Show an error for an unsupported resume file",
-    "description": "This verifies that uploading an unsupported or malformed file surfaces an error banner.",
-    "category": "Resume Import and Profile Loading",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Upload an unsupported or malformed file"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify an error banner is visible"
-      }
-    ],
-    "priority": "Low"
-  },
-  {
-    "id": "TC048",
-    "title": "See a warning or error toast after a failed validation",
-    "description": "This test verifies that an invalid user action triggers a visible warning or error toast instead of a silent failure.",
+    "id": "TC050",
+    "title": "See a toast after deleting a profile item",
+    "description": "A user can delete a profile item and see a brief confirmation toast that dismisses automatically.",
     "category": "Toast Notifications",
     "steps": [
       {
@@ -1594,81 +1628,19 @@
       },
       {
         "type": "action",
-        "description": "Attempt to save an invalid profile change"
+        "description": "Open a saved profile in the editor"
+      },
+      {
+        "type": "action",
+        "description": "Delete a profile item"
       },
       {
         "type": "assertion",
-        "description": "Verify an error or warning toast is visible"
+        "description": "Verify a confirmation toast is visible"
       },
       {
         "type": "assertion",
         "description": "Verify the toast dismisses automatically"
-      }
-    ],
-    "priority": "Low"
-  },
-  {
-    "id": "TC049",
-    "title": "Export the profile as HTML",
-    "description": "This verifies that a loaded profile can be exported as HTML and that the export completes successfully.",
-    "category": "Export Profile",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Load a saved profile into the editor"
-      },
-      {
-        "type": "action",
-        "description": "Open the export panel"
-      },
-      {
-        "type": "action",
-        "description": "Choose HTML export"
-      },
-      {
-        "type": "action",
-        "description": "Download the export"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the export completes successfully"
-      }
-    ],
-    "priority": "Low"
-  },
-  {
-    "id": "TC050",
-    "title": "See validation for invalid sign in credentials",
-    "description": "This verifies that incorrect sign in details are rejected with an inline validation message.",
-    "category": "Login & Account Access",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /"
-      },
-      {
-        "type": "action",
-        "description": "Switch to the sign in view"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the username field with an invalid username"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with an invalid password"
-      },
-      {
-        "type": "action",
-        "description": "Submit the form"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify an inline validation error is visible"
       }
     ],
     "priority": "Low"

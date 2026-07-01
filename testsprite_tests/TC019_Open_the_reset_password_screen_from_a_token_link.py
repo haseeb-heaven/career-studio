@@ -40,26 +40,29 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
-        # Enter username text field
-        elem = page.get_by_placeholder('Enter username', exact=True)
-        await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("haseeb-heaven")
+        # -> Navigate to the app URL with the token parameter to open the password reset view (visit the URL with ?token=valid-jwt-token).
+        await page.goto("http://localhost:5173/?token=valid-jwt-token")
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the 'Password' field with a valid new password and click the 'Reset Password' button.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
-        await elem.fill("123456")
+        await elem.fill("NewPass123!")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
-        # Sign In button
-        elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
+        # -> Fill the 'Password' field with a valid new password and click the 'Reset Password' button.
+        # Reset Password button
+        elem = page.get_by_role('button', name='Reset Password', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        
+        # --> Verify a success confirmation is visible
+        # Assert: Expected success confirmation 'Your password has been reset' to be visible.
+        await expect(page.locator("xpath=/html/body/div[1]").nth(0)).to_contain_text("Your password has been reset", timeout=15000), "Expected success confirmation 'Your password has been reset' to be visible."
         await asyncio.sleep(5)
 
     finally:

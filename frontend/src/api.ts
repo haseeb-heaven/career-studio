@@ -201,6 +201,30 @@ export async function deleteRoadmap(profileId: number, planId: number): Promise<
 }
 
 // ---- Jobs ----
+export interface SkillDetail {
+  skill: string;
+  status: "matched" | "partial" | "missing" | "extra";
+  confidence: number;
+  severity: "required" | "nice_to_have";
+  category?: string;
+  via?: string;
+}
+
+export interface GapEntry {
+  status: "ok" | "weak" | "gap";
+  message: string;
+  items?: string[];
+}
+
+export interface Gaps {
+  skills?: GapEntry;
+  experience?: GapEntry;
+  location?: GapEntry;
+  seniority?: GapEntry;
+  education?: GapEntry;
+  certifications?: GapEntry;
+}
+
 export interface JobMatch {
   id: number;
   title: string;
@@ -222,6 +246,12 @@ export interface JobMatch {
   match_breakdown?: Record<string, number>;
   matched_skills?: string[];
   missing_skills?: string[];
+  skill_details?: SkillDetail[];
+  gaps?: Gaps;
+  hire_chance?: number;
+  hire_chance_label?: string;
+  insight?: string;
+  confidence?: string;
 }
 
 export interface JobsSearchResult {
@@ -353,6 +383,31 @@ export async function getExternalSearchLinks(
   const qs = params.toString();
   const res = await axios.get(
     `${BASE}/profiles/${profileId}/external-search${qs ? `?${qs}` : ""}`,
+  );
+  return res.data;
+}
+
+// ---- Resume Keywords (advanced matching) ----
+
+export interface ResumeKeyword {
+  term: string;
+  canonical: string;
+  weight: number;
+  source: string;
+  confidence: number;
+}
+
+export interface ResumeKeywordsResult {
+  keywords: ResumeKeyword[];
+  total: number;
+  top_terms: string[];
+}
+
+export async function fetchResumeKeywords(
+  profileId: number,
+): Promise<ResumeKeywordsResult> {
+  const res = await axios.get<ResumeKeywordsResult>(
+    `${BASE}/profiles/${profileId}/resume-keywords`,
   );
   return res.data;
 }

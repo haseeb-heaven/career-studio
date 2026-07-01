@@ -40,26 +40,30 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the Username and Password fields with the provided credentials and click the 'Sign In' button to log in.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the Username and Password fields with the provided credentials and click the 'Sign In' button to log in.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the Username and Password fields with the provided credentials and click the 'Sign In' button to log in.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        # Assert: Verify the selected cover letter contents are displayed
+        assert False, "Expected: Verify the selected cover letter contents are displayed (could not be verified on the page)"
+        
+        # --> Test blocked by environment/access constraints during agent run
+        # Reason: TEST BLOCKED The test could not be run — the application did not accept the provided credentials, preventing access to the editor where saved cover letters can be reviewed. Observations: - After attempting to sign in, the page shows the error message 'Invalid username or password'. - The username field contains 'haseeb-heaven' and the password field was filled, but the app remained on the sign-...
+        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED The test could not be run \u2014 the application did not accept the provided credentials, preventing access to the editor where saved cover letters can be reviewed. Observations: - After attempting to sign in, the page shows the error message 'Invalid username or password'. - The username field contains 'haseeb-heaven' and the password field was filled, but the app remained on the sign-..." + " — the exported script cannot reproduce a PASS in this environment.")
         await asyncio.sleep(5)
 
     finally:

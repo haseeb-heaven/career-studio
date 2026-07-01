@@ -40,26 +40,32 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the 'Username' and 'Password' fields and click the 'Sign In' button to authenticate.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the 'Username' and 'Password' fields and click the 'Sign In' button to authenticate.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the 'Username' and 'Password' fields and click the 'Sign In' button to authenticate.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        # Assert: Verify a success notification is visible
+        assert False, "Expected: Verify a success notification is visible (could not be verified on the page)"
+        # Assert: Verify the job board credentials remain saved
+        assert False, "Expected: Verify the job board credentials remain saved (could not be verified on the page)"
+        
+        # --> Test blocked by environment/access constraints during agent run
+        # Reason: TEST BLOCKED The test could not be run — sign-in with the provided credentials failed, preventing access to Settings where job board credentials would be entered. Observations: - The page shows a red notification with text 'Invalid username or password'. - The app remains on the sign-in screen and no Settings page was reached.
+        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED The test could not be run \u2014 sign-in with the provided credentials failed, preventing access to Settings where job board credentials would be entered. Observations: - The page shows a red notification with text 'Invalid username or password'. - The app remains on the sign-in screen and no Settings page was reached." + " — the exported script cannot reproduce a PASS in this environment.")
         await asyncio.sleep(5)
 
     finally:

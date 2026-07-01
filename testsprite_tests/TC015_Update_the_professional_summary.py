@@ -40,26 +40,51 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the 'Username' field with 'haseeb-heaven', fill the 'Password' field with '123456', then click the 'Sign In' button.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the 'Username' field with 'haseeb-heaven', fill the 'Password' field with '123456', then click the 'Sign In' button.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Fill the 'Username' field with 'haseeb-heaven', fill the 'Password' field with '123456', then click the 'Sign In' button.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
+        # -> Click the 'Continue as guest (no account)' link to enter the app without signing in.
+        # Continue as guest (no account) button
+        elem = page.get_by_role('button', name='Continue as guest (no account)', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the 'Open Saved Profile' button to load a saved profile into the editor.
+        await page.mouse.wheel(0, 300)
+        
+        # -> Click the '📂 Open Saved Profile' button to load a saved profile into the editor.
+        # 📂 Open Saved Profile button
+        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the '📂 Open Saved Profile' button to load a profile into the editor.
+        # 📂 Open Saved Profile button
+        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
+        await elem.click(timeout=10000)
+        
+        # -> Click the '📂 Open Saved Profile' button to load a saved profile into the editor.
+        # 📂 Open Saved Profile button
+        elem = page.get_by_role('button', name='📂 Open Saved Profile', exact=True)
+        await elem.click(timeout=10000)
+        
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        # Assert: Verify a success notification is visible
+        assert False, "Expected: Verify a success notification is visible (could not be verified on the page)"
+        # Assert: Verify the updated summary character count is displayed
+        assert False, "Expected: Verify the updated summary character count is displayed (could not be verified on the page)"
         await asyncio.sleep(5)
 
     finally:

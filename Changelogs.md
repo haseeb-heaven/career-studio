@@ -4,6 +4,26 @@ All notable changes to the **AI Career Studio** project will be documented in th
 
 ---
 
+## [2.5.0-gh] - 2026-07-01
+
+### Added
+- Advanced job-match engine (`backend/services/matching_engine.py`): synonym normalization (e.g. `reactjs`/`k8s` collapse to canonical terms), pure-Python TF-IDF cosine similarity, and RapidFuzz fuzzy token matching for skill overlap scoring.
+- `GET /api/profiles/{id}/resume-keywords` endpoint — extracts weighted, deduplicated keywords from a profile for use in job matching and future search-query building.
+- Per-skill match detail (`skill_details`), structured gap analysis (`gaps`), `hire_chance` / `hire_chance_label`, and human-readable `insight` + `confidence` fields on every `JobMatch` returned by the jobs search endpoint.
+- Deep Semantic Matching (local AI) toggle in Settings, using `sentence-transformers` for optional local embedding-based scoring shown alongside the lexical match breakdown.
+- TestSprite frontend test suite regenerated: 30 test cases covering auth, profile import/editing, export, AI analysis/cover-letters/roadmap, job search, settings, and activity logs.
+
+### Fixed
+- **Guest "Open Saved Profile" silently doing nothing** (`UploadScreen.tsx`): `listProfiles()` requires authentication and guests received an unhandled 401 with no `catch`, so the button reset with zero feedback. Now shows a toast explaining that saved profiles require signing in.
+- Deep-semantic match scores are cast to native `float` before serialization, fixing a `numpy.float32` JSON-encoding error.
+- Corrected `frontend/.env`'s `VITE_API_BASE_URL` (was pointing at port 8000; backend runs on 8001), which had been silently breaking every API call from a production build.
+
+### Tests
+- **Backend**: `292 passed` (0 failed) — up from 188, adding coverage for the matching engine, resume-keywords endpoint, and deep-semantic settings toggle.
+- **Frontend (TestSprite)**: `10 passed / 3 failed / 17 blocked` out of 30. All 17 blocked cases stem from a single missing seeded test account and a missing upload fixture file (test-environment gaps, not app defects) — see `testsprite_tests/testsprite-mcp-test-report.md` for the full breakdown.
+
+---
+
 ## [2.4.0-gh] - 2026-06-19
 
 ### Added

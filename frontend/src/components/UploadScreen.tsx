@@ -58,6 +58,15 @@ export default function UploadScreen({ onImported, authUser, onLogout }: Props) 
     try {
       const list = await listProfiles();
       setProfiles(list);
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      toast(
+        "error",
+        "Couldn't load saved profiles",
+        status === 401
+          ? "Sign in to view your saved profiles — guests don't have a saved profile list."
+          : "Check that the backend is running and try again."
+      );
     } finally {
       setLoadingProfiles(false);
     }

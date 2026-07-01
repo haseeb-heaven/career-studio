@@ -40,26 +40,32 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Sign in using the 'Username' and 'Password' fields and click the 'Sign In' button.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Sign in using the 'Username' and 'Password' fields and click the 'Sign In' button.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Sign in using the 'Username' and 'Password' fields and click the 'Sign In' button.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        # Assert: Verify a ranked list of job matches is displayed
+        assert False, "Expected: Verify a ranked list of job matches is displayed (could not be verified on the page)"
+        # Assert: Verify match scores and source badges are displayed
+        assert False, "Expected: Verify match scores and source badges are displayed (could not be verified on the page)"
+        
+        # --> Test blocked by environment/access constraints during agent run
+        # Reason: TEST BLOCKED The test could not be run — login with the provided credentials failed, preventing access to the profile editor and Jobs section. Observations: - The login form showed 'Invalid username or password' after attempting to sign in. - The page remained on the login screen and access to profile and jobs features was not granted.
+        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED The test could not be run \u2014 login with the provided credentials failed, preventing access to the profile editor and Jobs section. Observations: - The login form showed 'Invalid username or password' after attempting to sign in. - The page remained on the login screen and access to profile and jobs features was not granted." + " — the exported script cannot reproduce a PASS in this environment.")
         await asyncio.sleep(5)
 
     finally:

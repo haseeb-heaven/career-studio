@@ -15,7 +15,7 @@ Upload any resume → parse → edit → analyze with AI → export in 7 formats
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white&style=flat-square)](https://typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06b6d4?logo=tailwindcss&logoColor=white&style=flat-square)](https://tailwindcss.com)
 [![SQLite](https://img.shields.io/badge/SQLite-local--first-003b57?logo=sqlite&logoColor=white&style=flat-square)](https://sqlite.org)
-[![Tests](https://img.shields.io/badge/tests-188%20backend%20%C2%B7%2016%2F29%20frontend-brightgreen?style=flat-square&logo=pytest&logoColor=white)](backend/tests/)
+[![Tests](https://img.shields.io/badge/tests-292%20backend%20%C2%B7%2010%2F30%20frontend-brightgreen?style=flat-square&logo=pytest&logoColor=white)](backend/tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 <br/>
@@ -26,16 +26,16 @@ Upload any resume → parse → edit → analyze with AI → export in 7 formats
 
 ---
 
-## 🚀 Latest Release: v2.4.0-gh
+## 🚀 Latest Release: v2.5.0-gh
 
-**What's new in v2.4.0-gh:**
-- 🛡️ **Editor error boundary** — graceful fallback when the editor crashes instead of a blank page
-- ⚡ **Prefetched saved profiles** — "Open →" now fetches profile data once, eliminating redundant API calls
-- 🔁 **Open Saved Profile from the editor** — round-trip between editor and saved-profile picker without a full page reload
-- 🧪 **188 backend tests passing** (was 35 in v2.1) — covers models, parsers, exporters, scoring, filters, and saved filters
-- 🧹 **Hardened editor lifecycle** — `setState` cancellation guard, `useEffect` import fix, and TypeScript cleanups
+**What's new in v2.5.0-gh:**
+- 🧠 **Advanced job-match engine** — synonym normalization, TF-IDF cosine similarity, and RapidFuzz fuzzy matching power richer per-skill match details, gap analysis, and hire-chance scoring
+- 🔍 **Resume keywords endpoint** — extracts weighted keywords from a profile for matching and future search
+- 🤖 **Deep Semantic Matching (local AI)** — optional `sentence-transformers`-powered embedding score alongside the lexical breakdown
+- 🐛 **Fixed silent guest "Open Saved Profile" failure** — guests now see a clear toast explaining saved profiles require sign-in, instead of the button doing nothing
+- 🧪 **292 backend tests passing** (was 188) — full coverage of the new matching engine and endpoints
 
-See [Changelogs.md](Changelogs.md) for the full v2.4.0-gh entry.
+See [Changelogs.md](Changelogs.md) for the full v2.5.0-gh entry.
 
 ---
 
@@ -183,7 +183,7 @@ npm run dev
 
 ## 🧪 Tests
 
-### Backend (188 tests)
+### Backend (292 tests)
 
 ```bash
 cd backend
@@ -191,12 +191,12 @@ python -m pytest -v
 ```
 
 ```
-188 passed in 136s
+292 passed in 168s
 ```
 
-Covers: models, all 5 parsers, all 5 exporters, all REST endpoints, scoring, filters, saved filters.
+Covers: models, all 5 parsers, all 5 exporters, all REST endpoints, scoring, filters, saved filters, the advanced matching engine, and the resume-keywords endpoint.
 
-### Frontend (TestSprite — 16/29 passing)
+### Frontend (TestSprite — 10/30 passing)
 
 ```bash
 # From project root
@@ -204,10 +204,10 @@ python run_testsprite_frontend.py
 ```
 
 ```
-16 passed, 13 failed
+10 passed, 3 failed, 17 blocked
 ```
 
-The TestSprite-generated frontend tests cover the full user journey: sign-in, resume upload, profile editing, AI analysis, cover letter generation, job matching, and password reset. The 13 remaining failures are concentrated in flows that depend on mounting the `ProfileEditor` inside Playwright's `--single-process` Chromium mode, a known instability of single-process headless Chrome when a heavy React tree is remounted mid-click. They are tracked but not blocking the release.
+The TestSprite-generated frontend tests cover the full user journey: sign-in, resume upload, profile editing, AI analysis, cover letter generation, job matching, settings, and password reset. 16 of the 17 blocked cases stem from a single missing seeded test account (the account TestSprite logs in with doesn't exist in the target backend's database) rather than app defects; see [`testsprite_tests/testsprite-mcp-test-report.md`](testsprite_tests/testsprite-mcp-test-report.md) for the full breakdown, including one genuine UI bug found and fixed this release (guest "Open Saved Profile" giving no feedback).
 
 ---
 

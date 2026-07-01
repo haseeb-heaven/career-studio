@@ -40,26 +40,32 @@ async def run_test():
         except Exception:
             pass
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Enter username 'haseeb-heaven', enter password '123456', then click the 'Sign In' button to access the dashboard/editor.
         # Enter username text field
         elem = page.get_by_placeholder('Enter username', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("haseeb-heaven")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Enter username 'haseeb-heaven', enter password '123456', then click the 'Sign In' button to access the dashboard/editor.
         # Password password field
         elem = page.get_by_placeholder('Password', exact=True)
         await elem.wait_for(state="visible", timeout=10000)
         await elem.fill("123456")
         
-        # -> Fill the 'Username' field with 'haseeb-heaven'.
+        # -> Enter username 'haseeb-heaven', enter password '123456', then click the 'Sign In' button to access the dashboard/editor.
         # Sign In button
         elem = page.get_by_text('Username', exact=True).locator("xpath=ancestor-or-self::*[.//button][1]").get_by_role('button', name='Sign In', exact=True)
         await elem.click(timeout=10000)
         
         # --> Assertions to verify final state
-        # Assert: Verify the authenticated workspace is displayed
-        assert False, "Expected: Verify the authenticated workspace is displayed (could not be verified on the page)"
+        # Assert: Verify the PDF export action is available for the current profile
+        assert False, "Expected: Verify the PDF export action is available for the current profile (could not be verified on the page)"
+        # Assert: Verify the export completes successfully
+        assert False, "Expected: Verify the export completes successfully (could not be verified on the page)"
+        
+        # --> Test blocked by environment/access constraints during agent run
+        # Reason: TEST BLOCKED The test could not be run — the provided credentials were not accepted, preventing access to saved profiles required for the export. Observations: - After signing in with username 'haseeb-heaven', the page shows 'Invalid username or password'. - The page remained on the sign-in screen and the dashboard/editor could not be accessed, so a saved profile could not be loaded.
+        raise AssertionError("Test blocked during agent run: " + "TEST BLOCKED The test could not be run \u2014 the provided credentials were not accepted, preventing access to saved profiles required for the export. Observations: - After signing in with username 'haseeb-heaven', the page shows 'Invalid username or password'. - The page remained on the sign-in screen and the dashboard/editor could not be accessed, so a saved profile could not be loaded." + " — the exported script cannot reproduce a PASS in this environment.")
         await asyncio.sleep(5)
 
     finally:

@@ -252,3 +252,37 @@ def test_is_remote_flag_set_correctly(client):
         resp = client.get(f"/api/profiles/{pid}/jobs?portal=remotive&limit=50", headers=h).json()
         remote_jobs = [j for j in resp["jobs"] if "remote" in (j["location"] or "").lower()]
         assert all(j["is_remote"] for j in remote_jobs)
+
+
+# ── Resume keywords endpoint ──────────────────────────────────────────────────
+
+def test_resume_keywords_endpoint(client):
+    h = _auth(client, "kw_user")
+    pid = _profile(client, h)
+    resp = client.get(f"/api/profiles/{pid}/resume-keywords", headers=h)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "keywords" in body
+    assert "total" in body
+    assert "top_terms" in body
+    assert body["total"] > 0
+    # At least one keyword should come from the profile's skills
+    canonicals = [k["canonical"] for k in body["keywords"]]
+    assert "python" in canonicals
+    assert "fastapi" in canonicals
+
+
+def test_response_has_insight_and_confidence(client):
+    """Every job in the search response should include insight + confidence."""
+    h = _auth(client, "insight_user")
+    pid = _profile(client, h)
+    mock_resp, empty = _mock_remotive_only()
+    with patch("routers.jobs_router.urllib.request.urlopen") as mu, \
+         patch("routers.jobs_router.urllib.request.Request"):
+        mu.side_effect = [mock_resp, empty]
+        resp = client.get(f"/api/profiles/{pid}/jobs?portal=remotive&limit=50", headers=h).json()
+    for job in resp["jobs"]:
+        assert "insight" in job
+        assert "confidence" in job
+        assert isinstance(job["insight"], str)
+        assert isinstance(job["confidence"], str)

@@ -1,9 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { analyzeProfile } from "../../api";
 import type { AnalysisResult } from "../../api";
 import { useToast } from "../Toast";
 
 interface Props { profileId: number; }
+
+const STORAGE_KEY = (profileId: number) => `analysisTab.state.v1.${profileId}`;
+
+function loadPersisted(profileId: number): AnalysisResult | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY(profileId));
+    return raw ? (JSON.parse(raw) as AnalysisResult) : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePersisted(profileId: number, result: AnalysisResult | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (result) {
+      window.localStorage.setItem(STORAGE_KEY(profileId), JSON.stringify(result));
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY(profileId));
+    }
+  } catch {
+    // Quota exceeded or storage disabled — silently ignore
+  }
+}
 
 function ScoreRing({ score }: { score: number }) {
   const color = score >= 80 ? "text-green-600" : score >= 60 ? "text-yellow-600" : "text-red-500";
@@ -20,8 +45,18 @@ function ScoreRing({ score }: { score: number }) {
 export default function AnalysisTab({ profileId }: Props) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const persistedRef = useRef<AnalysisResult | null | undefined>(undefined);
+  if (persistedRef.current === undefined) {
+    persistedRef.current = loadPersisted(profileId);
+  }
+  const [result, setResult] = useState<AnalysisResult | null>(persistedRef.current);
   const [error, setError] = useState("");
+
+  // Persist the last analysis so navigating away and back (or refreshing)
+  // keeps it — only overwritten when the user explicitly re-analyzes.
+  useEffect(() => {
+    savePersisted(profileId, result);
+  }, [profileId, result]);
 
   async function run() {
     setLoading(true);

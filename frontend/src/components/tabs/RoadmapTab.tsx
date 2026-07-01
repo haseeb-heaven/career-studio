@@ -1,9 +1,38 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { generateRoadmap, listRoadmaps, deleteRoadmap } from "../../api";
 import type { RoadmapResult } from "../../api";
 import { useToast } from "../Toast";
 
 interface Props { profileId: number; }
+
+const STORAGE_KEY = (profileId: number) => `roadmapTab.state.v1.${profileId}`;
+
+interface PersistedState {
+  planType: string;
+  targetRole: string;
+  years: number;
+  current: RoadmapResult | null;
+}
+
+function loadPersisted(profileId: number): Partial<PersistedState> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY(profileId));
+    if (!raw) return null;
+    return JSON.parse(raw) as Partial<PersistedState>;
+  } catch {
+    return null;
+  }
+}
+
+function savePersisted(profileId: number, state: PersistedState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY(profileId), JSON.stringify(state));
+  } catch {
+    // Quota exceeded or storage disabled — silently ignore
+  }
+}
 
 const PLAN_TYPES = [
   { value: "roadmap",   label: "Career Roadmap",      emoji: "🗺️" },
@@ -261,12 +290,25 @@ function VisualPlan({ plan, emoji, label }: VisualPlanProps) {
 
 export default function RoadmapTab({ profileId }: Props) {
   const { toast } = useToast();
-  const [planType, setPlanType] = useState("roadmap");
-  const [targetRole, setTargetRole] = useState("");
-  const [years, setYears] = useState(3);
+
+  // Load persisted state for this profile once, on mount, so navigating
+  // away and back (or refreshing) keeps the in-progress plan instead of
+  // resetting to blank fields.
+  const persistedRef = useRef<Partial<PersistedState> | null>(null);
+  if (persistedRef.current === null && typeof window !== "undefined") {
+    persistedRef.current = loadPersisted(profileId);
+  }
+  const p = <K extends keyof PersistedState>(key: K, fallback: PersistedState[K]) =>
+    persistedRef.current && persistedRef.current[key] !== undefined
+      ? (persistedRef.current[key] as PersistedState[K])
+      : fallback;
+
+  const [planType, setPlanType] = useState(p("planType", "roadmap"));
+  const [targetRole, setTargetRole] = useState(p("targetRole", ""));
+  const [years, setYears] = useState(p("years", 3));
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
-  const [current, setCurrent] = useState<RoadmapResult | null>(null);
+  const [current, setCurrent] = useState<RoadmapResult | null>(p("current", null));
   const [history, setHistory] = useState<RoadmapResult[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
@@ -275,6 +317,12 @@ export default function RoadmapTab({ profileId }: Props) {
       .then(setHistory)
       .finally(() => setLoadingHistory(false));
   }, [profileId]);
+
+  // Persist the draft on every change so it survives navigating away and
+  // back — only overwritten when the user explicitly generates again.
+  useEffect(() => {
+    savePersisted(profileId, { planType, targetRole, years, current });
+  }, [profileId, planType, targetRole, years, current]);
 
   // History and current view are filtered by the selected plan type so
   // switching tabs shows the right plan immediately (no stale display).

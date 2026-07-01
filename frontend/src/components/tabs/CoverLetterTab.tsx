@@ -1,18 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { generateCoverLetter, listCoverLetters, deleteCoverLetter } from "../../api";
 import type { CoverLetterResult } from "../../api";
 import { useToast } from "../Toast";
 
 interface Props { profileId: number; }
 
+const STORAGE_KEY = (profileId: number) => `coverLetterTab.state.v1.${profileId}`;
+
+interface PersistedState {
+  jobTitle: string;
+  company: string;
+  notes: string;
+  current: CoverLetterResult | null;
+}
+
+function loadPersisted(profileId: number): Partial<PersistedState> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY(profileId));
+    if (!raw) return null;
+    return JSON.parse(raw) as Partial<PersistedState>;
+  } catch {
+    return null;
+  }
+}
+
+function savePersisted(profileId: number, state: PersistedState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY(profileId), JSON.stringify(state));
+  } catch {
+    // Quota exceeded or storage disabled — silently ignore
+  }
+}
+
 export default function CoverLetterTab({ profileId }: Props) {
   const { toast } = useToast();
-  const [jobTitle, setJobTitle] = useState("");
-  const [company, setCompany] = useState("");
-  const [notes, setNotes] = useState("");
+
+  // Load persisted state for this profile once, on mount, so navigating
+  // away and back (or refreshing) keeps the in-progress draft instead of
+  // resetting to blank fields.
+  const persistedRef = useRef<Partial<PersistedState> | null>(null);
+  if (persistedRef.current === null && typeof window !== "undefined") {
+    persistedRef.current = loadPersisted(profileId);
+  }
+  const p = <K extends keyof PersistedState>(key: K, fallback: PersistedState[K]) =>
+    persistedRef.current && persistedRef.current[key] !== undefined
+      ? (persistedRef.current[key] as PersistedState[K])
+      : fallback;
+
+  const [jobTitle, setJobTitle] = useState(p("jobTitle", ""));
+  const [company, setCompany] = useState(p("company", ""));
+  const [notes, setNotes] = useState(p("notes", ""));
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
-  const [current, setCurrent] = useState<CoverLetterResult | null>(null);
+  const [current, setCurrent] = useState<CoverLetterResult | null>(p("current", null));
   const [history, setHistory] = useState<CoverLetterResult[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
@@ -21,6 +63,12 @@ export default function CoverLetterTab({ profileId }: Props) {
       .then(setHistory)
       .finally(() => setLoadingHistory(false));
   }, [profileId]);
+
+  // Persist the draft on every change so it survives navigating away and
+  // back — only overwritten when the user explicitly generates again.
+  useEffect(() => {
+    savePersisted(profileId, { jobTitle, company, notes, current });
+  }, [profileId, jobTitle, company, notes, current]);
 
   async function generate() {
     if (!jobTitle.trim() || !company.trim()) {

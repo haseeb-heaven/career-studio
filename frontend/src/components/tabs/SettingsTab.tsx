@@ -41,6 +41,14 @@ const FREE_OPENROUTER_MODELS = [
   { model: "microsoft/mai-ds-r1:free", use_case: "general reasoning" }
 ];
 
+const PREMIUM_OPENROUTER_MODELS = [
+  { model: "z-ai/glm-5.2", use_case: "long-horizon coding / agentic", price: "$1.15/$3.62 per M" },
+  { model: "moonshotai/kimi-k2.6", use_case: "coding / multi-agent orchestration", price: "$0.55/$3.20 per M" },
+  { model: "deepseek/deepseek-v4", use_case: "frontier reasoning / coding", price: "varies" },
+  { model: "anthropic/claude-opus-4.8", use_case: "top-tier reasoning", price: "premium" },
+  { model: "openai/gpt-5.2", use_case: "top-tier general", price: "premium" },
+];
+
 const EXTERNAL_MODELS: Record<string, string[]> = {
   openai:      ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
   anthropic:   ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-8"],
@@ -368,13 +376,24 @@ export default function SettingsTab() {
                     }}
                     className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
                   >
-                    <option value="" disabled>-- Select a Free OpenRouter Model --</option>
-                    {FREE_OPENROUTER_MODELS.map((m) => (
-                      <option key={m.model} value={m.model}>
-                        {m.model} ({m.use_case})
-                      </option>
-                    ))}
-                    {customModel && !FREE_OPENROUTER_MODELS.some(m => m.model === customModel) && (
+                    <option value="" disabled>-- Select an OpenRouter Model --</option>
+                    <optgroup label="Free">
+                      {FREE_OPENROUTER_MODELS.map((m) => (
+                        <option key={m.model} value={m.model}>
+                          {m.model} ({m.use_case})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Premium (paid)">
+                      {PREMIUM_OPENROUTER_MODELS.map((m) => (
+                        <option key={m.model} value={m.model}>
+                          {m.model} ({m.use_case} — {m.price})
+                        </option>
+                      ))}
+                    </optgroup>
+                    {customModel &&
+                      !FREE_OPENROUTER_MODELS.some(m => m.model === customModel) &&
+                      !PREMIUM_OPENROUTER_MODELS.some(m => m.model === customModel) && (
                       <option value={customModel}>
                         {customModel} (Custom)
                       </option>

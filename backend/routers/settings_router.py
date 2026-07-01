@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 import db
 from models import Settings, User
-from services.ai_service import ollama_available, list_ollama_models
-from security_crypto import encrypt_key, _KEY_FIELDS
+from services.ai_service import ollama_available, list_ollama_models, test_provider_key
+from security_crypto import encrypt_key, decrypt_key, _KEY_FIELDS
 from routers.auth_utils import get_current_user
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -94,6 +94,31 @@ def update_settings(body: dict, user: User = Depends(get_current_user)):
         session.add(cfg)
         session.commit()
         return {"ok": True}
+
+
+PROVIDER_KEY_FIELD = {
+    "openai": "api_key",
+    "anthropic": "anthropic_api_key",
+    "openrouter": "openrouter_api_key",
+}
+
+
+@router.post("/test-key")
+def test_key(body: dict, user: User = Depends(get_current_user)):
+    provider = body.get("provider", "")
+    api_key = body.get("api_key", "")
+    field = PROVIDER_KEY_FIELD.get(provider)
+    if field is None:
+        return {"ok": False, "message": f"Unknown provider: {provider}"}
+
+    if api_key == "***":
+        with Session(db.engine) as session:
+            cfg = _get_or_create(session, user.id)
+            stored = getattr(cfg, field, "")
+        api_key = decrypt_key(stored) if stored else ""
+
+    ok, message = test_provider_key(provider, api_key)
+    return {"ok": ok, "message": message}
 
 
 @router.get("/ollama/status")

@@ -199,6 +199,18 @@ class CareerPlan(SQLModel, table=True):
     )
 
 
+class ResumeDraft(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    profile_id: int = Field(foreign_key="profile.id", ondelete="CASCADE", index=True)
+    title: str = Field(default="Untitled Draft")
+    content: str = Field(default="")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), onupdate=func.now())
+    )
+
+
 class JobMatch(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     profile_id: int = Field(foreign_key="profile.id", ondelete="CASCADE", index=True)

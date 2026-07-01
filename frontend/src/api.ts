@@ -205,6 +205,58 @@ export async function deleteRoadmap(profileId: number, planId: number): Promise<
   await axios.delete(`${BASE}/profiles/${profileId}/roadmaps/${planId}`);
 }
 
+// ---- Resume Editor ----
+export interface ResumeDraft {
+  id: number;
+  title: string;
+  content: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function generateResumeDraft(profileId: number, title?: string): Promise<ResumeDraft> {
+  const res = await axios.post<ResumeDraft>(`${BASE}/profiles/${profileId}/resume-drafts/generate`, {
+    title: title ?? "",
+  });
+  return res.data;
+}
+
+export async function listResumeDrafts(profileId: number): Promise<ResumeDraft[]> {
+  const res = await axios.get<ResumeDraft[]>(`${BASE}/profiles/${profileId}/resume-drafts`);
+  return res.data;
+}
+
+export async function saveResumeDraft(
+  profileId: number,
+  draftId: number,
+  content: string,
+  title?: string
+): Promise<ResumeDraft> {
+  const res = await axios.put<ResumeDraft>(`${BASE}/profiles/${profileId}/resume-drafts/${draftId}`, {
+    content,
+    title,
+  });
+  return res.data;
+}
+
+export async function deleteResumeDraft(profileId: number, draftId: number): Promise<void> {
+  await axios.delete(`${BASE}/profiles/${profileId}/resume-drafts/${draftId}`);
+}
+
+export async function suggestResumeEdits(profileId: number, draftId: number): Promise<string[]> {
+  const res = await axios.post<{ suggestions: string[] }>(
+    `${BASE}/profiles/${profileId}/resume-drafts/${draftId}/suggest`
+  );
+  return res.data.suggestions;
+}
+
+export async function exportResumeDraftBlob(profileId: number, draftId: number, fmt: string): Promise<Blob> {
+  const res = await axios.get(`${BASE}/profiles/${profileId}/resume-drafts/${draftId}/export/${fmt}`, {
+    responseType: "blob",
+  });
+  return res.data;
+}
+
 // ---- Jobs ----
 export interface SkillDetail {
   skill: string;

@@ -12,13 +12,14 @@ import ExportPanel from "./ExportPanel";
 import AnalysisTab from "./tabs/AnalysisTab";
 import CoverLetterTab from "./tabs/CoverLetterTab";
 import RoadmapTab from "./tabs/RoadmapTab";
+import ResumeEditorTab from "./tabs/ResumeEditorTab";
 import JobsTab from "./tabs/JobsTab";
 import LogsTab from "./tabs/LogsTab";
 import SettingsTab from "./tabs/SettingsTab";
 
 type TabName =
   | "Contact" | "Summary" | "Skills" | "Experience" | "Projects" | "Education" | "Certifications"
-  | "Analysis" | "Cover Letter" | "Roadmap" | "Jobs"
+  | "Analysis" | "Cover Letter" | "Roadmap" | "Resume Editor" | "Jobs"
   | "Export"
   | "Logs" | "Settings";
 
@@ -52,6 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "Analysis",     icon: "📊", label: "Analysis" },
       { id: "Cover Letter", icon: "✍️",  label: "Cover Letter" },
       { id: "Roadmap",      icon: "🗺️", label: "Roadmap" },
+      { id: "Resume Editor", icon: "📄", label: "Resume Editor" },
       { id: "Jobs",         icon: "🔍", label: "Job Matching" },
     ],
   },
@@ -137,6 +139,7 @@ export default function ProfileEditor({ profileId, importWarnings = [], onBack, 
       case "Analysis":       return <AnalysisTab profileId={profile.id} />;
       case "Cover Letter":   return <CoverLetterTab profileId={profile.id} />;
       case "Roadmap":        return <RoadmapTab profileId={profile.id} />;
+      case "Resume Editor":  return <ResumeEditorTab profileId={profile.id} />;
       case "Jobs":           return <JobsTab profileId={profile.id} profile={profile} />;
       case "Logs":           return <LogsTab />;
       case "Settings":       return <SettingsTab />;

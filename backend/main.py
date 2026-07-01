@@ -29,6 +29,7 @@ from sqlmodel import SQLModel
 from db import engine, migrate_db
 from routers import import_router, profile_router, export_router
 from routers import logs_router, settings_router, analysis_router, jobs_router, sections_router, auth_router
+from routers import resume_editor_router
 from routers.settings_router import run_startup_migration
 
 
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(jobs_router.router, prefix="/api")
     app.include_router(sections_router.router, prefix="/api")
     app.include_router(auth_router.router, prefix="/api")
+    app.include_router(resume_editor_router.router, prefix="/api")
     return app
 
 
